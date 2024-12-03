@@ -12,6 +12,8 @@ type (
 	CodeProfile int
 	// CodeInvoice ist der Rechnungstyp
 	CodeInvoice int
+	// CodeGlobalID is the ISO 6523 type
+	CodeGlobalID int
 )
 
 func (cp CodeProfile) String() string {
@@ -28,14 +30,15 @@ const (
 	CZUGFeRD CodeProfile = iota
 )
 
-// Rechnungstyp
+// InvoiceType UNTDID 1001 Document name code
 const (
-	CRechnung                   CodeInvoice = 380
-	CGutschrift                             = 381
-	CKorrektur                              = 384
-	CSelbstAusgestellteRechnung             = 389
-	CWertbelastung                          = 89
-	CKeineRechnung                          = 751 // Profile BASIC WL und MINIMUM
+	CDummy              CodeInvoice = 0
+	CommercialInvoice               = 380
+	CCreditNote                     = 381
+	CCorrectedInvoice               = 384
+	CHireInvoice                    = 387
+	CSSelfBilledInvoice             = 389
+	CInvoiceInformation             = 751 // Profile BASIC WL und MINIMUM
 )
 
 // Notiz ist ein Freitext für bestimmte Themen, falls SubjectCode angegeben
@@ -49,9 +52,12 @@ func (n Notiz) String() string {
 	return fmt.Sprintf("Notiz %s - %q", n.SubjectCode, n.Text)
 }
 
-// Adresse repräsentiert den Käufer und den Verkäufer
-type Adresse struct {
-	Firmenname     string
+// Party represents buyer and seller
+type Party struct {
+	ID             []string
+	GlobalID       string
+	GlobalScheme   string
+	Name           string
 	Kontakt        string
 	EMail          string
 	PLZ            string
@@ -63,20 +69,56 @@ type Adresse struct {
 	Steuernummer   string
 }
 
+// Characteristic add details to a product
+type Characteristic struct {
+	Description string
+	Value       string
+}
+
 // Position ist eine Rechnungszeile
 type Position struct {
 	Position            int
-	Artikelnummer       string
-	ArtikelName         string
+	ArticleNumber       string
+	ArticleName         string
+	Note                string // optional
+	GlobalID            string
+	GlobalIDType        CodeGlobalID
+	Characteristics     []Characteristic
 	BruttoPreis         decimal.Decimal
 	NettoPreis          decimal.Decimal
 	Anzahl              decimal.Decimal
 	Einheit             string
-	Freitext            string
+	Description         string // BT-154
 	SteuerTypCode       string // muss VAT sein
 	SteuerKategorieCode string
 	Steuersatz          decimal.Decimal
 	Total               decimal.Decimal
+}
+
+// PaymentMeans represents a payment means
+type PaymentMeans struct {
+	TypeCode                                             int
+	Information                                          string
+	PayeePartyCreditorFinancialAccountIBAN               string
+	PayeePartyCreditorFinancialAccountName               string
+	PayeePartyCreditorFinancialAccountProprietaryID      string
+	PayeeSpecifiedCreditorFinancialInstitutionBIC        string // BT-86
+	PayerPartyDebtorFinancialAccountIBAN                 string
+	ApplicableTradeSettlementFinancialCardID             string
+	ApplicableTradeSettlementFinancialCardCardholderName string
+}
+
+// AllowanceCharge specifies charges and deductions
+type AllowanceCharge struct {
+	ChargeIndicator                       bool
+	CalculationPercent                    decimal.Decimal
+	BasisAmount                           decimal.Decimal
+	ActualAmount                          decimal.Decimal
+	ReasonCode                            int
+	Reason                                string
+	CategoryTradeTaxType                  string
+	CategoryTradeTaxCategoryCode          string
+	CategoryTradeTaxRateApplicablePercent decimal.Decimal
 }
 
 // Steuersatz hängt an einer Rechnung und bezeichnet alle vorkommenden
@@ -90,29 +132,39 @@ type Steuersatz struct {
 	Ausnahmegrund   string
 }
 
-// Rechnung ist das Hauptelement der e-Rechnung-Datei
-type Rechnung struct {
-	AllowanceTotal   decimal.Decimal
-	BankBIC          string
-	BankIBAN         string
-	BankKontoname    string
-	Belegdatum       time.Time // BT-2
-	ChargeTotal      decimal.Decimal
-	DuePayableAmount decimal.Decimal
-	Fälligkeitsdatum time.Time
-	GrandTotal       decimal.Decimal
-	Käufer           Adresse
-	Leistungsdatum   time.Time
-	LineTotal        decimal.Decimal
-	Notizen          []Notiz
-	Positionen       []Position
-	Profil           CodeProfile
-	Rechnungsnummer  string      // BT-1
-	Rechnungstyp     CodeInvoice // BT-3
-	Steuersätze      []Steuersatz
-	TaxBasisTotal    decimal.Decimal
-	TaxTotal         decimal.Decimal
-	TotalPrepaid     decimal.Decimal
-	Verkäufer        Adresse
-	Währung          string // BT-5
+// Invoice ist das Hauptelement der e-Invoice-Datei
+type Invoice struct {
+	AllowanceTotal                      decimal.Decimal
+	BuyerOrderReferencedDocument        string // BT-13
+	DespatchAdviceReferencedDocument    string // Detailinformationen zum zugehörigen Lieferavis
+	BuyerReference                      string // ApplicableHeaderTradeAgreement/BuyerReference
+	BPSpecifiedDocumentContextParameter string
+	PaymentMeans                        []PaymentMeans
+	BillingSpecifiedPeriodStart         time.Time
+	BillingSpecifiedPeriodEnd           time.Time
+	InvoiceDate                         time.Time // BT-2
+	ChargeTotal                         decimal.Decimal
+	DuePayableAmount                    decimal.Decimal
+	DueDate                             time.Time
+	TradePaymentTermsDescription        string // BT-20, BR-CO-25 BT-115>0?BT-9||BT-20
+	DirectDebitMandateID                string // BG-19/BT-89
+	GrandTotal                          decimal.Decimal
+	Buyer                               Party
+	Leistungsdatum                      time.Time
+	LineTotal                           decimal.Decimal
+	Notizen                             []Notiz
+	Positionen                          []Position
+	Profile                             CodeProfile
+	InvoiceNumber                       string      // BT-1
+	Rechnungstyp                        CodeInvoice // BT-3
+	Steuersätze                         []Steuersatz
+	TaxBasisTotal                       decimal.Decimal
+	TaxTotalCurrency                    string
+	TaxTotal                            decimal.Decimal
+	TotalPrepaid                        decimal.Decimal
+	SpecifiedTradeAllowanceCharge       []AllowanceCharge
+	ShipTo                              *Party
+	Seller                              Party
+	SpecifiedTradePaymentTerms          string
+	Currency                            string // BT-5
 }

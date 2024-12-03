@@ -1,7 +1,7 @@
 github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp81k=
 github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
-github.com/speedata/cxpath v0.0.1 h1:VzTZOhFx9esnl71HmRvgu7RKku/NwiLrWQNszdplBvg=
-github.com/speedata/cxpath v0.0.1/go.mod h1:yuLFeKWsvD9geDYsh/tqu52VTpzzuoW2bTfDlnlcDnc=
+github.com/speedata/cxpath v0.0.2 h1:NZ4OWxxtOCFAwFrIl7qYhXuLLeVw+2rGZxcTHafcDkw=
+github.com/speedata/cxpath v0.0.2/go.mod h1:yuLFeKWsvD9geDYsh/tqu52VTpzzuoW2bTfDlnlcDnc=
 github.com/speedata/goxml v1.0.1 h1:YAzy7kajDo2hhSLmogHQTXcnIvXj1+sJrcVCscoJfNQ=
 github.com/speedata/goxml v1.0.1/go.mod h1:G++cv0h2rC8ltAhvQmANDgwMbKRd3MetXlF8PLob6dw=
 github.com/speedata/goxpath v1.0.1 h1:pGbqiS0FZ34cQOQ4yJ3t6buQoW08lScEqVaqZuqhcnI=
