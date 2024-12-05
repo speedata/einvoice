@@ -25,14 +25,14 @@ func parseKontakt(tradeParty *cxpath.Context) (Party, error) {
 	adr.GlobalScheme = tradeParty.Eval("ram:GlobalID/@schemeID").String()
 	adr.Name = tradeParty.Eval("ram:Name").String()
 	adr.EMail = tradeParty.Eval("ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID").String()
-	adr.Kontakt = tradeParty.Eval("ram:DefinedTradeContact/ram:PersonName").String()
-	adr.PLZ = tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String()
-	adr.Straße1 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String()
-	adr.Straße2 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String()
-	adr.Ort = tradeParty.Eval("ram:PostalTradeAddress/ram:CityName").String()
-	adr.Ländercode = tradeParty.Eval("ram:PostalTradeAddress/ram:CountryID").String()
-	adr.Steuernummer = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='FC']").String()
-	adr.UmsatzsteuerID = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='VA']").String()
+	adr.PersonName = tradeParty.Eval("ram:DefinedTradeContact/ram:PersonName").String()
+	adr.ZIP = tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String()
+	adr.Address1 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String()
+	adr.Address2 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String()
+	adr.City = tradeParty.Eval("ram:PostalTradeAddress/ram:CityName").String()
+	adr.CountryID = tradeParty.Eval("ram:PostalTradeAddress/ram:CountryID").String()
+	adr.FCTaxRegistration = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='FC']").String()
+	adr.VATaxRegistration = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='VA']").String()
 	return adr, nil
 }
 
@@ -90,14 +90,14 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	inv.DirectDebitMandateID = applicableHeaderTradeSettlement.Eval("ram:SpecifiedTradePaymentTerms/ram:DirectDebitMandateID").String()
 
 	for att := range applicableHeaderTradeSettlement.Each("ram:ApplicableTradeTax") {
-		s := Steuersatz{}
-		s.BerechneterWert = getDecimal(att, "ram:CalculatedAmount")
-		s.BasisWert = getDecimal(att, "ram:BasisAmount")
+		s := TradeTax{}
+		s.CalculatedAmount = getDecimal(att, "ram:CalculatedAmount")
+		s.BasisAmount = getDecimal(att, "ram:BasisAmount")
 		s.Typ = att.Eval("ram:TypeCode").String()
-		s.Ausnahmegrund = att.Eval("ram:ExemptionReason").String()
-		s.KategorieCode = att.Eval("ram:CategoryCode").String()
-		s.Prozent = getDecimal(att, "ram:RateApplicablePercent")
-		inv.Steuersätze = append(inv.Steuersätze, s)
+		s.ExemptionReason = att.Eval("ram:ExemptionReason").String()
+		s.CategoryCode = att.Eval("ram:CategoryCode").String()
+		s.Percent = getDecimal(att, "ram:RateApplicablePercent")
+		inv.TradeTaxes = append(inv.TradeTaxes, s)
 	}
 	summation := applicableHeaderTradeSettlement.Eval("ram:SpecifiedTradeSettlementHeaderMonetarySummation")
 	inv.LineTotal = getDecimal(summation, "ram:LineTotalAmount")
@@ -116,7 +116,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 func parseCIIApplicableHeaderTradeDelivery(applicableHeaderTradeDelivery *cxpath.Context, inv *Invoice) error {
 	inv.DespatchAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:DespatchAdviceReferencedDocument").String()
 	leistungsdatum := applicableHeaderTradeDelivery.Eval("ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString").String()
-	inv.Leistungsdatum, _ = parseTime(leistungsdatum)
+	inv.OccurrenceDateTime, _ = parseTime(leistungsdatum)
 	if applicableHeaderTradeDelivery.Eval("count(ram:ShipToTradeParty)").Int() > 0 {
 		st, _ := parseKontakt(applicableHeaderTradeDelivery.Eval("ram:ShipToTradeParty"))
 		inv.ShipTo = &st
@@ -142,34 +142,57 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 	*/
 	return nil
 }
+func parseSepecifiedLineTradeAgreement(specifiedLineTradeAgreement *cxpath.Context, p *InvoiceItem) error {
+	p.NetPrice = getDecimal(specifiedLineTradeAgreement, "ram:NetPriceProductTradePrice/ram:ChargeAmount")
+	p.GrossPrice = getDecimal(specifiedLineTradeAgreement, "ram:GrossPriceProductTradePrice/ram:ChargeAmount")
+
+	return nil
+}
+
+func parseSepecifiedTradeProduct(specifiedTradeProduct *cxpath.Context, p *InvoiceItem) error {
+	p.GlobalID = specifiedTradeProduct.Eval("ram:GlobalID").String()
+	p.GlobalIDType = CodeGlobalID(specifiedTradeProduct.Eval("ram:GlobalID/@schemeID").Int())
+	p.ArticleNumber = specifiedTradeProduct.Eval("ram:SellerAssignedID").String()
+	p.ArticleNumberBuyer = specifiedTradeProduct.Eval("ram:BuyerAssignedID").String()
+	p.ArticleName = specifiedTradeProduct.Eval("ram:Name").String()
+	p.Description = specifiedTradeProduct.Eval("ram:Description").String()
+	for itm := range specifiedTradeProduct.Each("ram:ApplicableProductCharacteristic") {
+		ch := Characteristic{
+			Description: itm.Eval("ram:Description").String(),
+			Value:       itm.Eval("ram:Value").String(),
+		}
+		p.Characteristics = append(p.Characteristics, ch)
+	}
+	for itm := range specifiedTradeProduct.Each("ram:DesignatedProductClassification") {
+		ch := Classification{
+			ClassCode:     itm.Eval("ram:ClassCode").String(),
+			ListID:        itm.Eval("ram:ClassCode/@listID").String(),
+			ListVersionID: itm.Eval("ram:ClassCode/@listVersionID").String(),
+		}
+		p.ProductClassification = append(p.ProductClassification, ch)
+	}
+	p.OriginTradeCountry = specifiedTradeProduct.Eval("ram:OriginTradeCountry/ram:ID").String()
+	return nil
+}
+
 func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Context, inv *Invoice) error {
 	var err error
 	for lineItem := range supplyChainTradeTransaction.Each("ram:IncludedSupplyChainTradeLineItem") {
-		p := Position{}
+		p := InvoiceItem{}
 		p.Position = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:LineID").Int()
 		p.Note = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:Content").String()
-		p.GlobalID = lineItem.Eval("ram:SpecifiedTradeProduct/ram:GlobalID").String()
-		p.GlobalIDType = CodeGlobalID(lineItem.Eval("ram:SpecifiedTradeProduct/ram:GlobalID/@schemeID").Int())
-		p.ArticleNumber = lineItem.Eval("ram:SpecifiedTradeProduct/ram:SellerAssignedID").String()
-		p.ArticleName = lineItem.Eval("ram:SpecifiedTradeProduct/ram:Name").String()
-		p.Description = lineItem.Eval("ram:SpecifiedTradeProduct/ram:Description").String()
-		for itm := range lineItem.Each("ram:SpecifiedTradeProduct/ram:ApplicableProductCharacteristic") {
-			ch := Characteristic{
-				Description: itm.Eval("ram:Description").String(),
-				Value:       itm.Eval("ram:Value").String(),
-			}
-			p.Characteristics = append(p.Characteristics, ch)
-		}
-		p.Anzahl = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")
-		p.Einheit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
-		p.NettoPreis = getDecimal(lineItem, "ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:ChargeAmount")
-		p.BruttoPreis = getDecimal(lineItem, "ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:ChargeAmount")
+
+		err = parseSepecifiedTradeProduct(lineItem.Eval("ram:SpecifiedTradeProduct"), &p)
+		err = parseSepecifiedLineTradeAgreement(lineItem.Eval("ram:SpecifiedLineTradeAgreement"), &p)
+
+		p.BilledQuantity = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")
+		p.Unit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
 		p.Total = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
 		taxInfo := lineItem.Eval("ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax")
-		p.SteuerTypCode = taxInfo.Eval("ram:TypeCode").String()
-		p.SteuerKategorieCode = taxInfo.Eval("ram:CategoryCode").String()
-		p.Steuersatz = getDecimal(taxInfo, "ram:RateApplicablePercent")
-		inv.Positionen = append(inv.Positionen, p)
+		p.TaxTypeCode = taxInfo.Eval("ram:TypeCode").String()
+		p.TaxCategoryCode = taxInfo.Eval("ram:CategoryCode").String()
+		p.TaxRateApplicablePercent = getDecimal(taxInfo, "ram:RateApplicablePercent")
+		inv.InvoiceItems = append(inv.InvoiceItems, p)
 	}
 	if err = parseCIIApplicableHeaderTradeAgreement(supplyChainTradeTransaction.Eval("ram:ApplicableHeaderTradeAgreement"), inv); err != nil {
 		return err
@@ -186,7 +209,7 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 
 func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, rg *Invoice) error {
 	rg.InvoiceNumber = exchangedDocument.Eval("ram:ID/text()").String()
-	rg.Rechnungstyp = CodeInvoice(exchangedDocument.Eval("ram:TypeCode").Int())
+	rg.InvoiceTypeCode = CodeDocument(exchangedDocument.Eval("ram:TypeCode").Int())
 
 	rechnungsdatum, err := parseTime(exchangedDocument.Eval("ram:IssueDateTime/udt:DateTimeString").String())
 	if err != nil {
@@ -216,7 +239,7 @@ func parseCIIExchangedDocumentContext(ctx *cxpath.Context, rg *Invoice) error {
 	nc := ctx.Eval("ram:GuidelineSpecifiedDocumentContextParameter").Eval("ram:ID")
 	switch nc.String() {
 	case "urn:cen.eu:en16931:2017":
-		rg.Profile = CZUGFeRD
+		rg.SchemaType = CII
 	}
 	rg.BPSpecifiedDocumentContextParameter = ctx.Eval("ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID").String()
 	return nil

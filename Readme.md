@@ -24,7 +24,6 @@ if err != nil {
 Coding just started, only the basic parts are implemented.
 
 * Reading of EN 16931 ZUGFeRD XML files is possible
-* Coding and field names are in German, as this is the current target audience
 * No UBL based XML
 * No checks done
 * Not all possible fields are read
