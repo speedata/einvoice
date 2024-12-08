@@ -18,6 +18,20 @@ if err != nil {
 // now invoice contains all the information from the XML file
 ```
 
+writing an invoice:
+
+```go
+func dothings() error {
+	inv, err := einvoice.ParseXMLFile("...")
+	if err != nil {
+		return err
+	}
+
+	return inv.Write(os.Stdout)
+}
+````
+
+
 
 ## Limitation, current status
 
@@ -27,6 +41,6 @@ Coding just started, only the basic parts are implemented.
 * No UBL based XML
 * No checks done
 * Not all possible fields are read
-* No (XML) output
+* XML output only for minimum profile
 
 All of these points will be addressed. Stay tuned for updates!

@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -27,8 +28,9 @@ func parseKontakt(tradeParty *cxpath.Context) (Party, error) {
 	adr.EMail = tradeParty.Eval("ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID").String()
 	adr.PersonName = tradeParty.Eval("ram:DefinedTradeContact/ram:PersonName").String()
 	adr.ZIP = tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String()
-	adr.Address1 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String()
-	adr.Address2 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String()
+	adr.Line1 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String()
+	adr.Line2 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String()
+	adr.Line3 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineThree").String()
 	adr.City = tradeParty.Eval("ram:PostalTradeAddress/ram:CityName").String()
 	adr.CountryID = tradeParty.Eval("ram:PostalTradeAddress/ram:CountryID").String()
 	adr.FCTaxRegistration = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='FC']").String()
@@ -218,28 +220,29 @@ func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, rg *Invoice) e
 	rg.InvoiceDate = rechnungsdatum
 
 	for note := range exchangedDocument.Each("ram:IncludedNote") {
-		n := Notiz{}
+		n := Note{}
 		n.SubjectCode = note.Eval("ram:SubjectCode").String()
 		n.Text = note.Eval("ram:Content").String()
-		rg.Notizen = append(rg.Notizen, n)
+		rg.Notes = append(rg.Notes, n)
 	}
 
 	return nil
 }
 
-/*
-Profil EXTENDED: urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended
-Profil EN 16931 (COMFORT): urn:cen.eu:en16931:2017
-Profil BASIC: urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic
-Profil BASIC WL: urn:factur-x.eu:1p0:basicwl
-Profil MINIMUM: urn:factur-x.eu:1p0:minimum
-*/
-
 func parseCIIExchangedDocumentContext(ctx *cxpath.Context, rg *Invoice) error {
 	nc := ctx.Eval("ram:GuidelineSpecifiedDocumentContextParameter").Eval("ram:ID")
+	fmt.Println(`~~> nc.String()`, nc.String())
 	switch nc.String() {
+	case "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended", "urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended":
+		rg.Profile = CProfileExtended
 	case "urn:cen.eu:en16931:2017":
-		rg.SchemaType = CII
+		rg.Profile = CProfileEN16931
+	case "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic", "urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic":
+		rg.Profile = CProfileBasic
+	case "urn:factur-x.eu:1p0:basicwl":
+		rg.Profile = CProfileBasicWL
+	case "urn:factur-x.eu:1p0:minimum", "urn:zugferd.de:2p0:minimum":
+		rg.Profile = CProfileMinimum
 	}
 	rg.BPSpecifiedDocumentContextParameter = ctx.Eval("ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID").String()
 	return nil
@@ -282,6 +285,7 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 	switch rootns {
 	case "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100":
 		m, err = parseCII(cii)
+		m.SchemaType = CII
 	}
 	if err != nil {
 		return nil, err

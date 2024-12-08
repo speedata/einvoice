@@ -10,11 +10,66 @@ import (
 type (
 	// CodeSchemaType represents the type of the invoice (CII or UBL)
 	CodeSchemaType int
+	// CodeProfileType represents the CII subtype (extended, minimum, ...)
+	CodeProfileType int
 	// CodeDocument contains the UNTDID 1001 document code
 	CodeDocument int
 	// CodeGlobalID is the ISO 6523 type
 	CodeGlobalID int
 )
+
+// Don't change the order. extended > EN16931 > basic > basicwl > minimum
+const (
+	//CProfileUnknown is the unknown profile, zero value
+	CProfileUnknown CodeProfileType = iota
+	// CProfileMinimum urn:factur-x.eu:1p0:minimum
+	CProfileMinimum
+	// CProfileBasicWL urn:factur-x.eu:1p0:basicwl
+	CProfileBasicWL
+	// CProfileBasic urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic
+	CProfileBasic
+	// CProfileEN16931 (previously Comfort) represents urn:cen.eu:en16931:2017
+	CProfileEN16931
+	// CProfileExtended represents the urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended schema
+	CProfileExtended
+)
+
+func (cp CodeProfileType) String() string {
+	switch cp {
+	case CProfileUnknown:
+		return "unknown profile"
+	case CProfileExtended:
+		return "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended"
+	case CProfileEN16931:
+		return "urn:cen.eu:en16931:2017"
+	case CProfileBasic:
+		return "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic"
+	case CProfileBasicWL:
+		return "urn:factur-x.eu:1p0:basicwl"
+	case CProfileMinimum:
+		return "urn:factur-x.eu:1p0:minimum"
+	}
+	return "unknown"
+}
+
+// ToProfileName returns the identifier for this profile such as urn:cen.eu:en16931:2017
+func (cp CodeProfileType) ToProfileName() string {
+	switch cp {
+	case CProfileUnknown:
+		return "Unknown"
+	case CProfileExtended:
+		return "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended"
+	case CProfileEN16931:
+		return "urn:cen.eu:en16931:2017"
+	case CProfileBasic:
+		return "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic"
+	case CProfileBasicWL:
+		return "urn:factur-x.eu:1p0:basicwl"
+	case CProfileMinimum:
+		return "urn:factur-x.eu:1p0:minimum"
+	}
+	return "unknown"
+}
 
 func (cp CodeSchemaType) String() string {
 	switch cp {
@@ -27,38 +82,43 @@ func (cp CodeSchemaType) String() string {
 	}
 }
 
-// CodeProfile ist der Subtyp der Rechnung
+func (cd CodeDocument) String() string {
+	return fmt.Sprintf("%d", cd)
+}
+
+// CodeSchemaType is the main XML flavor. Currently only CII is supported.
 const (
 	CII CodeSchemaType = iota
 	UBL
 )
 
-// Notiz ist ein Freitext für bestimmte Themen, falls SubjectCode angegeben
-// wird.
-type Notiz struct {
+// Note contains text and the subject code.
+type Note struct {
 	Text        string
 	SubjectCode string
 }
 
-func (n Notiz) String() string {
+func (n Note) String() string {
 	return fmt.Sprintf("Notiz %s - %q", n.SubjectCode, n.Text)
 }
 
 // Party represents buyer and seller
 type Party struct {
-	ID                []string
-	GlobalID          string
-	GlobalScheme      string
-	Name              string
-	PersonName        string
-	EMail             string
-	ZIP               string
-	Address1          string
-	Address2          string
-	City              string
-	CountryID         string
-	VATaxRegistration string
-	FCTaxRegistration string
+	ID                     []string
+	GlobalID               string
+	GlobalScheme           string
+	Name                   string
+	PersonName             string
+	EMail                  string
+	ZIP                    string
+	Line1                  string
+	Line2                  string
+	Line3                  string
+	City                   string
+	CountryID              string
+	CountrySubDivisionName string
+	VATaxRegistration      string
+	FCTaxRegistration      string
 }
 
 // Characteristic add details to a product
@@ -137,6 +197,7 @@ type TradeTax struct {
 
 // Invoice ist das Hauptelement der e-Invoice-Datei
 type Invoice struct {
+	Profile                             CodeProfileType
 	AllowanceTotal                      decimal.Decimal
 	BuyerOrderReferencedDocument        string // BT-13
 	DespatchAdviceReferencedDocument    string // BT-16
@@ -155,7 +216,7 @@ type Invoice struct {
 	Buyer                               Party
 	OccurrenceDateTime                  time.Time
 	LineTotal                           decimal.Decimal
-	Notizen                             []Notiz
+	Notes                               []Note
 	InvoiceItems                        []InvoiceItem
 	SchemaType                          CodeSchemaType
 	InvoiceNumber                       string       // BT-1
