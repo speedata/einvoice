@@ -26,6 +26,8 @@ func dothings() error {
 	if err != nil {
 		return err
 	}
+    // or better, create all the necessary fields yourself
+
 
 	return inv.Write(os.Stdout)
 }

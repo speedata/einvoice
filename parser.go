@@ -1,7 +1,6 @@
 package einvoice
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -22,12 +21,18 @@ func parseKontakt(tradeParty *cxpath.Context) (Party, error) {
 	for id := range tradeParty.Each("ram:ID") {
 		adr.ID = append(adr.ID, id.String())
 	}
-	adr.GlobalID = tradeParty.Eval("ram:GlobalID").String()
-	adr.GlobalScheme = tradeParty.Eval("ram:GlobalID/@schemeID").String()
+	for gid := range tradeParty.Each("ram:GlobalID") {
+		scheme := GlobalID{
+			Scheme: gid.Eval("@schemeID").String(),
+			ID:     gid.Eval("ram:GlobalID").String(),
+		}
+		adr.GlobalID = append(adr.GlobalID, scheme)
+	}
+
 	adr.Name = tradeParty.Eval("ram:Name").String()
 	adr.EMail = tradeParty.Eval("ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID").String()
 	adr.PersonName = tradeParty.Eval("ram:DefinedTradeContact/ram:PersonName").String()
-	adr.ZIP = tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String()
+	adr.PostcodeCode = tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String()
 	adr.Line1 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String()
 	adr.Line2 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String()
 	adr.Line3 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineThree").String()
@@ -46,7 +51,7 @@ func getDecimal(ctx *cxpath.Context, eval string) decimal.Decimal {
 
 func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cxpath.Context, inv *Invoice) error {
 	var err error
-	inv.Currency = applicableHeaderTradeSettlement.Eval("ram:InvoiceCurrencyCode").String()
+	inv.InvoiceCurrencyCode = applicableHeaderTradeSettlement.Eval("ram:InvoiceCurrencyCode").String()
 	for pm := range applicableHeaderTradeSettlement.Each("ram:SpecifiedTradeSettlementPaymentMeans") {
 		bd := PaymentMeans{
 			TypeCode:                                             pm.Eval("ram:TypeCode").Int(),
@@ -128,7 +133,7 @@ func parseCIIApplicableHeaderTradeDelivery(applicableHeaderTradeDelivery *cxpath
 }
 func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpath.Context, inv *Invoice) error {
 	inv.BuyerReference = applicableHeaderTradeAgreement.Eval("ram:BuyerReference").String()
-	inv.BuyerOrderReferencedDocument = applicableHeaderTradeAgreement.Eval("ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID").String()
+	inv.BuyerOrderReferencedDocument = applicableHeaderTradeAgreement.Eval("ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID").String() // BT-13
 	inv.Buyer, _ = parseKontakt(applicableHeaderTradeAgreement.Eval("ram:BuyerTradeParty"))
 	inv.Seller, _ = parseKontakt(applicableHeaderTradeAgreement.Eval("ram:SellerTradeParty"))
 	/*
@@ -188,7 +193,7 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		err = parseSepecifiedLineTradeAgreement(lineItem.Eval("ram:SpecifiedLineTradeAgreement"), &p)
 
 		p.BilledQuantity = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")
-		p.Unit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
+		p.BilledQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
 		p.Total = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
 		taxInfo := lineItem.Eval("ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax")
 		p.TaxTypeCode = taxInfo.Eval("ram:TypeCode").String()
@@ -231,7 +236,6 @@ func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, rg *Invoice) e
 
 func parseCIIExchangedDocumentContext(ctx *cxpath.Context, rg *Invoice) error {
 	nc := ctx.Eval("ram:GuidelineSpecifiedDocumentContextParameter").Eval("ram:ID")
-	fmt.Println(`~~> nc.String()`, nc.String())
 	switch nc.String() {
 	case "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended", "urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended":
 		rg.Profile = CProfileExtended

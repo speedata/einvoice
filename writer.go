@@ -23,11 +23,11 @@ func writeCIIramIncludedSupplyChainTradeLineItem(ii InvoiceItem, parent *etree.E
 
 }
 
-func writeCIIParty(inv *Invoice, party Party, parent *etree.Element) {
+func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType CodePartyType) {
 	parent.CreateElement("ram:Name").SetText(party.Name)
-	if is(CProfileBasic, inv) {
+	if is(CProfileBasic, inv) || partyType == CSellerParty {
 		pa := parent.CreateElement("ram:PostalTradeAddress")
-		pa.CreateElement("ram:PostcodeCode").SetText(party.ZIP)
+		pa.CreateElement("ram:PostcodeCode").SetText(party.PostcodeCode)
 		if l1 := party.Line1; l1 != "" {
 			pa.CreateElement("ram:LineOne").SetText(l1)
 		}
@@ -65,10 +65,8 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 	if br := inv.BuyerReference; br != "" {
 		elt.CreateElement("ram:BuyerReference").SetText(br)
 	}
-	writeCIIParty(inv, inv.Seller, elt.CreateElement("ram:SellerTradeParty"))
-	writeCIIParty(inv, inv.Buyer, elt.CreateElement("ram:BuyerTradeParty"))
-
-	_ = elt
+	writeCIIParty(inv, inv.Seller, elt.CreateElement("ram:SellerTradeParty"), CSellerParty)
+	writeCIIParty(inv, inv.Buyer, elt.CreateElement("ram:BuyerTradeParty"), CBuyerParty)
 
 }
 
@@ -92,7 +90,7 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 
 func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Element) {
 	elt := parent.CreateElement("ram:ApplicableHeaderTradeSettlement")
-	elt.CreateElement("ram:InvoiceCurrencyCode").SetText(inv.Currency)
+	elt.CreateElement("ram:InvoiceCurrencyCode").SetText(inv.InvoiceCurrencyCode)
 	writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv, elt)
 }
 
