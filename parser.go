@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"encoding/base64"
 	"io"
 	"os"
 	"time"
@@ -24,20 +25,27 @@ func parseKontakt(tradeParty *cxpath.Context) (Party, error) {
 	for gid := range tradeParty.Each("ram:GlobalID") {
 		scheme := GlobalID{
 			Scheme: gid.Eval("@schemeID").String(),
-			ID:     gid.Eval("ram:GlobalID").String(),
+			ID:     gid.String(),
 		}
 		adr.GlobalID = append(adr.GlobalID, scheme)
 	}
 
 	adr.Name = tradeParty.Eval("ram:Name").String()
 	adr.EMail = tradeParty.Eval("ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID").String()
+	adr.PhoneNumber = tradeParty.Eval("ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber").String()
+	if tradeParty.Eval("count(ram:PostalTradeAddress)").Int() > 0 {
+		pa := &PostalAddress{
+			PostcodeCode: tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String(),
+			Line1:        tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String(),
+			Line2:        tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String(),
+			Line3:        tradeParty.Eval("ram:PostalTradeAddress/ram:LineThree").String(),
+			City:         tradeParty.Eval("ram:PostalTradeAddress/ram:CityName").String(),
+			CountryID:    tradeParty.Eval("ram:PostalTradeAddress/ram:CountryID").String(),
+		}
+		adr.PostalAddress = pa
+	}
 	adr.PersonName = tradeParty.Eval("ram:DefinedTradeContact/ram:PersonName").String()
-	adr.PostcodeCode = tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String()
-	adr.Line1 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String()
-	adr.Line2 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String()
-	adr.Line3 = tradeParty.Eval("ram:PostalTradeAddress/ram:LineThree").String()
-	adr.City = tradeParty.Eval("ram:PostalTradeAddress/ram:CityName").String()
-	adr.CountryID = tradeParty.Eval("ram:PostalTradeAddress/ram:CountryID").String()
+
 	adr.FCTaxRegistration = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='FC']").String()
 	adr.VATaxRegistration = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='VA']").String()
 	return adr, nil
@@ -136,6 +144,23 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 	inv.BuyerOrderReferencedDocument = applicableHeaderTradeAgreement.Eval("ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID").String() // BT-13
 	inv.Buyer, _ = parseKontakt(applicableHeaderTradeAgreement.Eval("ram:BuyerTradeParty"))
 	inv.Seller, _ = parseKontakt(applicableHeaderTradeAgreement.Eval("ram:SellerTradeParty"))
+
+	for additionalDocument := range applicableHeaderTradeAgreement.Each("ram:AdditionalReferencedDocument") {
+		d := Document{}
+		d.IssuerAssignedID = additionalDocument.Eval("ram:IssuerAssignedID").String()
+		encoded := additionalDocument.Eval("ram:AttachmentBinaryObject").String()
+		if encoded != "" {
+			data, err := base64.StdEncoding.DecodeString(encoded)
+			if err != nil {
+				return err
+			}
+			d.AttachmentBinaryObject = data
+			d.AttachmentFilename = additionalDocument.Eval("ram:AttachmentBinaryObject/@filename").String()
+			d.AttachmentMimeCode = additionalDocument.Eval("ram:AttachmentBinaryObject/@mimeCode").String()
+		}
+		d.TypeCode = additionalDocument.Eval("ram:TypeCode").String()
+		inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, d)
+	}
 	/*
 			    	<ram:SellerTaxRepresentativeTradeParty></ram:SellerTaxRepresentativeTradeParty>
 		            <ram:SellerOrderReferencedDocument></ram:SellerOrderReferencedDocument>
@@ -149,14 +174,14 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 	*/
 	return nil
 }
-func parseSepecifiedLineTradeAgreement(specifiedLineTradeAgreement *cxpath.Context, p *InvoiceItem) error {
+func parseSepecifiedLineTradeAgreement(specifiedLineTradeAgreement *cxpath.Context, p *InvoiceLine) error {
 	p.NetPrice = getDecimal(specifiedLineTradeAgreement, "ram:NetPriceProductTradePrice/ram:ChargeAmount")
 	p.GrossPrice = getDecimal(specifiedLineTradeAgreement, "ram:GrossPriceProductTradePrice/ram:ChargeAmount")
 
 	return nil
 }
 
-func parseSepecifiedTradeProduct(specifiedTradeProduct *cxpath.Context, p *InvoiceItem) error {
+func parseSepecifiedTradeProduct(specifiedTradeProduct *cxpath.Context, p *InvoiceLine) error {
 	p.GlobalID = specifiedTradeProduct.Eval("ram:GlobalID").String()
 	p.GlobalIDType = CodeGlobalID(specifiedTradeProduct.Eval("ram:GlobalID/@schemeID").Int())
 	p.ArticleNumber = specifiedTradeProduct.Eval("ram:SellerAssignedID").String()
@@ -185,8 +210,8 @@ func parseSepecifiedTradeProduct(specifiedTradeProduct *cxpath.Context, p *Invoi
 func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Context, inv *Invoice) error {
 	var err error
 	for lineItem := range supplyChainTradeTransaction.Each("ram:IncludedSupplyChainTradeLineItem") {
-		p := InvoiceItem{}
-		p.Position = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:LineID").Int()
+		p := InvoiceLine{}
+		p.LineID = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:LineID").String()
 		p.Note = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:Content").String()
 
 		err = parseSepecifiedTradeProduct(lineItem.Eval("ram:SpecifiedTradeProduct"), &p)
@@ -199,7 +224,7 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		p.TaxTypeCode = taxInfo.Eval("ram:TypeCode").String()
 		p.TaxCategoryCode = taxInfo.Eval("ram:CategoryCode").String()
 		p.TaxRateApplicablePercent = getDecimal(taxInfo, "ram:RateApplicablePercent")
-		inv.InvoiceItems = append(inv.InvoiceItems, p)
+		inv.InvoiceLines = append(inv.InvoiceLines, p)
 	}
 	if err = parseCIIApplicableHeaderTradeAgreement(supplyChainTradeTransaction.Eval("ram:ApplicableHeaderTradeAgreement"), inv); err != nil {
 		return err
@@ -218,11 +243,11 @@ func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, rg *Invoice) e
 	rg.InvoiceNumber = exchangedDocument.Eval("ram:ID/text()").String()
 	rg.InvoiceTypeCode = CodeDocument(exchangedDocument.Eval("ram:TypeCode").Int())
 
-	rechnungsdatum, err := parseTime(exchangedDocument.Eval("ram:IssueDateTime/udt:DateTimeString").String())
+	invoiceDate, err := parseTime(exchangedDocument.Eval("ram:IssueDateTime/udt:DateTimeString").String())
 	if err != nil {
 		return err
 	}
-	rg.InvoiceDate = rechnungsdatum
+	rg.InvoiceDate = invoiceDate
 
 	for note := range exchangedDocument.Each("ram:IncludedNote") {
 		n := Note{}
@@ -237,6 +262,8 @@ func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, rg *Invoice) e
 func parseCIIExchangedDocumentContext(ctx *cxpath.Context, rg *Invoice) error {
 	nc := ctx.Eval("ram:GuidelineSpecifiedDocumentContextParameter").Eval("ram:ID")
 	switch nc.String() {
+	case "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0":
+		rg.Profile = CProfileXRechnung
 	case "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended", "urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended":
 		rg.Profile = CProfileExtended
 	case "urn:cen.eu:en16931:2017":

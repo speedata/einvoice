@@ -19,34 +19,38 @@ func addTime(parent *etree.Element, date time.Time) {
 	udtdts.CreateText(date.Format("20060102"))
 }
 
-func writeCIIramIncludedSupplyChainTradeLineItem(ii InvoiceItem, parent *etree.Element) {
+func writeCIIramIncludedSupplyChainTradeLineItem(ii InvoiceLine, parent *etree.Element) {
 
 }
 
 func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType CodePartyType) {
 	parent.CreateElement("ram:Name").SetText(party.Name)
-	if is(CProfileBasic, inv) || partyType == CSellerParty {
-		pa := parent.CreateElement("ram:PostalTradeAddress")
-		pa.CreateElement("ram:PostcodeCode").SetText(party.PostcodeCode)
-		if l1 := party.Line1; l1 != "" {
-			pa.CreateElement("ram:LineOne").SetText(l1)
-		}
-		if l2 := party.Line2; l2 != "" {
-			pa.CreateElement("ram:LineTwo").SetText(l2)
-		}
-		if l3 := party.Line3; l3 != "" {
-			pa.CreateElement("ram:LineThree").SetText(l3)
-		}
-		if cityName := party.City; cityName != "" {
-			pa.CreateElement("ram:CityName").SetText(cityName)
-		}
-		if cid := party.CountryID; cid != "" {
-			pa.CreateElement("ram:CountryID").SetText(cid)
-		}
-		if csd := party.CountrySubDivisionName; csd != "" {
-			pa.CreateElement("ram:CountrySubDivisionName").SetText(csd)
+	if ppa := party.PostalAddress; ppa != nil {
+		// profile minimum has no postal address for the buyer (BG-8)
+		if partyType == CSellerParty || is(CProfileBasic, inv) {
+			pa := parent.CreateElement("ram:PostalTradeAddress")
+			pa.CreateElement("ram:PostcodeCode").SetText(ppa.PostcodeCode)
+			if l1 := ppa.Line1; l1 != "" {
+				pa.CreateElement("ram:LineOne").SetText(l1)
+			}
+			if l2 := ppa.Line2; l2 != "" {
+				pa.CreateElement("ram:LineTwo").SetText(l2)
+			}
+			if l3 := ppa.Line3; l3 != "" {
+				pa.CreateElement("ram:LineThree").SetText(l3)
+			}
+			if cityName := ppa.City; cityName != "" {
+				pa.CreateElement("ram:CityName").SetText(cityName)
+			}
+			if cid := ppa.CountryID; cid != "" {
+				pa.CreateElement("ram:CountryID").SetText(cid)
+			}
+			if csd := ppa.CountrySubDivisionName; csd != "" {
+				pa.CreateElement("ram:CountrySubDivisionName").SetText(csd)
+			}
 		}
 	}
+
 	if fc := party.FCTaxRegistration; fc != "" {
 		elt := parent.CreateElement("ram:SpecifiedTaxRegistration").CreateElement("ram:ID")
 		elt.CreateAttr("schemeID", "FC")

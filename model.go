@@ -34,12 +34,16 @@ const (
 	CProfileEN16931
 	// CProfileExtended represents the urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended schema
 	CProfileExtended
+	// CProfileXRechnung represents an XRechnung invoice
+	CProfileXRechnung
 )
 
 func (cp CodeProfileType) String() string {
 	switch cp {
 	case CProfileUnknown:
 		return "unknown profile"
+	case CProfileXRechnung:
+		return "XRechnung"
 	case CProfileExtended:
 		return "extended"
 	case CProfileEN16931:
@@ -59,6 +63,8 @@ func (cp CodeProfileType) ToProfileName() string {
 	switch cp {
 	case CProfileUnknown:
 		return "Unknown"
+	case CProfileXRechnung:
+		return "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"
 	case CProfileExtended:
 		return "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended"
 	case CProfileEN16931:
@@ -117,29 +123,35 @@ type GlobalID struct {
 	Scheme string
 }
 
+// A PostalAddress belongs to the seller, buyer and some other entities
+type PostalAddress struct {
+	CountryID              string
+	PostcodeCode           string // BT-38, BT-53, BT-67, BT-78
+	Line1                  string // BT-35, BT-50, BT-64, BT-75
+	Line2                  string // BT-36, BT-51, BT-65, BT-76
+	Line3                  string // BT-162, BT-163, BT-164, BT-165
+	City                   string // BT-37, BT-52, BT-66, BT-77
+	CountrySubDivisionName string // BT-39, BT-54, BT-68, BT-79
+}
+
 // Party represents buyer and seller
 type Party struct {
-	ID                               []string   // BT-29, BT-46, BT-60, BT-71
-	GlobalID                         []GlobalID // BT-29, BT-64, BT-60, BT-71
-	Name                             string     // BT-27, BT-44, BT-59, BT-62, BT-70
-	PersonName                       string     // BT-41, BT-56
-	DepartmentName                   string     // BT-41, BT-56
-	Description                      string     // BT-33
-	EMail                            string     // BT-43, BT-58
-	PhoneNumber                      string     // BT-44, BT-57
-	URIUniversalCommunication        string     // BT-34, BT-49
-	PostcodeCode                     string     // BT-38, BT-53, BT-67, BT-78
-	Line1                            string     // BT-35, BT-50, BT-64, BT-75
-	Line2                            string     // BT-36, BT-51, BT-65, BT-76
-	Line3                            string     // BT-162, BT-163, BT-164, BT-165
-	City                             string     // BT-37, BT-52, BT-66, BT-77
-	CountryID                        string     // BT-40, BT-55, BT-69, BT-80
-	SpecifiedLegalOrganization       string     // BT-30, BT-47, BT-61
-	SpecifiedLegalOrganizationScheme string     // BT-30, BT-61
-	TradingBusinessName              string     // BT-28, BT-45
-	CountrySubDivisionName           string     // BT-39, BT-54, BT-68, BT-79
-	VATaxRegistration                string     // BT-31, BT-48, BT-63
-	FCTaxRegistration                string     // BT-32
+	ID                               []string       // BT-29, BT-46, BT-60, BT-71
+	GlobalID                         []GlobalID     // BT-29, BT-64, BT-60, BT-71
+	Name                             string         // BT-27, BT-44, BT-59, BT-62, BT-70
+	PersonName                       string         // BT-41, BT-56
+	DepartmentName                   string         // BT-41, BT-56
+	Description                      string         // BT-33
+	EMail                            string         // BT-43, BT-58
+	PhoneNumber                      string         // BT-44, BT-57
+	URIUniversalCommunication        string         // BT-34, BT-49
+	URIUniversalCommunicationScheme  string         // BT-34, BT-49
+	PostalAddress                    *PostalAddress // BG-5, BG-8
+	SpecifiedLegalOrganization       string         // BT-30, BT-47, BT-61
+	SpecifiedLegalOrganizationScheme string         // BT-30, BT-61
+	TradingBusinessName              string         // BT-28, BT-45
+	VATaxRegistration                string         // BT-31, BT-48, BT-63
+	FCTaxRegistration                string         // BT-32
 }
 
 // Characteristic add details to a product, BG-32
@@ -155,9 +167,9 @@ type Classification struct {
 	ListVersionID string
 }
 
-// InvoiceItem represents one position of items
-type InvoiceItem struct {
-	Position                                  int              // BT-126
+// InvoiceLine represents one position of items
+type InvoiceLine struct {
+	LineID                                    string           // BT-126
 	ArticleNumber                             string           // BT-155 seller assigned ID
 	ArticleNumberBuyer                        string           // BT-156 buyer assigned ID
 	ArticleName                               string           // BT-153
@@ -277,13 +289,13 @@ type Invoice struct {
 	SellerOrderReferencedDocument             string            // BT-14
 	BuyerOrderReferencedDocument              string            // BT-13
 	ContractReferencedDocument                string            // BT-12
-	AdditionalReferencedDocument              *Document         // BG-24
+	AdditionalReferencedDocument              []Document        // BG-24
 	SpecifiedProcuringProjectID               string            // BT-11
 	SpecifiedProcuringProjectName             string            // BT-11
 	Seller                                    Party             // BG-4
 	OccurrenceDateTime                        time.Time         // BT-72
 	Notes                                     []Note            // BG-1
-	InvoiceItems                              []InvoiceItem     // BG-25
+	InvoiceLines                              []InvoiceLine     // BG-25
 	InvoiceNumber                             string            // BT-1
 	InvoiceTypeCode                           CodeDocument      // BT-3
 	TradeTaxes                                []TradeTax        // BG-23
@@ -294,4 +306,5 @@ type Invoice struct {
 	InvoiceReferencedDocumentID               string            // BG-3 BT-25
 	InvoiceReferencedDocumentDate             time.Time         // BT-26
 	ReceivableSpecifiedTradeAccountingAccount string            // BT-19
+	Violations                                []SemanticError
 }
