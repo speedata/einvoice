@@ -169,37 +169,39 @@ type Classification struct {
 
 // InvoiceLine represents one position of items
 type InvoiceLine struct {
-	LineID                                    string           // BT-126
-	ArticleNumber                             string           // BT-155 seller assigned ID
-	ArticleNumberBuyer                        string           // BT-156 buyer assigned ID
-	ArticleName                               string           // BT-153
-	AdditionalReferencedDocumentID            string           // BT-128
-	AdditionalReferencedDocumentTypeCode      string           // BT-128
-	AdditionalReferencedDocumentRefTypeCode   string           // BT-128
-	BillingSpecifiedPeriodStart               time.Time        // BT-134
-	BillingSpecifiedPeriodEnd                 time.Time        // BT-135
-	BuyerOrderReferencedDocument              string           // BT-132
-	Note                                      string           // BT-127
-	GlobalID                                  string           // BT-157
-	GlobalIDType                              CodeGlobalID     // BT-157
-	Characteristics                           []Characteristic // BG-32
-	ProductClassification                     []Classification // BT-158, UNTDID 7143
-	Description                               string           // BT-154 (optional)
-	OriginTradeCountry                        string           // BT-159 (optional) alpha-2 code ISO 3166-1 such as DE, US,...
-	ReceivableSpecifiedTradeAccountingAccount string           // BT-133
-	GrossPrice                                decimal.Decimal  // BT-148
-	BasisQuantity                             decimal.Decimal  // BT-149
-	AppliedTradeAllowanceChargeAmount         decimal.Decimal  // BT-147
-	AppliedTradeAllowanceChargeIndicator      bool             // BT-147
-	NetPrice                                  decimal.Decimal  // BT-146
-	NetBilledQuantity                         decimal.Decimal  // BT-149
-	NetBilledQuantityUnit                     string           // BT-150
-	BilledQuantity                            decimal.Decimal  // BT-129
-	BilledQuantityUnit                        string           // BT-130
-	TaxTypeCode                               string           // BT-151 must be VAT
-	TaxCategoryCode                           string           // BT-151
-	TaxRateApplicablePercent                  decimal.Decimal  // BT-152
-	Total                                     decimal.Decimal  // BT-131
+	LineID                                    string            // BT-126
+	ArticleNumber                             string            // BT-155 seller assigned ID
+	ArticleNumberBuyer                        string            // BT-156 buyer assigned ID
+	ItemName                                  string            // BT-153
+	AdditionalReferencedDocumentID            string            // BT-128
+	AdditionalReferencedDocumentTypeCode      string            // BT-128
+	AdditionalReferencedDocumentRefTypeCode   string            // BT-128
+	BillingSpecifiedPeriodStart               time.Time         // BT-134
+	BillingSpecifiedPeriodEnd                 time.Time         // BT-135
+	BuyerOrderReferencedDocument              string            // BT-132
+	Note                                      string            // BT-127
+	GlobalID                                  string            // BT-157
+	GlobalIDType                              CodeGlobalID      // BT-157
+	Characteristics                           []Characteristic  // BG-32
+	ProductClassification                     []Classification  // BT-158, UNTDID 7143
+	Description                               string            // BT-154 (optional)
+	OriginTradeCountry                        string            // BT-159 (optional) alpha-2 code ISO 3166-1 such as DE, US,...
+	ReceivableSpecifiedTradeAccountingAccount string            // BT-133
+	GrossPrice                                decimal.Decimal   // BT-148
+	BasisQuantity                             decimal.Decimal   // BT-149
+	InvoiceLineAllowances                     []AllowanceCharge // BG-27
+	InvoiceLineCharges                        []AllowanceCharge // BG-28
+	AppliedTradeAllowanceCharge               decimal.Decimal   // BT-147
+	AppliedTradeAllowanceChargeIndicator      bool              // BT-147
+	NetPrice                                  decimal.Decimal   // BT-146
+	NetBilledQuantity                         decimal.Decimal   // BT-149
+	NetBilledQuantityUnit                     string            // BT-150
+	BilledQuantity                            decimal.Decimal   // BT-129
+	BilledQuantityUnit                        string            // BT-130
+	TaxTypeCode                               string            // BT-151 must be VAT
+	TaxCategoryCode                           string            // BT-151
+	TaxRateApplicablePercent                  decimal.Decimal   // BT-152
+	Total                                     decimal.Decimal   // BT-131
 }
 
 // PaymentMeans represents a payment means
@@ -253,58 +255,63 @@ type Document struct {
 	AttachmentFilename     string // BT-125
 }
 
+// SpecifiedTradePaymentTerms is unbounded in extended
+type SpecifiedTradePaymentTerms struct {
+	Description          string    // BT-20
+	DueDate              time.Time // BT-9
+	DirectDebitMandateID string    // BT-89
+
+}
+
 // Invoice is the main element of the e-invoice
 type Invoice struct {
-	Profile                                   CodeProfileType   // BT-24
-	DespatchAdviceReferencedDocument          string            // BT-16
-	ReceivingAdviceReferencedDocument         string            // BT-15
-	BuyerReference                            string            // BT-10
-	BPSpecifiedDocumentContextParameter       string            // BT-23
-	PayeeTradeParty                           *Party            // BG-10
-	PaymentMeans                              []PaymentMeans    // BG-16
-	BillingSpecifiedPeriodStart               time.Time         // BT-73
-	BillingSpecifiedPeriodEnd                 time.Time         // BT-74
-	InvoiceDate                               time.Time         // BT-2
-	CreditorReferenceID                       string            // BT-90
-	PaymentReference                          string            // BT-83
-	TaxCurrencyCode                           string            // BT-6
-	InvoiceCurrencyCode                       string            // BT-5
-	LineTotal                                 decimal.Decimal   // BT-106
-	AllowanceTotal                            decimal.Decimal   // BT-107
-	ChargeTotal                               decimal.Decimal   // BT-108
-	TaxBasisTotal                             decimal.Decimal   // BT-109
-	TaxTotalCurrency                          string            // BT-110
-	TaxTotal                                  decimal.Decimal   // BT-110
-	TaxTotalVATCurrency                       string            // BT-111
-	TaxTotalVAT                               decimal.Decimal   // BT-111
-	GrandTotal                                decimal.Decimal   // BT-112
-	TotalPrepaid                              decimal.Decimal   // BT-113
-	RoundingAmount                            decimal.Decimal   // BT-114
-	DuePayableAmount                          decimal.Decimal   // BT-115
-	DueDate                                   time.Time         // BT-9
-	TradePaymentTermsDescription              string            // BT-20, BR-CO-25 BT-115>0?BT-9||BT-20
-	DirectDebitMandateID                      string            // BG-19/BT-89
-	Buyer                                     Party             // BG-7
-	SellerTaxRepresentativeTradeParty         *Party            // BG-11
-	SellerOrderReferencedDocument             string            // BT-14
-	BuyerOrderReferencedDocument              string            // BT-13
-	ContractReferencedDocument                string            // BT-12
-	AdditionalReferencedDocument              []Document        // BG-24
-	SpecifiedProcuringProjectID               string            // BT-11
-	SpecifiedProcuringProjectName             string            // BT-11
-	Seller                                    Party             // BG-4
-	OccurrenceDateTime                        time.Time         // BT-72
-	Notes                                     []Note            // BG-1
-	InvoiceLines                              []InvoiceLine     // BG-25
-	InvoiceNumber                             string            // BT-1
-	InvoiceTypeCode                           CodeDocument      // BT-3
-	TradeTaxes                                []TradeTax        // BG-23
-	SpecifiedTradeAllowanceCharge             []AllowanceCharge // BG-20, BG-21
-	ShipTo                                    *Party            // BG-13
-	SpecifiedTradePaymentTerms                string            // BT-20
-	SchemaType                                CodeSchemaType    // UBL or CII
-	InvoiceReferencedDocumentID               string            // BG-3 BT-25
-	InvoiceReferencedDocumentDate             time.Time         // BT-26
-	ReceivableSpecifiedTradeAccountingAccount string            // BT-19
+	Profile                                   CodeProfileType              // BT-24
+	DespatchAdviceReferencedDocument          string                       // BT-16
+	ReceivingAdviceReferencedDocument         string                       // BT-15
+	BuyerReference                            string                       // BT-10
+	BPSpecifiedDocumentContextParameter       string                       // BT-23
+	PayeeTradeParty                           *Party                       // BG-10
+	PaymentMeans                              []PaymentMeans               // BG-16
+	BillingSpecifiedPeriodStart               time.Time                    // BT-73
+	BillingSpecifiedPeriodEnd                 time.Time                    // BT-74
+	InvoiceDate                               time.Time                    // BT-2
+	CreditorReferenceID                       string                       // BT-90
+	PaymentReference                          string                       // BT-83
+	TaxCurrencyCode                           string                       // BT-6
+	InvoiceCurrencyCode                       string                       // BT-5
+	LineTotal                                 decimal.Decimal              // BT-106
+	AllowanceTotal                            decimal.Decimal              // BT-107
+	ChargeTotal                               decimal.Decimal              // BT-108
+	TaxBasisTotal                             decimal.Decimal              // BT-109
+	TaxTotalCurrency                          string                       // BT-110
+	TaxTotal                                  decimal.Decimal              // BT-110
+	TaxTotalVATCurrency                       string                       // BT-111
+	TaxTotalVAT                               decimal.Decimal              // BT-111
+	GrandTotal                                decimal.Decimal              // BT-112
+	TotalPrepaid                              decimal.Decimal              // BT-113
+	RoundingAmount                            decimal.Decimal              // BT-114
+	DuePayableAmount                          decimal.Decimal              // BT-115
+	Buyer                                     Party                        // BG-7
+	SellerTaxRepresentativeTradeParty         *Party                       // BG-11
+	SellerOrderReferencedDocument             string                       // BT-14
+	BuyerOrderReferencedDocument              string                       // BT-13
+	ContractReferencedDocument                string                       // BT-12
+	AdditionalReferencedDocument              []Document                   // BG-24
+	SpecifiedProcuringProjectID               string                       // BT-11
+	SpecifiedProcuringProjectName             string                       // BT-11
+	Seller                                    Party                        // BG-4
+	OccurrenceDateTime                        time.Time                    // BT-72
+	Notes                                     []Note                       // BG-1
+	InvoiceLines                              []InvoiceLine                // BG-25
+	InvoiceNumber                             string                       // BT-1
+	InvoiceTypeCode                           CodeDocument                 // BT-3
+	TradeTaxes                                []TradeTax                   // BG-23
+	SpecifiedTradeAllowanceCharge             []AllowanceCharge            // BG-20, BG-21
+	ShipTo                                    *Party                       // BG-13
+	SpecifiedTradePaymentTerms                []SpecifiedTradePaymentTerms // BT-20
+	SchemaType                                CodeSchemaType               // UBL or CII
+	InvoiceReferencedDocumentID               string                       // BG-3 BT-25
+	InvoiceReferencedDocumentDate             time.Time                    // BT-26
+	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
 	Violations                                []SemanticError
 }

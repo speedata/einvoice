@@ -682,44 +682,94 @@ func (inv *Invoice) checkBR() []SemanticError {
 		}
 		// BR-24 Rechnungsposition
 		// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Nettobetrag der Rechnungsposition „Invoice line net amount“ (BT-131) enthalten.
+		if line.Total.IsZero() {
+			violations = append(violations, SemanticError{Rule: "BR-24", InvFields: []string{"BG-25", "BT-131"}, Text: "Line's net amount is zero"})
+		}
+		// BR-25 Artikelinformationen
+		// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Namen des Postens „Item name“ (BT-153) enthalten.
+		if line.ItemName == "" {
+			violations = append(violations, SemanticError{Rule: "BR-25", InvFields: []string{"BG-25", "BT-153"}, Text: "Line's net amount is zero"})
+		}
+		// BR-26 Detailinformationen zum Preis
+		// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
+		// geltenden Rabatts „Item net price“ (BT-146) beinhalten.
+
+		// BR-27 Nettopreis des Artikels
+		// Der Artikel-Nettobetrag „Item net price“ (BT-146) darf nicht negativ sein.
+		if line.NetPrice.IsNegative() {
+			violations = append(violations, SemanticError{Rule: "BR-27", InvFields: []string{"BG-25", "BT-146"}, Text: "Net price must not be negative"})
+		}
+		// BR-28 Detailinformationen zum Preis
+		// Der Einheitspreis ohne Umsatzsteuer vor Abzug des Postenpreisrabatts einer Rechnungsposition „Item gross price“ (BT-148) darf nicht negativ
+		// sein.
+		// TODO
 	}
-	// BR-25 Artikelinformationen
-	// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Namen des Postens „Item name“ (BT-153) enthalten.
-	// BR-26 Detailinformationen zum Preis
-	// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
-	// geltenden Rabatts „Item net price“ (BT-146) beinhalten.
-	// BR-27 Nettopreis des Artikels
-	// Der Artikel-Nettobetrag „Item net price“ (BT-146) darf nicht negativ sein.
-	// BR-28 Detailinformationen zum Preis
-	// Der Einheitspreis ohne Umsatzsteuer vor Abzug des Postenpreisrabatts einer Rechnungsposition „Item gross price“ (BT-148) darf nicht negativ
-	// sein.
 	// BR-29 Rechnungszeitraum
 	// Wenn Start- und Enddatum des Rechnungszeitraums gegeben sind, muss das Enddatum „Invoicing period end date“ (BT-74) nach dem Startdatum
 	// „Invoicing period start date“ (BT-73) liegen oder mit diesem identisch sein.
-	// BR-30 Rechnungszeitraum auf Positionsebene
-	// Wenn Start- und Enddatum des Rechnungspositionenzeitraums gegeben sind, muss das Enddatum „Invoice line period end date“ (BT-135) nach
-	// dem Startdatum „Invoice line period start date“ (BT-134) liegen oder mit diesem identisch sein.
-	// BR-31 Abschläge auf Dokumentenebene
-	// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Betrag „Document level allowance amount“
-	// (BT-92) aufweisen.
-	// BR-32 Abschläge auf Dokumentenebene
-	// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Umsatzsteuer-Code „Document level
-	// allowance VAT category code“ (BT-95) aufweisen.
-	// BR-33 Abschläge auf Dokumentenebene
-	// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Nachlassgrund „Document level allowance
-	// reason“ (BT-97) oder einen entsprechenden Code „Document level allowance reason code“ (BT-98) aufweisen.
-	// BR-36 Zuschläge auf Dokumentenebene
-	// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Betrag „Document level charge amount“ (BT-99)
-	// aufweisen.
-	// BR-37 Zuschläge auf Dokumentenebene
-	// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Umsatzsteuer-Code „Document level charge VAT
-	// category code“ (BT-102) aufweisen.
-	// BR-38 Zuschläge auf Dokumentenebene
-	// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Abgabegrund „Document level charge reason“ (BT-104)
-	// oder einen entsprechenden Code „Document level charge reason code“ (BT-105) aufweisen.
-	// BR-41 Abschläge auf Ebene der Rechnungsposition
-	// Jeder Nachlass auf der Ebene der Rechnungsposition „INVOICE LINE ALLOWANCES“ (BG-27) muss einen Betrag „Invoice line allowance amount“
-	// (BT-136) aufweisen.
+	if inv.BillingSpecifiedPeriodEnd.Before(inv.BillingSpecifiedPeriodStart) {
+		violations = append(violations, SemanticError{Rule: "BR-29", InvFields: []string{"BT-73", "BT-74"}, Text: "Billing period end must be after start"})
+	}
+	for _, line := range inv.InvoiceLines {
+		// BR-30 Rechnungszeitraum auf Positionsebene
+		// Wenn Start- und Enddatum des Rechnungspositionenzeitraums gegeben sind, muss das Enddatum „Invoice line period end date“ (BT-135) nach
+		// dem Startdatum „Invoice line period start date“ (BT-134) liegen oder mit diesem identisch sein.
+		if line.BillingSpecifiedPeriodEnd.Before(line.BillingSpecifiedPeriodStart) {
+			violations = append(violations, SemanticError{Rule: "BR-30", InvFields: []string{"BG-25", "BT-135", "BT-134"}, Text: "Line item billing period end must be after or identical to start"})
+		}
+	}
+	for _, allowance := range inv.SpecifiedTradeAllowanceCharge {
+		// BR-31 Abschläge auf Dokumentenebene
+		// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Betrag „Document level allowance amount“
+		// (BT-92) aufweisen.
+		if allowance.ActualAmount.IsZero() {
+			violations = append(violations, SemanticError{Rule: "BR-31", InvFields: []string{"BG-20", "BT-92"}, Text: "Allowance must not be zero"})
+		}
+		// BR-32 Abschläge auf Dokumentenebene
+		// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Umsatzsteuer-Code „Document level
+		// allowance VAT category code“ (BT-95) aufweisen.
+		if allowance.CategoryTradeTaxCategoryCode == "" {
+			violations = append(violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance tax category code not set"})
+		}
+		// BR-33 Abschläge auf Dokumentenebene
+		// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Nachlassgrund „Document level allowance
+		// reason“ (BT-97) oder einen entsprechenden Code „Document level allowance reason code“ (BT-98) aufweisen.
+		if allowance.Reason == "" && allowance.ReasonCode == 0 {
+			violations = append(violations, SemanticError{Rule: "BR-33", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance reason empty or code unset"})
+		}
+	}
+
+	for _, charge := range inv.SpecifiedTradeAllowanceCharge {
+		// BR-36 Zuschläge auf Dokumentenebene
+		// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Betrag „Document level charge amount“ (BT-99)
+		// aufweisen.
+		if charge.ActualAmount.IsZero() {
+			violations = append(violations, SemanticError{Rule: "BR-36", InvFields: []string{"BG-21", "BT-99"}, Text: "Charge must not be zero"})
+		}
+
+		// BR-37 Zuschläge auf Dokumentenebene
+		// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Umsatzsteuer-Code „Document level charge VAT
+		// category code“ (BT-102) aufweisen.
+		if charge.CategoryTradeTaxCategoryCode == "" {
+			violations = append(violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-21", "BT-102"}, Text: "Charge tax category code not set"})
+		}
+		// BR-38 Zuschläge auf Dokumentenebene
+		// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Abgabegrund „Document level charge reason“ (BT-104)
+		// oder einen entsprechenden Code „Document level charge reason code“ (BT-105) aufweisen.
+		if charge.Reason == "" && charge.ReasonCode == 0 {
+			violations = append(violations, SemanticError{Rule: "BR-38", InvFields: []string{"BG-21", "BT-104", "BT-105"}, Text: "Charge reason empty or code unset"})
+		}
+	}
+	for _, line := range inv.InvoiceLines {
+		// BR-41 Abschläge auf Ebene der Rechnungsposition
+		// Jeder Nachlass auf der Ebene der Rechnungsposition „INVOICE LINE ALLOWANCES“ (BG-27) muss einen Betrag „Invoice line allowance amount“
+		// (BT-136) aufweisen.
+		for _, ac := range line.InvoiceLineAllowances {
+			if ac.ActualAmount.IsZero() {
+				violations = append(violations, SemanticError{Rule: "BR-41", InvFields: []string{"BG-27", "BT-136"}, Text: "Line allowance amount zero"})
+			}
+		}
+	}
 	// BR-42 Abschläge auf Ebene der Rechnungsposition
 	// Jeder Nachlass auf der Ebene der Rechnungsposition „INVOICE LINE ALLOWANCES“ (BG-27) muss einen Nachlassgrund „Invoice line allowance
 	// reason“ (BT-139) oder einen entsprechenden Code „Invoice line allowance reason code“ (BT-140) aufweisen.
