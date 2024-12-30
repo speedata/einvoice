@@ -1,3 +1,5 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/speedata/einvoice.svg)](https://pkg.go.dev/github.com/speedata/einvoice)
+
 # einvoice - a Go library to read, write and verify electronic invoices
 
 **Work in progress**
@@ -41,8 +43,9 @@ Coding just started, only the basic parts are implemented.
 
 * Reading of EN 16931 ZUGFeRD XML files is possible
 * Some checks can be performed (BR-1 to BR-41)
+* XML output for minimum and EN16931 ZUGFeRD profile
+
 * No UBL based XML
 * Not all possible fields are read
-* XML output only for minimum profile
 
-All of these points will be addressed. Stay tuned for updates!
+These points will be addressed. Stay tuned for updates!

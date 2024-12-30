@@ -163,29 +163,36 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 		d.TypeCode = additionalDocument.Eval("ram:TypeCode").String()
 		inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, d)
 	}
-	/*
-			    	<ram:SellerTaxRepresentativeTradeParty></ram:SellerTaxRepresentativeTradeParty>
-		            <ram:SellerOrderReferencedDocument></ram:SellerOrderReferencedDocument>
-		            <ram:BuyerOrderReferencedDocument></ram:BuyerOrderReferencedDocument>
-		            <ram:ContractReferencedDocument></ram:ContractReferencedDocument>
-		            <ram:AdditionalReferencedDocument></ram:AdditionalReferencedDocument>
-		            <ram:SpecifiedProcuringProject>
-		                <ram:ID></ram:ID>
-		                <ram:Name></ram:Name>
-		            </ram:SpecifiedProcuringProject>
-	*/
 	return nil
 }
 func parseSepecifiedLineTradeAgreement(specifiedLineTradeAgreement *cxpath.Context, p *InvoiceLine) error {
 	p.NetPrice = getDecimal(specifiedLineTradeAgreement, "ram:NetPriceProductTradePrice/ram:ChargeAmount")
 	p.GrossPrice = getDecimal(specifiedLineTradeAgreement, "ram:GrossPriceProductTradePrice/ram:ChargeAmount")
-
+	// ZUGFeRD extended has unbound BT-147
+	for allowanceCharge := range specifiedLineTradeAgreement.Each("ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge") {
+		ac := AllowanceCharge{
+			ChargeIndicator:                       allowanceCharge.Eval("string(ram:ChargeIndicator/udt:Indicator) = 'true'").Bool(),
+			BasisAmount:                           getDecimal(allowanceCharge, "ram:BasisAmount"),
+			ActualAmount:                          getDecimal(allowanceCharge, "ram:ActualAmount"),
+			CalculationPercent:                    getDecimal(allowanceCharge, "ram:CalculationPercent"),
+			ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").Int(),
+			Reason:                                allowanceCharge.Eval("ram:Reason").String(),
+			CategoryTradeTaxType:                  allowanceCharge.Eval("ram:CategoryTradeTax/ram:TypeCode").String(),
+			CategoryTradeTaxCategoryCode:          allowanceCharge.Eval("ram:CategoryTradeTax/ram:CategoryCode").String(),
+			CategoryTradeTaxRateApplicablePercent: getDecimal(allowanceCharge, "ram:CategoryTradeTax/ram:RateApplicablePercent"),
+		}
+		if ac.ChargeIndicator {
+			p.AppliedTradeAllowanceCharge = append(p.AppliedTradeAllowanceCharge, ac)
+		} else {
+			p.AppliedTradeAllowanceCharge = append(p.AppliedTradeAllowanceCharge, ac)
+		}
+	}
 	return nil
 }
 
 func parseSepecifiedTradeProduct(specifiedTradeProduct *cxpath.Context, p *InvoiceLine) error {
 	p.GlobalID = specifiedTradeProduct.Eval("ram:GlobalID").String()
-	p.GlobalIDType = CodeGlobalID(specifiedTradeProduct.Eval("ram:GlobalID/@schemeID").Int())
+	p.GlobalIDType = specifiedTradeProduct.Eval("ram:GlobalID/@schemeID").String()
 	p.ArticleNumber = specifiedTradeProduct.Eval("ram:SellerAssignedID").String()
 	p.ArticleNumberBuyer = specifiedTradeProduct.Eval("ram:BuyerAssignedID").String()
 	p.ItemName = specifiedTradeProduct.Eval("ram:Name").String()
@@ -223,8 +230,6 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		p.BilledQuantity = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")
 		p.BilledQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
 		p.Total = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
-		taxInfo := lineItem.Eval("ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax")
-		// BG-27, BG-28
 		for allowanceCharge := range lineItem.Each("ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge") {
 			ac := AllowanceCharge{
 				ChargeIndicator:                       allowanceCharge.Eval("string(ram:ChargeIndicator/udt:Indicator) = 'true'").Bool(),
@@ -245,6 +250,8 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 				p.InvoiceLineAllowances = append(p.InvoiceLineAllowances, ac)
 			}
 		}
+		taxInfo := lineItem.Eval("ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax")
+		// BG-27, BG-28
 		p.TaxTypeCode = taxInfo.Eval("ram:TypeCode").String()
 		p.TaxCategoryCode = taxInfo.Eval("ram:CategoryCode").String()
 		p.TaxRateApplicablePercent = getDecimal(taxInfo, "ram:RateApplicablePercent")

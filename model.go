@@ -14,8 +14,6 @@ type (
 	CodeProfileType int
 	// CodeDocument contains the UNTDID 1001 document code
 	CodeDocument int
-	// CodeGlobalID is the ISO 6523 type
-	CodeGlobalID int
 	// CodePartyType distinguishes between seller, buyer, ..
 	CodePartyType int
 )
@@ -181,7 +179,7 @@ type InvoiceLine struct {
 	BuyerOrderReferencedDocument              string            // BT-132
 	Note                                      string            // BT-127
 	GlobalID                                  string            // BT-157
-	GlobalIDType                              CodeGlobalID      // BT-157
+	GlobalIDType                              string            // BT-157
 	Characteristics                           []Characteristic  // BG-32
 	ProductClassification                     []Classification  // BT-158, UNTDID 7143
 	Description                               string            // BT-154 (optional)
@@ -191,8 +189,7 @@ type InvoiceLine struct {
 	BasisQuantity                             decimal.Decimal   // BT-149
 	InvoiceLineAllowances                     []AllowanceCharge // BG-27
 	InvoiceLineCharges                        []AllowanceCharge // BG-28
-	AppliedTradeAllowanceCharge               decimal.Decimal   // BT-147
-	AppliedTradeAllowanceChargeIndicator      bool              // BT-147
+	AppliedTradeAllowanceCharge               []AllowanceCharge // BT-147
 	NetPrice                                  decimal.Decimal   // BT-146
 	NetBilledQuantity                         decimal.Decimal   // BT-149
 	NetBilledQuantityUnit                     string            // BT-150
@@ -234,7 +231,7 @@ type AllowanceCharge struct {
 type TradeTax struct {
 	CalculatedAmount    decimal.Decimal // BT-117
 	BasisAmount         decimal.Decimal // BT-116
-	Typ                 string          // BT-118
+	Typ                 string          // BT-118-0
 	CategoryCode        string          // BT-118
 	Percent             decimal.Decimal // BT-119
 	ExemptionReason     string          // BT-120
