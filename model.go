@@ -103,6 +103,7 @@ const (
 	CUnknownParty CodePartyType = iota
 	CSellerParty
 	CBuyerParty
+	CShipToParty
 )
 
 // Note contains text and the subject code.
@@ -132,24 +133,36 @@ type PostalAddress struct {
 	CountrySubDivisionName string // BT-39, BT-54, BT-68, BT-79
 }
 
+// SpecifiedLegalOrganization represents a division BT-30, BT-47, BT-61
+type SpecifiedLegalOrganization struct {
+	ID                  string //  BT-30, BT-47, BT-61
+	Scheme              string // BT-30, BT-61
+	TradingBusinessName string // BT-28, BT-45
+	// PostalAddress       *PostalAddress // BG-X-59
+}
+
+// DefinedTradeContact represents a person. BG-6, BG-9
+type DefinedTradeContact struct {
+	PersonName     string // BT-41, BT-56
+	DepartmentName string // BT-41, BT-56
+	EMail          string // BT-43, BT-58
+	PhoneNumber    string // BT-44, BT-57
+	// TypeCode string // BT-X-317
+}
+
 // Party represents buyer and seller
 type Party struct {
-	ID                               []string       // BT-29, BT-46, BT-60, BT-71
-	GlobalID                         []GlobalID     // BT-29, BT-64, BT-60, BT-71
-	Name                             string         // BT-27, BT-44, BT-59, BT-62, BT-70
-	PersonName                       string         // BT-41, BT-56
-	DepartmentName                   string         // BT-41, BT-56
-	Description                      string         // BT-33
-	EMail                            string         // BT-43, BT-58
-	PhoneNumber                      string         // BT-44, BT-57
-	URIUniversalCommunication        string         // BT-34, BT-49
-	URIUniversalCommunicationScheme  string         // BT-34, BT-49
-	PostalAddress                    *PostalAddress // BG-5, BG-8
-	SpecifiedLegalOrganization       string         // BT-30, BT-47, BT-61
-	SpecifiedLegalOrganizationScheme string         // BT-30, BT-61
-	TradingBusinessName              string         // BT-28, BT-45
-	VATaxRegistration                string         // BT-31, BT-48, BT-63
-	FCTaxRegistration                string         // BT-32
+	ID                              []string                    // BT-29, BT-46, BT-60, BT-71
+	GlobalID                        []GlobalID                  // BT-29, BT-64, BT-60, BT-71
+	Name                            string                      // BT-27, BT-44, BT-59, BT-62, BT-70
+	DefinedTradeContact             []DefinedTradeContact       // BG-9
+	Description                     string                      // BT-33
+	URIUniversalCommunication       string                      // BT-34, BT-49
+	URIUniversalCommunicationScheme string                      // BT-34, BT-49
+	PostalAddress                   *PostalAddress              // BG-5, BG-8
+	SpecifiedLegalOrganization      *SpecifiedLegalOrganization // BT-30, BT-47, BT-61
+	VATaxRegistration               string                      // BT-31, BT-48, BT-63
+	FCTaxRegistration               string                      // BT-32
 }
 
 // Characteristic add details to a product, BG-32
@@ -198,7 +211,7 @@ type InvoiceLine struct {
 	TaxTypeCode                               string            // BT-151 must be VAT
 	TaxCategoryCode                           string            // BT-151
 	TaxRateApplicablePercent                  decimal.Decimal   // BT-152
-	Total                                     decimal.Decimal   // BT-131
+	Total                                     *decimal.Decimal  // BT-131
 }
 
 // PaymentMeans represents a payment means
@@ -260,6 +273,13 @@ type SpecifiedTradePaymentTerms struct {
 
 }
 
+// ReferencedDocument links to a previous invoice BG-3
+type ReferencedDocument struct {
+	ID   string    // BT-25
+	Date time.Time // BT-26
+
+}
+
 // Invoice is the main element of the e-invoice
 type Invoice struct {
 	Profile                                   CodeProfileType              // BT-24
@@ -307,8 +327,7 @@ type Invoice struct {
 	ShipTo                                    *Party                       // BG-13
 	SpecifiedTradePaymentTerms                []SpecifiedTradePaymentTerms // BT-20
 	SchemaType                                CodeSchemaType               // UBL or CII
-	InvoiceReferencedDocumentID               string                       // BG-3 BT-25
-	InvoiceReferencedDocumentDate             time.Time                    // BT-26
+	InvoiceReferencedDocument                 []ReferencedDocument         // BG-3
 	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
 	Violations                                []SemanticError
 }
