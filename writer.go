@@ -17,6 +17,7 @@ func is(cp CodeProfileType, inv *Invoice) bool {
 	return inv.Profile >= cp
 }
 
+// formatPercent removes trailing zeros and the decimal point, if possible
 func formatPercent(d decimal.Decimal) string {
 	str := d.StringFixed(4)
 	return percentageRE.ReplaceAllString(str, "$1")
@@ -94,10 +95,16 @@ func writeCIIramIncludedSupplyChainTradeLineItem(il InvoiceLine, inv *Invoice, p
 	slts := li.CreateElement("ram:SpecifiedLineTradeSettlement")
 	// BG-27, BG-28
 	att := slts.CreateElement("ram:ApplicableTradeTax")
+	// BT-151 must be VAT
+	if il.TaxTypeCode == "" {
+		il.TaxTypeCode = "VAT"
+	}
 	att.CreateElement("ram:TypeCode").SetText(il.TaxTypeCode)
 	att.CreateElement("ram:CategoryCode").SetText(il.TaxCategoryCode)
 	att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(il.TaxRateApplicablePercent))
-	slts.CreateElement("ram:SpecifiedTradeSettlementLineMonetarySummation").CreateElement("ram:LineTotalAmount").SetText(il.Total.StringFixed(2))
+	if il.Total != nil {
+		slts.CreateElement("ram:SpecifiedTradeSettlementLineMonetarySummation").CreateElement("ram:LineTotalAmount").SetText(il.Total.StringFixed(2))
+	}
 }
 
 func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType CodePartyType) {
@@ -127,7 +134,7 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		}
 		if dtc.EMail != "" {
 			email := dtcElt.CreateElement("ram:EmailURIUniversalCommunication").CreateElement("ram:URIID")
-			email.CreateAttr("schemeID", "SMTP")
+			// email.CreateAttr("schemeID", "SMTP")
 			email.SetText(dtc.EMail)
 		}
 
@@ -227,7 +234,11 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 	}
 	elt.CreateElement("ram:TaxBasisTotalAmount").SetText(inv.TaxBasisTotal.StringFixed(2))
 	tta := elt.CreateElement("ram:TaxTotalAmount")
-	tta.CreateAttr("currencyID", inv.TaxTotalCurrency)
+	currency := inv.TaxTotalCurrency
+	if currency == "" {
+		currency = inv.InvoiceCurrencyCode
+	}
+	tta.CreateAttr("currencyID", currency)
 	tta.SetText(inv.TaxTotal.StringFixed(2))
 	if is(CProfileEN16931, inv) && !inv.RoundingAmount.IsZero() {
 		elt.CreateElement("ram:RoundingAmount").CreateText(inv.RoundingAmount.StringFixed(2))
@@ -241,10 +252,58 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 
 func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Element) {
 	elt := parent.CreateElement("ram:ApplicableHeaderTradeSettlement")
+	// CreditorReferenceID BT-90
+	// PaymentReference BT-83
+	// TaxCurrencyCode BT-6
 	elt.CreateElement("ram:InvoiceCurrencyCode").SetText(inv.InvoiceCurrencyCode)
+	// PayeeTradeParty BG-10
+	if pt := inv.PayeeTradeParty; pt != nil {
+		writeCIIParty(inv, *pt, elt, CPayeeParty)
+	}
+	if is(CProfileBasicWL, inv) {
+		for _, paymentMeans := range inv.PaymentMeans {
+			pmElt := elt.CreateElement("ram:SpecifiedTradeSettlementPaymentMeans")
+			//	BT-81
+			pmElt.CreateElement("ram:TypeCode").SetText(fmt.Sprintf("%d", paymentMeans.TypeCode))
+			if inf := paymentMeans.Information; inf != "" {
+				// BT-82
+				pmElt.CreateElement("ram:Information").SetText(inf)
+			}
+			if paymentMeans.ApplicableTradeSettlementFinancialCardID != "" {
+				fCard := pmElt.CreateElement("ram:ApplicableTradeSettlementFinancialCard")
+				// BT-87
+				fCard.CreateElement("ram:ID").SetText(paymentMeans.ApplicableTradeSettlementFinancialCardID)
+				// BT-88
+				fCard.CreateElement("ram:CardholderName").SetText(paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName)
+			}
+			if iban := paymentMeans.PayerPartyDebtorFinancialAccountIBAN; iban != "" {
+				// BT-91
+				pmElt.CreateElement("ram:PayerPartyDebtorFinancialAccount").CreateElement("ram:IBANID").SetText(iban)
+			}
+			if iban := paymentMeans.PayeePartyCreditorFinancialAccountIBAN; iban != "" {
+				// BG-17
+				account := pmElt.CreateElement("ram:PayeePartyCreditorFinancialAccount")
+				account.CreateElement("ram:IBANID").SetText(iban)
+				// BT-85
+				if name := paymentMeans.PayeePartyCreditorFinancialAccountName; name != "" {
+					account.CreateElement("ram:AccountName").SetText(name)
+				}
+				// BT-84
+				if pid := paymentMeans.PayeePartyCreditorFinancialAccountProprietaryID; pid != "" {
+					account.CreateElement("ram:ProprietaryID").SetText(pid)
+				}
+			}
+			// BT-86
+			if bic := paymentMeans.PayeeSpecifiedCreditorFinancialInstitutionBIC; bic != "" {
+				pmElt.CreateElement("ram:PayeeSpecifiedCreditorFinancialInstitution").CreateElement("ram:BICID").SetText(bic)
+			}
+		}
+	}
+
 	for _, tt := range inv.TradeTaxes {
 		att := elt.CreateElement("ram:ApplicableTradeTax")
 		att.CreateElement("ram:CalculatedAmount").SetText(tt.CalculatedAmount.StringFixed(2))
+
 		att.CreateElement("ram:TypeCode").SetText(tt.Typ)
 		if er := tt.ExemptionReason; er != "" {
 			att.CreateElement("ram:ExemptionReason").SetText(er)

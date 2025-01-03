@@ -2,6 +2,7 @@ package einvoice
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -104,6 +105,7 @@ const (
 	CSellerParty
 	CBuyerParty
 	CShipToParty
+	CPayeeParty
 )
 
 // Note contains text and the subject code.
@@ -251,6 +253,21 @@ type TradeTax struct {
 	ExemptionReasonCode string          // BT-121
 	TaxPointDate        time.Time       // BT-7
 	DueDateTypeCode     string          // BT-8
+}
+
+func (tt TradeTax) String() string {
+	var sb strings.Builder
+	sb.WriteString(tt.BasisAmount.StringFixed(2))
+	sb.WriteString(" + ")
+	sb.WriteString(formatPercent(tt.Percent))
+	sb.WriteString(" = ")
+	sb.WriteString(tt.CalculatedAmount.StringFixed(2))
+	sb.WriteString(", category code ")
+	sb.WriteString(tt.CategoryCode)
+	if tt.ExemptionReason != "" {
+		sb.WriteString(tt.ExemptionReason)
+	}
+	return sb.String()
 }
 
 // Document contains a reference to a document or the document itself.
