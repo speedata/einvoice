@@ -33,7 +33,7 @@ func dothings() error {
 
 	return inv.Write(os.Stdout)
 }
-````
+```
 
 
 
@@ -41,11 +41,10 @@ func dothings() error {
 
 Coding just started, only the basic parts are implemented.
 
-* Reading of EN 16931 ZUGFeRD XML files is possible
+* Reading and writing of EN 16931 ZUGFeRD XML files is possible
 * Some checks can be performed (BR-1 to BR-41)
 * XML output for minimum and EN16931 ZUGFeRD profile
 
 * No UBL based XML
-* Not all possible fields are read
 
 These points will be addressed. Stay tuned for updates!

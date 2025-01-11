@@ -213,7 +213,7 @@ type InvoiceLine struct {
 	TaxTypeCode                               string            // BT-151 must be VAT
 	TaxCategoryCode                           string            // BT-151
 	TaxRateApplicablePercent                  decimal.Decimal   // BT-152
-	Total                                     *decimal.Decimal  // BT-131
+	Total                                     decimal.Decimal   // BT-131
 }
 
 // PaymentMeans represents a payment means

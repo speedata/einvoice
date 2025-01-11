@@ -278,8 +278,8 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		p.BilledQuantity = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")
 		p.BilledQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
 		if lineItem.Eval("count(ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount)").Int() > 0 {
-			lt := getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
-			p.Total = &lt
+			// TODO: add marker for test BR-24
+			p.Total = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
 		}
 		for allowanceCharge := range lineItem.Each("ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge") {
 			ac := AllowanceCharge{

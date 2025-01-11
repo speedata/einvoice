@@ -102,9 +102,7 @@ func writeCIIramIncludedSupplyChainTradeLineItem(il InvoiceLine, inv *Invoice, p
 	att.CreateElement("ram:TypeCode").SetText(il.TaxTypeCode)
 	att.CreateElement("ram:CategoryCode").SetText(il.TaxCategoryCode)
 	att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(il.TaxRateApplicablePercent))
-	if il.Total != nil {
-		slts.CreateElement("ram:SpecifiedTradeSettlementLineMonetarySummation").CreateElement("ram:LineTotalAmount").SetText(il.Total.StringFixed(2))
-	}
+	slts.CreateElement("ram:SpecifiedTradeSettlementLineMonetarySummation").CreateElement("ram:LineTotalAmount").SetText(il.Total.StringFixed(2))
 }
 
 func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType CodePartyType) {

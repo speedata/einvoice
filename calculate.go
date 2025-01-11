@@ -13,13 +13,13 @@ func (inv *Invoice) UpdateApplicableTradeTax(er map[string]string) {
 		ti := TradeTax{
 			CategoryCode: lineitem.TaxCategoryCode,
 			Percent:      lineitem.TaxRateApplicablePercent,
-			BasisAmount:  *lineitem.Total,
+			BasisAmount:  lineitem.Total,
 			Typ:          "VAT",
 		}
 		found := false
 		for _, att := range applicableTradeTaxes {
 			if att.CategoryCode == ti.CategoryCode && att.Percent.Equal(ti.Percent) {
-				att.BasisAmount = att.BasisAmount.Add(*lineitem.Total)
+				att.BasisAmount = att.BasisAmount.Add(lineitem.Total)
 				found = true
 				break
 			}

@@ -682,9 +682,10 @@ func (inv *Invoice) checkBR() []SemanticError {
 		}
 		// BR-24 Rechnungsposition
 		// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Nettobetrag der Rechnungsposition „Invoice line net amount“ (BT-131) enthalten.
-		if line.Total == nil {
-			violations = append(violations, SemanticError{Rule: "BR-24", InvFields: []string{"BG-25", "BT-131"}, Text: "Line's net amount not found"})
-		}
+		// FIXME
+		// if line.Total == nil {
+		// 	violations = append(violations, SemanticError{Rule: "BR-24", InvFields: []string{"BG-25", "BT-131"}, Text: "Line's net amount not found"})
+		// }
 		// BR-25 Artikelinformationen
 		// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Namen des Postens „Item name“ (BT-153) enthalten.
 		if line.ItemName == "" {
