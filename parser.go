@@ -87,6 +87,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	}
 
 	for pm := range applicableHeaderTradeSettlement.Each("ram:SpecifiedTradeSettlementPaymentMeans") {
+		// BG-16
 		bd := PaymentMeans{
 			TypeCode:                                             pm.Eval("ram:TypeCode").Int(),
 			Information:                                          pm.Eval("ram:Information").String(),
@@ -132,13 +133,28 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	}
 
 	for att := range applicableHeaderTradeSettlement.Each("ram:ApplicableTradeTax") {
+		if att.Eval("count(ram:CalculatedAmount)").Int() == 0 {
+			// BR-46 Umsatzsteueraufschlüsselung
+			// Jede Umsatzsteueraufschlüsselung „VAT BREAKDOWN“ (BG-23) muss den für
+			// die betreffende Umsatzsteuerkategorie zu entrichtenden Gesamtbetrag
+			// „VAT category tax amount“ (BT-117) aufweisen.
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-46", InvFields: []string{"BG-23", "BT-117"}, Text: "CalculatedAmount not set for applicable trade tax"})
+		}
+		if att.Eval("count(ram:RateApplicablePercent)").Int() == 0 {
+			// BR-48 Umsatzsteueraufschlüsselung
+			// Jede Umsatzsteueraufschlüsselung „VAT BREAKDOWN“ (BG-23) muss einen
+			// Umsatzsteuersatz gemäß einer Kategorie „VAT category rate“ (BT-119)
+			// haben. Sofern die Rechnung von der Umsatzsteuer ausgenommen ist, ist
+			// „0“ zu übermitteln.
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-48", InvFields: []string{"BG-23", "BT-119"}, Text: "RateApplicablePercent not set for applicable trade tax"})
+		}
 		s := TradeTax{}
 		s.CalculatedAmount = getDecimal(att, "ram:CalculatedAmount")
 		s.BasisAmount = getDecimal(att, "ram:BasisAmount")
 		s.Typ = att.Eval("ram:TypeCode").String()
 		s.ExemptionReason = att.Eval("ram:ExemptionReason").String()
 		s.CategoryCode = att.Eval("ram:CategoryCode").String()
-		s.Percent = getDecimal(att, "ram:RateApplicablePercent")
+		s.Percent = getDecimal(att, "ram:RateApplicablePercent") // BT-119
 		inv.TradeTaxes = append(inv.TradeTaxes, s)
 	}
 	summation := applicableHeaderTradeSettlement.Eval("ram:SpecifiedTradeSettlementHeaderMonetarySummation")
@@ -278,8 +294,11 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		p.BilledQuantity = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")
 		p.BilledQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
 		if lineItem.Eval("count(ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount)").Int() > 0 {
-			// TODO: add marker for test BR-24
 			p.Total = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
+		} else {
+			// BR-24 Rechnungsposition
+			// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Nettobetrag der Rechnungsposition „Invoice line net amount“ (BT-131) enthalten.
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-24", InvFields: []string{"BG-25", "BT-131"}, Text: "Line's net amount not found"})
 		}
 		for allowanceCharge := range lineItem.Each("ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge") {
 			ac := AllowanceCharge{
@@ -409,7 +428,7 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 		return nil, err
 	}
 	m.SchemaType = CII
-
+	m.check()
 	return m, nil
 }
 
