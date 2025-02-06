@@ -1,16 +1,22 @@
-package einvoice
+package einvoice_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/speedata/einvoice"
+)
 
 func TestSimple(t *testing.T) {
-	inv, err := ParseXMLFile("testcases/zugferd_2p0_EN16931_1_Teilrechnung.xml")
+	t.Parallel()
+
+	inv, err := einvoice.ParseXMLFile("testcases/zugferd_2p0_EN16931_1_Teilrechnung.xml")
 	if err != nil {
 		t.Error(err)
 	}
-	expected := Invoice{
+
+	expected := einvoice.Invoice{
 		InvoiceNumber: "471102",
 	}
-
 	if got := inv.InvoiceNumber; got != expected.InvoiceNumber {
 		t.Errorf("invoice number got %s, expected %s\n", got, expected.InvoiceNumber)
 	}

@@ -1,56 +1,57 @@
-package einvoice
+package einvoice_test
 
 import (
 	"os"
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/speedata/einvoice"
 )
 
 func ExampleInvoice_Write() {
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 	fourteenDays := time.Hour * 24 * 14
-	i := Invoice{
+	inv := einvoice.Invoice{
 		InvoiceNumber:       "1234",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		Profile:             einvoice.CProfileEN16931,
 		InvoiceDate:         fixedDate,
 		OccurrenceDateTime:  fixedDate.Add(-fourteenDays),
 		InvoiceCurrencyCode: "EUR",
 		TaxCurrencyCode:     "EUR",
-		Notes: []Note{{
+		Notes: []einvoice.Note{{
 			Text: "Some text",
 		}},
-		Seller: Party{
+		Seller: einvoice.Party{
 			Name:              "Company name",
 			VATaxRegistration: "DE123456",
-			PostalAddress: &PostalAddress{
+			PostalAddress: &einvoice.PostalAddress{
 				Line1:        "Line one",
 				Line2:        "Line two",
 				City:         "City",
 				PostcodeCode: "12345",
 				CountryID:    "DE",
 			},
-			DefinedTradeContact: []DefinedTradeContact{{
+			DefinedTradeContact: []einvoice.DefinedTradeContact{{
 				PersonName: "Jon Doe",
 				EMail:      "doe@example.com",
 			}},
 		},
-		Buyer: Party{
+		Buyer: einvoice.Party{
 			Name: "Buyer",
-			PostalAddress: &PostalAddress{
+			PostalAddress: &einvoice.PostalAddress{
 				Line1:        "Buyer line 1",
 				Line2:        "Buyer line 2",
 				City:         "Buyercity",
 				PostcodeCode: "33441",
 				CountryID:    "FR",
 			},
-			DefinedTradeContact: []DefinedTradeContact{{
+			DefinedTradeContact: []einvoice.DefinedTradeContact{{
 				PersonName: "Buyer Person",
 			}},
 			VATaxRegistration: "FR4441112",
 		},
-		PaymentMeans: []PaymentMeans{
+		PaymentMeans: []einvoice.PaymentMeans{
 			{
 				TypeCode:                                      30,
 				PayeePartyCreditorFinancialAccountIBAN:        "DE123455958381",
@@ -58,10 +59,10 @@ func ExampleInvoice_Write() {
 				PayeeSpecifiedCreditorFinancialInstitutionBIC: "BANKDEFXXX",
 			},
 		},
-		SpecifiedTradePaymentTerms: []SpecifiedTradePaymentTerms{{
+		SpecifiedTradePaymentTerms: []einvoice.SpecifiedTradePaymentTerms{{
 			DueDate: fixedDate.Add(fourteenDays),
 		}},
-		InvoiceLines: []InvoiceLine{
+		InvoiceLines: []einvoice.InvoiceLine{
 			{
 				LineID:                   "1",
 				ItemName:                 "Item name one",
@@ -87,9 +88,11 @@ func ExampleInvoice_Write() {
 		},
 	}
 
-	i.UpdateApplicableTradeTax(map[string]string{"AE": "Reason for reverse charge"})
-	i.UpdateTotals()
-	i.Write(os.Stdout)
+	inv.UpdateApplicableTradeTax(map[string]string{"AE": "Reason for reverse charge"})
+	inv.UpdateTotals()
+	if err := inv.Write(os.Stdout); err != nil {
+		panic(err.Error())
+	}
 	// Output:
 	// <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:qdt="urn:un:unece:uncefact:data:standard:QualifiedDataType:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
 	//   <rsm:ExchangedDocumentContext>

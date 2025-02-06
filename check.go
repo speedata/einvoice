@@ -4,7 +4,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// A SemanticError contains the rule number and a text that describes the error
+// A SemanticError contains the rule number and a text that describes the error.
 type SemanticError struct {
 	Rule      string
 	InvFields []string

@@ -9,31 +9,31 @@ import (
 )
 
 type (
-	// CodeSchemaType represents the type of the invoice (CII or UBL)
+	// CodeSchemaType represents the type of the invoice (CII or UBL).
 	CodeSchemaType int
 	// CodeProfileType represents the CII subtype (extended, minimum, ...)
 	CodeProfileType int
-	// CodeDocument contains the UNTDID 1001 document code
+	// CodeDocument contains the UNTDID 1001 document code.
 	CodeDocument int
 	// CodePartyType distinguishes between seller, buyer, ..
 	CodePartyType int
 )
 
-// Don't change the order. extended > EN16931 > basic > basicwl > minimum
+// Don't change the order. extended > EN16931 > basic > basicwl > minimum.
 const (
-	//CProfileUnknown is the unknown profile, zero value
+	// CProfileUnknown is the unknown profile, zero value.
 	CProfileUnknown CodeProfileType = iota
-	// CProfileMinimum urn:factur-x.eu:1p0:minimum
+	// CProfileMinimum urn:factur-x.eu:1p0:minimum.
 	CProfileMinimum
-	// CProfileBasicWL urn:factur-x.eu:1p0:basicwl
+	// CProfileBasicWL urn:factur-x.eu:1p0:basicwl.
 	CProfileBasicWL
-	// CProfileBasic urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic
+	// CProfileBasic urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic.
 	CProfileBasic
-	// CProfileEN16931 (previously Comfort) represents urn:cen.eu:en16931:2017
+	// CProfileEN16931 (previously Comfort) represents urn:cen.eu:en16931:2017.
 	CProfileEN16931
-	// CProfileExtended represents the urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended schema
+	// CProfileExtended represents the urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended schema.
 	CProfileExtended
-	// CProfileXRechnung represents an XRechnung invoice
+	// CProfileXRechnung represents an XRechnung invoice.
 	CProfileXRechnung
 )
 
@@ -53,11 +53,13 @@ func (cp CodeProfileType) String() string {
 		return "basic without lines"
 	case CProfileMinimum:
 		return "minimum"
+	default:
+		return "unknown"
 	}
-	return "unknown"
 }
 
-// ToProfileName returns the identifier for this profile such as urn:cen.eu:en16931:2017
+// ToProfileName returns the identifier for this profile such as
+// urn:cen.eu:en16931:2017.
 func (cp CodeProfileType) ToProfileName() string {
 	switch cp {
 	case CProfileUnknown:
@@ -74,8 +76,9 @@ func (cp CodeProfileType) ToProfileName() string {
 		return "urn:factur-x.eu:1p0:basicwl"
 	case CProfileMinimum:
 		return "urn:factur-x.eu:1p0:minimum"
+	default:
+		return "unknown"
 	}
-	return "unknown"
 }
 
 func (cp CodeSchemaType) String() string {
@@ -99,7 +102,7 @@ const (
 	UBL
 )
 
-// CodePartyType represents the type of the party
+// CodePartyType represents the type of the party.
 const (
 	CUnknownParty CodePartyType = iota
 	CSellerParty
@@ -118,13 +121,13 @@ func (n Note) String() string {
 	return fmt.Sprintf("Notiz %s - %q", n.SubjectCode, n.Text)
 }
 
-// GlobalID stores a ISO/EIC 6523 encoded ID
+// GlobalID stores a ISO/EIC 6523 encoded ID.
 type GlobalID struct {
 	ID     string
 	Scheme string
 }
 
-// A PostalAddress belongs to the seller, buyer and some other entities
+// A PostalAddress belongs to the seller, buyer and some other entities.
 type PostalAddress struct {
 	CountryID              string
 	PostcodeCode           string // BT-38, BT-53, BT-67, BT-78
@@ -135,7 +138,7 @@ type PostalAddress struct {
 	CountrySubDivisionName string // BT-39, BT-54, BT-68, BT-79
 }
 
-// SpecifiedLegalOrganization represents a division BT-30, BT-47, BT-61
+// SpecifiedLegalOrganization represents a division BT-30, BT-47, BT-61.
 type SpecifiedLegalOrganization struct {
 	ID                  string //  BT-30, BT-47, BT-61
 	Scheme              string // BT-30, BT-61
@@ -143,7 +146,7 @@ type SpecifiedLegalOrganization struct {
 	// PostalAddress       *PostalAddress // BG-X-59
 }
 
-// DefinedTradeContact represents a person. BG-6, BG-9
+// DefinedTradeContact represents a person. BG-6, BG-9.
 type DefinedTradeContact struct {
 	PersonName     string // BT-41, BT-56
 	DepartmentName string // BT-41, BT-56
@@ -152,7 +155,7 @@ type DefinedTradeContact struct {
 	// TypeCode string // BT-X-317
 }
 
-// Party represents buyer and seller
+// Party represents buyer and seller.
 type Party struct {
 	ID                              []string                    // BT-29, BT-46, BT-60, BT-71
 	GlobalID                        []GlobalID                  // BT-29, BT-64, BT-60, BT-71
@@ -167,20 +170,20 @@ type Party struct {
 	FCTaxRegistration               string                      // BT-32
 }
 
-// Characteristic add details to a product, BG-32
+// Characteristic add details to a product, BG-32.
 type Characteristic struct {
 	Description string // BT-160
 	Value       string // BT-161
 }
 
-// Classification specifies a product classification, BT-158
+// Classification specifies a product classification, BT-158.
 type Classification struct {
 	ClassCode     string
 	ListID        string
 	ListVersionID string
 }
 
-// InvoiceLine represents one position of items
+// InvoiceLine represents one position of items.
 type InvoiceLine struct {
 	LineID                                    string            // BT-126
 	ArticleNumber                             string            // BT-155 seller assigned ID
@@ -216,7 +219,7 @@ type InvoiceLine struct {
 	Total                                     decimal.Decimal   // BT-131
 }
 
-// PaymentMeans represents a payment means
+// PaymentMeans represents a payment means.
 type PaymentMeans struct {
 	TypeCode                                             int    // BT-81
 	Information                                          string // BT-82
@@ -229,7 +232,7 @@ type PaymentMeans struct {
 	ApplicableTradeSettlementFinancialCardCardholderName string // BT-88
 }
 
-// AllowanceCharge specifies charges and deductions
+// AllowanceCharge specifies charges and deductions.
 type AllowanceCharge struct {
 	ChargeIndicator                       bool            // BG-20, BG-21, BG-27, BG-28
 	CalculationPercent                    decimal.Decimal // BT-94, BT-101, BT-138, BT-143
@@ -242,7 +245,7 @@ type AllowanceCharge struct {
 	CategoryTradeTaxRateApplicablePercent decimal.Decimal // BT-96, BT-103
 }
 
-// TradeTax is the VAT breakdown for each percentage
+// TradeTax is the VAT breakdown for each percentage.
 type TradeTax struct {
 	CalculatedAmount    decimal.Decimal // BT-117
 	BasisAmount         decimal.Decimal // BT-116
@@ -256,18 +259,21 @@ type TradeTax struct {
 }
 
 func (tt TradeTax) String() string {
-	var sb strings.Builder
-	sb.WriteString(tt.BasisAmount.StringFixed(2))
-	sb.WriteString(" + ")
-	sb.WriteString(formatPercent(tt.Percent))
-	sb.WriteString(" = ")
-	sb.WriteString(tt.CalculatedAmount.StringFixed(2))
-	sb.WriteString(", category code ")
-	sb.WriteString(tt.CategoryCode)
+	var builder strings.Builder
+
+	builder.WriteString(tt.BasisAmount.StringFixed(2))
+	builder.WriteString(" + ")
+	builder.WriteString(formatPercent(tt.Percent))
+	builder.WriteString(" = ")
+	builder.WriteString(tt.CalculatedAmount.StringFixed(2))
+	builder.WriteString(", category code ")
+	builder.WriteString(tt.CategoryCode)
+
 	if tt.ExemptionReason != "" {
-		sb.WriteString(tt.ExemptionReason)
+		builder.WriteString(tt.ExemptionReason)
 	}
-	return sb.String()
+
+	return builder.String()
 }
 
 // Document contains a reference to a document or the document itself.
@@ -282,7 +288,7 @@ type Document struct {
 	AttachmentFilename     string // BT-125
 }
 
-// SpecifiedTradePaymentTerms is unbounded in extended
+// SpecifiedTradePaymentTerms is unbounded in extended.
 type SpecifiedTradePaymentTerms struct {
 	Description          string    // BT-20
 	DueDate              time.Time // BT-9
@@ -290,14 +296,14 @@ type SpecifiedTradePaymentTerms struct {
 
 }
 
-// ReferencedDocument links to a previous invoice BG-3
+// ReferencedDocument links to a previous invoice BG-3.
 type ReferencedDocument struct {
 	ID   string    // BT-25
 	Date time.Time // BT-26
 
 }
 
-// Invoice is the main element of the e-invoice
+// Invoice is the main element of the e-invoice.
 type Invoice struct {
 	Profile                                   CodeProfileType              // BT-24
 	DespatchAdviceReferencedDocument          string                       // BT-16
