@@ -1,6 +1,8 @@
 package einvoice
 
 import (
+	"fmt"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -19,6 +21,8 @@ func (inv *Invoice) check() {
 		inv.Violations = []SemanticError{}
 	}
 	inv.checkBR()
+	inv.checkBRO()
+	inv.checkOther()
 
 	// BR-CO-3 Rechnung
 	// Umsatzsteuerdatum „Value added tax point date“ (BT-7) und Code für das Umsatzsteuerdatum „Value added tax point date code“ (BT-8)
@@ -43,9 +47,7 @@ func (inv *Invoice) check() {
 	// Steuervertreters des Verkäufers „Seller tax representative VAT identifier“ (BT-63) und der Umsatzsteuer-Identifikationsnummer des Erwerbers
 	// „Buyer VAT identifier“ (BT-48) muss zur Kennzeichnung des Mitgliedstaats, der sie erteilt hat, jeweils ein Präfix nach dem ISO-Code 3166 Alpha-2
 	// vorangestellt werden. Griechenland wird jedoch ermächtigt, das Präfix „EL“ zu verwenden.
-	// BR-CO-10 Gesamtsummen auf Dokumentenebene
-	// Der Inhalt des Elementes „Sum of Invoice line net amount“ (BT-106) entspricht der Summe aller Inhalte der Elemente „Invoice line net amount“
-	// (BT-131).
+
 	// BR-CO-11 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes „Sum of allowances on document level“ (BT-107) entspricht der Summe aller Inhalte der Elemente „Document level
 	// allowance amount“ (BT-92).
@@ -547,6 +549,32 @@ func (inv *Invoice) check() {
 	// BR-Z-10 Umsatzsteuer mit Nullsatz
 	// Ein „VAT BREAKDOWN“ (BG-23) mit dem Code der Umsatzsteuerkategorie „VAT category code“ (BT-118) mit dem Wert „Zero rated“ darf keinen
 	// Code des Umsatzsteuerbefreiungsgrundes „VAT exemption reason code“ (BT-121) oder Text des Umsatzsteuerbefreiungsgrundes „VAT exemption
+}
+
+func (inv *Invoice) checkOther() {
+	// Check that line total = billed quantity * net price
+	for _, line := range inv.InvoiceLines {
+		calcTotal := line.BilledQuantity.Mul(line.NetPrice)
+		lineTotal := line.Total
+		if !lineTotal.Equal(calcTotal) {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "Check", InvFields: []string{"BT-146", "BT-149", "BT-131"}, Text: fmt.Sprintf("Line total %s does not match quantity %s * net price %s", lineTotal.String(), line.BilledQuantity.String(), calcTotal.String())})
+		}
+	}
+}
+
+func (inv *Invoice) checkBRO() {
+	var sum decimal.Decimal
+	// BR-CO-10 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes „Sum of Invoice line net amount“ (BT-106) entspricht der Summe aller Inhalte der Elemente „Invoice line net amount“
+	// (BT-131).
+	sum = decimal.Zero
+	for _, line := range inv.InvoiceLines {
+		sum = sum.Add(line.Total)
+	}
+	if !inv.LineTotal.Equal(sum) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-10", InvFields: []string{"BT-106", "BT-131"}, Text: fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String())})
+	}
+
 }
 
 func (inv *Invoice) checkBR() {
