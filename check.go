@@ -565,7 +565,7 @@ func (inv *Invoice) checkOther() {
 func (inv *Invoice) checkBRO() {
 	var sum decimal.Decimal
 	// BR-CO-10 Gesamtsummen auf Dokumentenebene
-	// Der Inhalt des Elementes „Sum of Invoice line net amount“ (BT-106) entspricht der Summe aller Inhalte der Elemente „Invoice line net amount“
+	// Der Inhalt des Elementes "Sum of Invoice line net amount" (BT-106) entspricht der Summe aller Inhalte der Elemente "Invoice line net amount"
 	// (BT-131).
 	sum = decimal.Zero
 	for _, line := range inv.InvoiceLines {
@@ -573,6 +573,30 @@ func (inv *Invoice) checkBRO() {
 	}
 	if !inv.LineTotal.Equal(sum) {
 		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-10", InvFields: []string{"BT-106", "BT-131"}, Text: fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String())})
+	}
+
+	// BR-CO-13 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Invoice total amount without VAT" (BT-109) entspricht der Summe aus "Sum of Invoice line net amount"
+	// (BT-106) abzüglich "Sum of allowances on document level" (BT-107) zuzüglich "Sum of charges on document level" (BT-108).
+	expectedTaxBasisTotal := inv.LineTotal.Sub(inv.AllowanceTotal).Add(inv.ChargeTotal)
+	if !inv.TaxBasisTotal.Equal(expectedTaxBasisTotal) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-13", InvFields: []string{"BT-109", "BT-106", "BT-107", "BT-108"}, Text: fmt.Sprintf("Tax basis total %s does not match LineTotal - AllowanceTotal + ChargeTotal = %s", inv.TaxBasisTotal.String(), expectedTaxBasisTotal.String())})
+	}
+
+	// BR-CO-15 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Invoice total amount with VAT" (BT-112) entspricht der Summe aus "Invoice total amount without VAT"
+	// (BT-109) und "Invoice total VAT amount" (BT-110).
+	expectedGrandTotal := inv.TaxBasisTotal.Add(inv.TaxTotal)
+	if !inv.GrandTotal.Equal(expectedGrandTotal) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-15", InvFields: []string{"BT-112", "BT-109", "BT-110"}, Text: fmt.Sprintf("Grand total %s does not match TaxBasisTotal + TaxTotal = %s", inv.GrandTotal.String(), expectedGrandTotal.String())})
+	}
+
+	// BR-CO-16 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Amount due for payment" (BT-115) entspricht der Summe aus "Invoice total amount with VAT" (BT-112)
+	// abzüglich "Paid amount" (BT-113) zuzüglich "Rounding amount" (BT-114).
+	expectedDuePayableAmount := inv.GrandTotal.Sub(inv.TotalPrepaid).Add(inv.RoundingAmount)
+	if !inv.DuePayableAmount.Equal(expectedDuePayableAmount) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-16", InvFields: []string{"BT-115", "BT-112", "BT-113", "BT-114"}, Text: fmt.Sprintf("Due payable amount %s does not match GrandTotal - TotalPrepaid + RoundingAmount = %s", inv.DuePayableAmount.String(), expectedDuePayableAmount.String())})
 	}
 
 }
