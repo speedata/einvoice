@@ -4076,3 +4076,259 @@ func TestBRIC12_HasDeliverToCountry(t *testing.T) {
 		}
 	}
 }
+
+// BR-IG tests (IGIC - Canary Islands)
+
+func TestBRIG1_MissingSellerVAT(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "L",
+			},
+		},
+		// Seller VAT missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-1" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-1 violation for missing seller VAT in IGIC")
+	}
+}
+
+func TestBRIG5_TaxableAmountMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "L",
+				Total:           decimal.NewFromFloat(100.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "L",
+				BasisAmount:  decimal.NewFromFloat(90.0), // Should be 100.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-5" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-5 violation for taxable amount mismatch in IGIC")
+	}
+}
+
+func TestBRIG6_VATAmountMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "L",
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Percent:          decimal.NewFromFloat(7.0),
+				CalculatedAmount: decimal.NewFromFloat(10.0), // Should be 7.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-6" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-6 violation for VAT amount mismatch in IGIC")
+	}
+}
+
+func TestBRIG7_TaxableAmountByRateMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "L",
+				TaxRateApplicablePercent: decimal.NewFromFloat(7.0),
+				Total:                    decimal.NewFromFloat(100.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "L",
+				Percent:      decimal.NewFromFloat(7.0),
+				BasisAmount:  decimal.NewFromFloat(80.0), // Should be 100.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-7" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-7 violation for taxable amount by rate mismatch in IGIC")
+	}
+}
+
+func TestBRIG8_VATAmountByRateMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "L",
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Percent:          decimal.NewFromFloat(7.0),
+				CalculatedAmount: decimal.NewFromFloat(10.0), // Should be 7.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-8" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-8 violation for VAT amount by rate mismatch in IGIC")
+	}
+}
+
+func TestBRIG9_HasExemptionReason(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:    "L",
+				ExemptionReason: "Should not be present", // Must not have
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-9" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-9 violation for having exemption reason in IGIC")
+	}
+}
+
+func TestBRIG10_MissingSellerTaxID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "L",
+			},
+		},
+		// Seller VAT and tax registration missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-10" && strings.Contains(v.Text, "seller") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-10 violation for missing seller tax ID in IGIC")
+	}
+}
+
+func TestBRIG10_HasBuyerVATID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "L",
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+		Buyer:  Party{VATaxRegistration: "DE456"}, // Must not have
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-10" && strings.Contains(v.Text, "buyer") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IG-10 violation for having buyer VAT ID in IGIC")
+	}
+}
+
+func TestBRIG10_ValidIGIC(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "L",
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+		// Buyer without VAT ID is OK
+	}
+
+	inv.check()
+
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IG-10" {
+			t.Errorf("Should not have BR-IG-10 violation when seller has VAT ID and buyer has no VAT ID: %v", v)
+		}
+	}
+}
