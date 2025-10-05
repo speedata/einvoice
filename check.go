@@ -564,6 +564,25 @@ func (inv *Invoice) checkOther() {
 
 func (inv *Invoice) checkBRO() {
 	var sum decimal.Decimal
+	// BR-CO-3 Rechnung
+	// Umsatzsteuerdatum "Value added tax point date" (BT-7) und Code für das Umsatzsteuerdatum "Value added tax point date code" (BT-8)
+	// schließen sich gegenseitig aus.
+	for _, tax := range inv.TradeTaxes {
+		if !tax.TaxPointDate.IsZero() && tax.DueDateTypeCode != "" {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-3", InvFields: []string{"BT-7", "BT-8"}, Text: "TaxPointDate and DueDateTypeCode are mutually exclusive"})
+			break
+		}
+	}
+
+	// BR-CO-4 Rechnungsposition
+	// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss anhand der Umsatzsteuerkategorie des in Rechnung gestellten Postens "Invoiced item VAT
+	// category code" (BT-151) kategorisiert werden.
+	for _, line := range inv.InvoiceLines {
+		if line.TaxCategoryCode == "" {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-4", InvFields: []string{"BG-25", "BT-151"}, Text: fmt.Sprintf("Invoice line %s missing VAT category code", line.LineID)})
+		}
+	}
+
 	// BR-CO-10 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Sum of Invoice line net amount" (BT-106) entspricht der Summe aller Inhalte der Elemente "Invoice line net amount"
 	// (BT-131).
@@ -597,6 +616,63 @@ func (inv *Invoice) checkBRO() {
 	expectedDuePayableAmount := inv.GrandTotal.Sub(inv.TotalPrepaid).Add(inv.RoundingAmount)
 	if !inv.DuePayableAmount.Equal(expectedDuePayableAmount) {
 		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-16", InvFields: []string{"BT-115", "BT-112", "BT-113", "BT-114"}, Text: fmt.Sprintf("Due payable amount %s does not match GrandTotal - TotalPrepaid + RoundingAmount = %s", inv.DuePayableAmount.String(), expectedDuePayableAmount.String())})
+	}
+
+	// BR-CO-17 Umsatzsteueraufschlüsselung
+	// Der Inhalt des Elementes "VAT category tax amount" (BT-117) entspricht dem Inhalt des Elementes "VAT category taxable amount" (BT-116),
+	// multipliziert mit dem Inhalt des Elementes "VAT category rate" (BT-119) geteilt durch 100, gerundet auf zwei Dezimalstellen.
+	for _, tax := range inv.TradeTaxes {
+		expected := tax.BasisAmount.Mul(tax.Percent).Div(decimal.NewFromInt(100)).Round(2)
+		if !tax.CalculatedAmount.Equal(expected) {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-17", InvFields: []string{"BT-116", "BT-117", "BT-119"}, Text: fmt.Sprintf("VAT category tax amount %s does not match expected %s (basis %s × rate %s ÷ 100)", tax.CalculatedAmount.String(), expected.String(), tax.BasisAmount.String(), tax.Percent.String())})
+		}
+	}
+
+	// BR-CO-18 Umsatzsteueraufschlüsselung
+	// Eine Rechnung (INVOICE) soll mindestens eine Gruppe "VAT BREAKDOWN" (BG-23) enthalten.
+	if len(inv.TradeTaxes) < 1 {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-18", InvFields: []string{"BG-23"}, Text: "Invoice should contain at least one VAT BREAKDOWN"})
+	}
+
+	// BR-CO-19 Liefer- oder Rechnungszeitraum
+	// Wenn die Gruppe "INVOICING PERIOD" (BG-14) verwendet wird, müssen entweder das Element "Invoicing period start date" (BT-73) oder das
+	// Element "Invoicing period end date" (BT-74) oder beide gefüllt sein.
+	if !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero() {
+		if inv.BillingSpecifiedPeriodStart.IsZero() && inv.BillingSpecifiedPeriodEnd.IsZero() {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-19", InvFields: []string{"BG-14", "BT-73", "BT-74"}, Text: "If invoicing period is used, either start date or end date must be filled"})
+		}
+	}
+
+	// BR-CO-20 Rechnungszeitraum auf Positionsebene
+	// Wenn die Gruppe "INVOICE LINE PERIOD" (BG-26) verwendet wird, müssen entweder das Element "Invoice line period start date" (BT-134) oder
+	// das Element "Invoice line period end date" (BT-135) oder beide gefüllt sein.
+	for _, line := range inv.InvoiceLines {
+		if !line.BillingSpecifiedPeriodStart.IsZero() || !line.BillingSpecifiedPeriodEnd.IsZero() {
+			if line.BillingSpecifiedPeriodStart.IsZero() && line.BillingSpecifiedPeriodEnd.IsZero() {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-20", InvFields: []string{"BG-26", "BT-134", "BT-135"}, Text: fmt.Sprintf("Invoice line %s: if line period is used, either start date or end date must be filled", line.LineID)})
+			}
+		}
+	}
+
+	// BR-CO-25 Rechnung
+	// Im Falle eines positiven Zahlbetrags "Amount due for payment" (BT-115) muss entweder das Element Fälligkeitsdatum "Payment due date" (BT-9)
+	// oder das Element Zahlungsbedingungen "Payment terms" (BT-20) vorhanden sein.
+	if inv.DuePayableAmount.GreaterThan(decimal.Zero) {
+		hasPaymentDueDate := false
+		hasPaymentTerms := false
+
+		for _, term := range inv.SpecifiedTradePaymentTerms {
+			if !term.DueDate.IsZero() {
+				hasPaymentDueDate = true
+			}
+			if term.Description != "" {
+				hasPaymentTerms = true
+			}
+		}
+
+		if !hasPaymentDueDate && !hasPaymentTerms {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-25", InvFields: []string{"BT-9", "BT-20", "BT-115"}, Text: "If amount due for payment is positive, either payment due date or payment terms must be present"})
+		}
 	}
 
 }
