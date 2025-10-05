@@ -1157,3 +1157,700 @@ func TestBR28_NegativeGrossPrice(t *testing.T) {
 		t.Error("Expected BR-28 violation for negative gross price")
 	}
 }
+
+// TestBR52_SupportingDocumentMustHaveReference tests BR-52
+func TestBR52_SupportingDocumentMustHaveReference(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR52",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+		AdditionalReferencedDocument: []Document{
+			{
+				// Missing IssuerAssignedID
+				Name: "Supporting doc",
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-52 violation
+	var br52Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-52" {
+			br52Found = true
+		}
+	}
+
+	if !br52Found {
+		t.Error("Expected BR-52 violation for supporting document without reference")
+	}
+}
+
+// TestBR53_TaxAccountingCurrencyRequiresTotalVAT tests BR-53
+func TestBR53_TaxAccountingCurrencyRequiresTotalVAT(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR53",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		TaxCurrencyCode:     "USD", // Specified but TaxTotalVAT is zero
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-53 violation
+	var br53Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-53" {
+			br53Found = true
+		}
+	}
+
+	if !br53Found {
+		t.Error("Expected BR-53 violation when tax currency is specified but tax total VAT is zero")
+	}
+}
+
+// TestBR54_ItemAttributeMustHaveNameAndValue tests BR-54
+func TestBR54_ItemAttributeMustHaveNameAndValue(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR54",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+				Characteristics: []Characteristic{
+					{
+						Description: "Color",
+						// Missing Value
+					},
+				},
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-54 violation
+	var br54Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-54" {
+			br54Found = true
+		}
+	}
+
+	if !br54Found {
+		t.Error("Expected BR-54 violation for item attribute without value")
+	}
+}
+
+// TestBR55_PrecedingInvoiceReferenceMustHaveNumber tests BR-55
+func TestBR55_PrecedingInvoiceReferenceMustHaveNumber(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR55",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+		InvoiceReferencedDocument: []ReferencedDocument{
+			{
+				// Missing ID
+				Date: time.Now(),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-55 violation
+	var br55Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-55" {
+			br55Found = true
+		}
+	}
+
+	if !br55Found {
+		t.Error("Expected BR-55 violation for preceding invoice reference without number")
+	}
+}
+
+// TestBR56_TaxRepresentativeMustHaveVATID tests BR-56
+func TestBR56_TaxRepresentativeMustHaveVATID(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR56",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		SellerTaxRepresentativeTradeParty: &Party{
+			Name: "Tax Rep",
+			// Missing VATaxRegistration
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-56 violation
+	var br56Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-56" {
+			br56Found = true
+		}
+	}
+
+	if !br56Found {
+		t.Error("Expected BR-56 violation for tax representative without VAT ID")
+	}
+}
+
+// TestBR57_DeliverToAddressMustHaveCountryCode tests BR-57
+func TestBR57_DeliverToAddressMustHaveCountryCode(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR57",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		ShipTo: &Party{
+			Name: "Shipping address",
+			PostalAddress: &PostalAddress{
+				// Missing CountryID
+				City: "Paris",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-57 violation
+	var br57Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-57" {
+			br57Found = true
+		}
+	}
+
+	if !br57Found {
+		t.Error("Expected BR-57 violation for deliver-to address without country code")
+	}
+}
+
+// TestBR61_CreditTransferRequiresAccountIdentifier tests BR-61
+func TestBR61_CreditTransferRequiresAccountIdentifier(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR61",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		PaymentMeans: []PaymentMeans{
+			{
+				TypeCode: 30, // Credit transfer
+				// Missing PayeePartyCreditorFinancialAccountIBAN and PayeePartyCreditorFinancialAccountProprietaryID
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-61 violation
+	var br61Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-61" {
+			br61Found = true
+		}
+	}
+
+	if !br61Found {
+		t.Error("Expected BR-61 violation for credit transfer without account identifier")
+	}
+}
+
+// TestBR62_SellerElectronicAddressRequiresScheme tests BR-62
+func TestBR62_SellerElectronicAddressRequiresScheme(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR62",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name:                      "Seller",
+			URIUniversalCommunication: "seller@example.com",
+			// Missing URIUniversalCommunicationScheme
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-62 violation
+	var br62Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-62" {
+			br62Found = true
+		}
+	}
+
+	if !br62Found {
+		t.Error("Expected BR-62 violation for seller electronic address without scheme")
+	}
+}
+
+// TestBR63_BuyerElectronicAddressRequiresScheme tests BR-63
+func TestBR63_BuyerElectronicAddressRequiresScheme(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR63",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name:                      "Buyer",
+			URIUniversalCommunication: "buyer@example.com",
+			// Missing URIUniversalCommunicationScheme
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-63 violation
+	var br63Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-63" {
+			br63Found = true
+		}
+	}
+
+	if !br63Found {
+		t.Error("Expected BR-63 violation for buyer electronic address without scheme")
+	}
+}
+
+// TestBR64_ItemStandardIdentifierRequiresScheme tests BR-64
+func TestBR64_ItemStandardIdentifierRequiresScheme(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR64",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:         "1",
+				ItemName:       "Item",
+				GlobalID:       "1234567890",
+				// Missing GlobalIDType
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-64 violation
+	var br64Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-64" {
+			br64Found = true
+		}
+	}
+
+	if !br64Found {
+		t.Error("Expected BR-64 violation for item standard identifier without scheme")
+	}
+}
+
+// TestBR65_ItemClassificationRequiresScheme tests BR-65
+func TestBR65_ItemClassificationRequiresScheme(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR65",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:   "1",
+				ItemName: "Item",
+				ProductClassification: []Classification{
+					{
+						ClassCode: "12345",
+						// Missing ListID
+					},
+				},
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-65 violation
+	var br65Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-65" {
+			br65Found = true
+		}
+	}
+
+	if !br65Found {
+		t.Error("Expected BR-65 violation for item classification without scheme")
+	}
+}
