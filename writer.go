@@ -252,15 +252,22 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 	}
 
 	elt.CreateElement("ram:TaxBasisTotalAmount").SetText(inv.TaxBasisTotal.StringFixed(2))
-	tta := elt.CreateElement("ram:TaxTotalAmount")
 
+	// BT-110: Tax total in invoice currency
+	tta := elt.CreateElement("ram:TaxTotalAmount")
 	currency := inv.TaxTotalCurrency
 	if currency == "" {
 		currency = inv.InvoiceCurrencyCode
 	}
-
 	tta.CreateAttr("currencyID", currency)
 	tta.SetText(inv.TaxTotal.StringFixed(2))
+
+	// BT-111: Tax total in accounting currency (when different from invoice currency)
+	if inv.TaxCurrencyCode != "" && inv.TaxCurrencyCode != inv.InvoiceCurrencyCode {
+		ttaVAT := elt.CreateElement("ram:TaxTotalAmount")
+		ttaVAT.CreateAttr("currencyID", inv.TaxCurrencyCode)
+		ttaVAT.SetText(inv.TaxTotalVAT.StringFixed(2))
+	}
 	if is(CProfileEN16931, inv) && !inv.RoundingAmount.IsZero() {
 		elt.CreateElement("ram:RoundingAmount").CreateText(inv.RoundingAmount.StringFixed(2))
 	}
@@ -283,7 +290,7 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 
 	// PayeeTradeParty BG-10
 	if pt := inv.PayeeTradeParty; pt != nil {
-		writeCIIParty(inv, *pt, elt, CPayeeParty)
+		writeCIIParty(inv, *pt, elt.CreateElement("ram:PayeeTradeParty"), CPayeeParty)
 	}
 
 	if is(CProfileBasicWL, inv) {
