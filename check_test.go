@@ -4588,3 +4588,301 @@ func TestBRIP10_ValidIPSI(t *testing.T) {
 		}
 	}
 }
+
+// BR-O tests (Not subject to VAT)
+
+func TestBRO1_MissingBothTaxIDs(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "O",
+			},
+		},
+		// Both seller and buyer tax IDs missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-1" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-1 violation for missing both seller and buyer tax IDs in Not subject to VAT")
+	}
+}
+
+func TestBRO1_HasSellerTaxID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "O",
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+	}
+
+	inv.check()
+
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-1" {
+			t.Error("Should not have BR-O-1 violation when seller has tax ID")
+		}
+	}
+}
+
+func TestBRO1_HasBuyerTaxID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "O",
+			},
+		},
+		Buyer: Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.check()
+
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-1" {
+			t.Error("Should not have BR-O-1 violation when buyer has tax ID")
+		}
+	}
+}
+
+func TestBRO2_LineMissingSellerTaxID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "O",
+			},
+		},
+		Buyer: Party{VATaxRegistration: "DE456"}, // Has buyer but not seller
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-2" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-2 violation for line missing seller tax ID in Not subject to VAT")
+	}
+}
+
+func TestBRO3_LineMissingVATBreakdown(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "O",
+			},
+		},
+		// No VAT breakdown with category O
+		Seller: Party{VATaxRegistration: "DE123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-3" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-3 violation for line without corresponding VAT breakdown")
+	}
+}
+
+func TestBRO6_NonZeroRateInLine(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "O",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-6" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-6 violation for non-zero VAT rate in Not subject to VAT line")
+	}
+}
+
+func TestBRO9_TaxableAmountMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "O",
+				Total:           decimal.NewFromFloat(100.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "O",
+				BasisAmount:  decimal.NewFromFloat(90.0), // Should be 100.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-9" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-9 violation for taxable amount mismatch in Not subject to VAT")
+	}
+}
+
+func TestBRO11_NonZeroVATAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "O",
+				CalculatedAmount: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-11" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-11 violation for non-zero VAT amount in Not subject to VAT")
+	}
+}
+
+func TestBRO13_MissingExemptionReason(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "O",
+				// ExemptionReason and ExemptionReasonCode missing
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-13" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-13 violation for missing exemption reason in Not subject to VAT")
+	}
+}
+
+func TestBRO14_MultipleOCategories(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "O",
+			},
+			{
+				CategoryCode: "O",
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-O-14" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-14 violation for multiple Not subject to VAT categories")
+	}
+}
+
+func TestBRO_ValidNotSubjectToVAT(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "O",
+				TaxRateApplicablePercent: decimal.Zero,
+				Total:                    decimal.NewFromFloat(100.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "O",
+				Percent:          decimal.Zero,
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				CalculatedAmount: decimal.Zero,
+				ExemptionReason:  "Not subject to VAT",
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+	}
+
+	inv.check()
+
+	brORules := []string{"BR-O-1", "BR-O-2", "BR-O-3", "BR-O-6", "BR-O-9", "BR-O-11", "BR-O-13", "BR-O-14"}
+	for _, v := range inv.Violations {
+		for _, rule := range brORules {
+			if v.Rule == rule {
+				t.Errorf("Should not have %s violation for valid Not subject to VAT invoice: %v", rule, v)
+			}
+		}
+	}
+}
