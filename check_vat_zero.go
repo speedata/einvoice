@@ -18,18 +18,6 @@ import (
 //   - VAT rate must be 0 (taxable but at 0% rate)
 //   - VAT amount must be 0
 //   - Must NOT have exemption reason (it's rated, not exempt)
-//
-// Business rules implemented:
-//   - BR-Z-1: VAT breakdown must exist for Zero rated items
-//   - BR-Z-2: Invoice line requires seller VAT/tax ID
-//   - BR-Z-3: Document allowance requires seller VAT/tax ID
-//   - BR-Z-4: Document charge requires seller VAT/tax ID
-//   - BR-Z-5: Line VAT rate must be 0
-//   - BR-Z-6: Allowance VAT rate must be 0
-//   - BR-Z-7: Charge VAT rate must be 0
-//   - BR-Z-8: Taxable amount must match calculated sum
-//   - BR-Z-9: VAT amount must be 0
-//   - BR-Z-10: Must NOT have exemption reason
 func (inv *Invoice) checkVATZero() {
 	// BR-Z-1 Umsatzsteuer mit Nullsatz (Zero rated)
 	// If invoice has line/allowance/charge with "Z", must have at least one "Z" in VAT breakdown

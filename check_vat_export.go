@@ -19,18 +19,6 @@ import (
 //   - VAT rate must be 0 (exports are not taxed)
 //   - VAT amount must be 0
 //   - Must have exemption reason explaining the export
-//
-// Business rules implemented:
-//   - BR-G-1: VAT breakdown must exist for Export outside EU items
-//   - BR-G-2: Invoice line requires seller VAT identifier
-//   - BR-G-3: Document allowance requires seller VAT identifier
-//   - BR-G-4: Document charge requires seller VAT identifier
-//   - BR-G-5: Line VAT rate must be 0
-//   - BR-G-6: Allowance VAT rate must be 0
-//   - BR-G-7: Charge VAT rate must be 0
-//   - BR-G-8: Taxable amount must match calculated sum
-//   - BR-G-9: VAT amount must be 0
-//   - BR-G-10: Must have exemption reason
 func (inv *Invoice) checkVATExport() {
 	// BR-G-1 Export außerhalb der EU (Export outside the EU)
 	// If invoice has line/allowance/charge with "G", must have at least one "G" in VAT breakdown

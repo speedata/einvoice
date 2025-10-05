@@ -17,18 +17,6 @@ import (
 //   - VAT rate must be greater than 0 (not zero)
 //   - VAT amount is calculated as basis amount × rate
 //   - Must NOT have exemption reason or code
-//
-// Business rules implemented:
-//   - BR-S-1: VAT breakdown must exist for Standard rated items
-//   - BR-S-2: Invoice line requires seller VAT/tax ID
-//   - BR-S-3: Document allowance requires seller VAT/tax ID
-//   - BR-S-4: Document charge requires seller VAT/tax ID
-//   - BR-S-5: Line VAT rate must be > 0
-//   - BR-S-6: Allowance VAT rate must be > 0
-//   - BR-S-7: Charge VAT rate must be > 0
-//   - BR-S-8: Taxable amount must match calculated sum
-//   - BR-S-9: VAT amount must equal basis × rate
-//   - BR-S-10: Must not have exemption reason
 func (inv *Invoice) checkVATStandard() {
 	// BR-S-1 Umsatzsteuer mit Normalsatz
 	// If invoice has line/allowance/charge with "Standard rated" (S), must have at least one "S" in VAT breakdown

@@ -18,18 +18,6 @@ import (
 //   - VAT rate must be 0 (exempt, not taxable)
 //   - VAT amount must be 0
 //   - Must have exemption reason explaining why VAT is exempt
-//
-// Business rules implemented:
-//   - BR-E-1: VAT breakdown must exist for Exempt items
-//   - BR-E-2: Invoice line requires seller VAT/tax ID
-//   - BR-E-3: Document allowance requires seller VAT/tax ID
-//   - BR-E-4: Document charge requires seller VAT/tax ID
-//   - BR-E-5: Line VAT rate must be 0
-//   - BR-E-6: Allowance VAT rate must be 0
-//   - BR-E-7: Charge VAT rate must be 0
-//   - BR-E-8: Taxable amount must match calculated sum
-//   - BR-E-9: VAT amount must be 0
-//   - BR-E-10: Must have exemption reason
 func (inv *Invoice) checkVATExempt() {
 	// BR-E-1 Steuerbefreit (Exempt from VAT)
 	// If invoice has line/allowance/charge with "E", must have at least one "E" in VAT breakdown

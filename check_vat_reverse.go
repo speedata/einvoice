@@ -17,18 +17,6 @@ import (
 //   - VAT rate must be 0 (liability transferred to buyer)
 //   - VAT amount must be 0 in the invoice
 //   - Must have exemption reason explaining the reverse charge
-//
-// Business rules implemented:
-//   - BR-AE-1: VAT breakdown must exist for Reverse charge items
-//   - BR-AE-2: Invoice line requires both seller and buyer VAT IDs
-//   - BR-AE-3: Document allowance requires both seller and buyer VAT IDs
-//   - BR-AE-4: Document charge requires both seller and buyer VAT IDs
-//   - BR-AE-5: Line VAT rate must be 0
-//   - BR-AE-6: Allowance VAT rate must be 0
-//   - BR-AE-7: Charge VAT rate must be 0
-//   - BR-AE-8: Taxable amount must match calculated sum
-//   - BR-AE-9: VAT amount must be 0
-//   - BR-AE-10: Must have exemption reason explaining reverse charge
 func (inv *Invoice) checkVATReverse() {
 	// BR-AE-1 Umkehrung der Steuerschuldnerschaft (Reverse charge)
 	// If invoice has line/allowance/charge with "AE", must have at least one "AE" in VAT breakdown

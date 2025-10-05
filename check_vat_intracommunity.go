@@ -20,20 +20,6 @@ import (
 //   - Must have exemption reason explaining the intra-community nature
 //   - Must have actual delivery date or invoicing period
 //   - Must have deliver to country code
-//
-// Business rules implemented:
-//   - BR-IC-1: Both seller and buyer VAT IDs required
-//   - BR-IC-2: Invoice line requires both seller and buyer VAT IDs
-//   - BR-IC-3: Line VAT rate must be 0
-//   - BR-IC-4: Allowance VAT rate must be 0
-//   - BR-IC-5: Charge VAT rate must be 0
-//   - BR-IC-6: Taxable amount must match calculated sum
-//   - BR-IC-7: VAT amount must be 0
-//   - BR-IC-8: Taxable amount per rate must match calculated sum
-//   - BR-IC-9: VAT amount must be 0 (duplicate check)
-//   - BR-IC-10: Must have exemption reason
-//   - BR-IC-11: Must have delivery date or invoicing period
-//   - BR-IC-12: Must have deliver to country code
 func (inv *Invoice) checkVATIntracommunity() {
 	// BR-IC-1 Innergemeinschaftliche Lieferung (Intra-community supply)
 	// Invoice with category K must have both seller and buyer VAT IDs

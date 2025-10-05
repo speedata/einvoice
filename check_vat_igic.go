@@ -20,18 +20,6 @@ import (
 //   - IGIC amount is calculated as basis × rate
 //   - Must NOT have exemption reason (not an exemption, it's a different tax)
 //   - Seller must have tax ID but buyer must NOT have VAT ID
-//
-// Business rules implemented:
-//   - BR-IG-1: VAT breakdown must exist and seller must have tax ID
-//   - BR-IG-2: Line VAT rate must be 0 or greater (implicit)
-//   - BR-IG-3: Allowance VAT rate must be 0 or greater (implicit)
-//   - BR-IG-4: Charge VAT rate must be 0 or greater (implicit)
-//   - BR-IG-5: Taxable amount must match calculated sum
-//   - BR-IG-6: IGIC amount must equal basis × rate
-//   - BR-IG-7: Taxable amount per rate must match calculated sum
-//   - BR-IG-8: IGIC amount per rate must equal basis × rate
-//   - BR-IG-9: Must NOT have exemption reason
-//   - BR-IG-10: Seller must have tax ID, buyer must NOT have VAT ID
 func (inv *Invoice) checkVATIGIC() {
 	// BR-IG-1 IGIC (Kanarische Inseln / Canary Islands)
 	// Invoice with category L must have seller VAT ID

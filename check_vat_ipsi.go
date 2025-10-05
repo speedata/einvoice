@@ -21,18 +21,6 @@ import (
 //   - IPSI amount is calculated as basis × rate
 //   - Must NOT have exemption reason (not an exemption, it's a different tax)
 //   - Seller must have tax ID but buyer must NOT have VAT ID
-//
-// Business rules implemented:
-//   - BR-IP-1: VAT breakdown must exist and seller must have tax ID
-//   - BR-IP-2: Line VAT rate must be 0 or greater (implicit)
-//   - BR-IP-3: Allowance VAT rate must be 0 or greater (implicit)
-//   - BR-IP-4: Charge VAT rate must be 0 or greater (implicit)
-//   - BR-IP-5: Taxable amount must match calculated sum
-//   - BR-IP-6: IPSI amount must equal basis × rate
-//   - BR-IP-7: Taxable amount per rate must match calculated sum
-//   - BR-IP-8: IPSI amount per rate must equal basis × rate
-//   - BR-IP-9: Must NOT have exemption reason
-//   - BR-IP-10: Seller must have tax ID, buyer must NOT have VAT ID
 func (inv *Invoice) checkVATIPSI() {
 	// BR-IP-1 IPSI (Ceuta/Melilla)
 	// Invoice with category M must have seller VAT ID

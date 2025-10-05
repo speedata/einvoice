@@ -20,22 +20,6 @@ import (
 //   - VAT amount must be 0
 //   - Must have exemption reason explaining why not subject to VAT
 //   - Only one 'O' category allowed in VAT breakdown
-//
-// Business rules implemented:
-//   - BR-O-1: Seller or buyer must have tax identifier
-//   - BR-O-2: Invoice line requires seller tax identifier
-//   - BR-O-3: Invoice line must have corresponding VAT breakdown
-//   - BR-O-4: Allowance must have corresponding VAT breakdown
-//   - BR-O-5: Charge must have corresponding VAT breakdown
-//   - BR-O-6: Line VAT rate must be 0
-//   - BR-O-7: Allowance VAT rate must be 0
-//   - BR-O-8: Charge VAT rate must be 0
-//   - BR-O-9: Taxable amount must match calculated sum
-//   - BR-O-10: Taxable amount per rate must match calculated sum
-//   - BR-O-11: VAT amount must be 0
-//   - BR-O-12: VAT amount for each rate must be 0
-//   - BR-O-13: Must have exemption reason
-//   - BR-O-14: Only one 'O' category allowed
 func (inv *Invoice) checkVATNotSubject() {
 	// BR-O-1 Not subject to VAT
 	// Invoice with category O must have seller OR buyer tax ID
