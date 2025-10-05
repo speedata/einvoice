@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go-version: ['1.24']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache: true
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Verify dependencies
+      run: go mod verify
+
+    - name: Run tests
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+    - name: Upload coverage
+      if: matrix.os == 'ubuntu-latest'
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.out
+        fail_ci_if_error: false
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+        cache: true
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run golangci-lint
+      run: go tool golangci-lint run --timeout=5m ./...
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+        cache: true
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Run go vet
+      run: go vet ./...
