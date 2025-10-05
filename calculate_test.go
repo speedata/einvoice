@@ -242,3 +242,253 @@ func TestUpdateTotals_ZeroValues(t *testing.T) {
 		t.Errorf("DuePayableAmount = %s, want 0", inv.DuePayableAmount)
 	}
 }
+
+// TestUpdateApplicableTradeTax_WithDocumentLevelAllowances tests that document-level
+// allowances are correctly subtracted from the tax basis amount (Bug #4 fix)
+func TestUpdateApplicableTradeTax_WithDocumentLevelAllowances(t *testing.T) {
+	inv := &Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(1000.00),
+			},
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       false, // Allowance
+				ActualAmount:                          decimal.NewFromFloat(100.00),
+				CategoryTradeTaxCategoryCode:          "S",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19),
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{})
+
+	// Should have one tax entry for category S with 19%
+	if len(inv.TradeTaxes) != 1 {
+		t.Fatalf("Expected 1 TradeTax entry, got %d", len(inv.TradeTaxes))
+	}
+
+	tt := inv.TradeTaxes[0]
+
+	// BR-S-8: Basis amount should be line total minus allowance
+	// = 1000 - 100 = 900
+	expectedBasisAmount := decimal.NewFromFloat(900.00)
+	if !tt.BasisAmount.Equal(expectedBasisAmount) {
+		t.Errorf("BasisAmount = %s, want %s (should subtract allowance)", tt.BasisAmount, expectedBasisAmount)
+	}
+
+	// Tax should be 19% of 900 = 171
+	expectedTax := decimal.NewFromFloat(171.00)
+	if !tt.CalculatedAmount.Equal(expectedTax) {
+		t.Errorf("CalculatedAmount = %s, want %s", tt.CalculatedAmount, expectedTax)
+	}
+
+	if tt.CategoryCode != "S" {
+		t.Errorf("CategoryCode = %s, want S", tt.CategoryCode)
+	}
+}
+
+// TestUpdateApplicableTradeTax_WithDocumentLevelCharges tests that document-level
+// charges are correctly added to the tax basis amount (Bug #4 fix)
+func TestUpdateApplicableTradeTax_WithDocumentLevelCharges(t *testing.T) {
+	inv := &Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(1000.00),
+			},
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       true, // Charge
+				ActualAmount:                          decimal.NewFromFloat(50.00),
+				CategoryTradeTaxCategoryCode:          "S",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19),
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{})
+
+	// Should have one tax entry for category S with 19%
+	if len(inv.TradeTaxes) != 1 {
+		t.Fatalf("Expected 1 TradeTax entry, got %d", len(inv.TradeTaxes))
+	}
+
+	tt := inv.TradeTaxes[0]
+
+	// BR-S-8: Basis amount should be line total plus charge
+	// = 1000 + 50 = 1050
+	expectedBasisAmount := decimal.NewFromFloat(1050.00)
+	if !tt.BasisAmount.Equal(expectedBasisAmount) {
+		t.Errorf("BasisAmount = %s, want %s (should add charge)", tt.BasisAmount, expectedBasisAmount)
+	}
+
+	// Tax should be 19% of 1050 = 199.50
+	expectedTax := decimal.NewFromFloat(199.50)
+	if !tt.CalculatedAmount.Equal(expectedTax) {
+		t.Errorf("CalculatedAmount = %s, want %s", tt.CalculatedAmount, expectedTax)
+	}
+}
+
+// TestUpdateApplicableTradeTax_MixedAllowancesAndCharges tests a realistic scenario
+// with both allowances and charges on the same tax category
+func TestUpdateApplicableTradeTax_MixedAllowancesAndCharges(t *testing.T) {
+	inv := &Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(1000.00),
+			},
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(500.00),
+			},
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       false, // Allowance
+				ActualAmount:                          decimal.NewFromFloat(150.00),
+				CategoryTradeTaxCategoryCode:          "S",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19),
+			},
+			{
+				ChargeIndicator:                       true, // Charge (shipping)
+				ActualAmount:                          decimal.NewFromFloat(50.00),
+				CategoryTradeTaxCategoryCode:          "S",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19),
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{})
+
+	if len(inv.TradeTaxes) != 1 {
+		t.Fatalf("Expected 1 TradeTax entry, got %d", len(inv.TradeTaxes))
+	}
+
+	tt := inv.TradeTaxes[0]
+
+	// Basis = (1000 + 500) - 150 + 50 = 1400
+	expectedBasisAmount := decimal.NewFromFloat(1400.00)
+	if !tt.BasisAmount.Equal(expectedBasisAmount) {
+		t.Errorf("BasisAmount = %s, want %s (lines - allowance + charge)", tt.BasisAmount, expectedBasisAmount)
+	}
+
+	// Tax = 19% of 1400 = 266
+	expectedTax := decimal.NewFromFloat(266.00)
+	if !tt.CalculatedAmount.Equal(expectedTax) {
+		t.Errorf("CalculatedAmount = %s, want %s", tt.CalculatedAmount, expectedTax)
+	}
+}
+
+// TestUpdateApplicableTradeTax_MultipleCategories tests handling of multiple
+// tax categories with document-level allowances/charges
+func TestUpdateApplicableTradeTax_MultipleCategories(t *testing.T) {
+	inv := &Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(1000.00),
+			},
+			{
+				TaxCategoryCode:          "AE", // Reverse charge
+				TaxRateApplicablePercent: decimal.NewFromFloat(0),
+				Total:                    decimal.NewFromFloat(500.00),
+			},
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       false,
+				ActualAmount:                          decimal.NewFromFloat(100.00),
+				CategoryTradeTaxCategoryCode:          "S",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19),
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"AE": "Reverse charge"})
+
+	// Should have two tax entries
+	if len(inv.TradeTaxes) != 2 {
+		t.Fatalf("Expected 2 TradeTax entries, got %d", len(inv.TradeTaxes))
+	}
+
+	// Find category S and AE
+	var ttS, ttAE *TradeTax
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "S" {
+			ttS = &inv.TradeTaxes[i]
+		} else if inv.TradeTaxes[i].CategoryCode == "AE" {
+			ttAE = &inv.TradeTaxes[i]
+		}
+	}
+
+	if ttS == nil {
+		t.Fatal("Category S not found in TradeTaxes")
+	}
+	if ttAE == nil {
+		t.Fatal("Category AE not found in TradeTaxes")
+	}
+
+	// Category S: 1000 - 100 = 900
+	expectedBasisS := decimal.NewFromFloat(900.00)
+	if !ttS.BasisAmount.Equal(expectedBasisS) {
+		t.Errorf("Category S BasisAmount = %s, want %s", ttS.BasisAmount, expectedBasisS)
+	}
+
+	// Category AE: 500 (no allowances/charges for this category)
+	expectedBasisAE := decimal.NewFromFloat(500.00)
+	if !ttAE.BasisAmount.Equal(expectedBasisAE) {
+		t.Errorf("Category AE BasisAmount = %s, want %s", ttAE.BasisAmount, expectedBasisAE)
+	}
+
+	// Check exemption reason
+	if ttAE.ExemptionReason != "Reverse charge" {
+		t.Errorf("ExemptionReason = %q, want %q", ttAE.ExemptionReason, "Reverse charge")
+	}
+}
+
+// TestUpdateApplicableTradeTax_AllowanceOnlyCategory tests that allowances
+// can create a tax category even without invoice lines (edge case)
+func TestUpdateApplicableTradeTax_AllowanceOnlyCategory(t *testing.T) {
+	inv := &Invoice{
+		InvoiceLines: []InvoiceLine{},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       false,
+				ActualAmount:                          decimal.NewFromFloat(50.00),
+				CategoryTradeTaxCategoryCode:          "S",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19),
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{})
+
+	// Should create a tax entry for the allowance
+	if len(inv.TradeTaxes) != 1 {
+		t.Fatalf("Expected 1 TradeTax entry, got %d", len(inv.TradeTaxes))
+	}
+
+	tt := inv.TradeTaxes[0]
+
+	// Basis = -50 (allowance with no lines)
+	expectedBasis := decimal.NewFromFloat(-50.00)
+	if !tt.BasisAmount.Equal(expectedBasis) {
+		t.Errorf("BasisAmount = %s, want %s", tt.BasisAmount, expectedBasis)
+	}
+
+	// Tax = 19% of -50 = -9.50
+	expectedTax := decimal.NewFromFloat(-9.50)
+	if !tt.CalculatedAmount.Equal(expectedTax) {
+		t.Errorf("CalculatedAmount = %s, want %s", tt.CalculatedAmount, expectedTax)
+	}
+}

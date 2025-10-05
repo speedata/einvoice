@@ -5,11 +5,17 @@ import (
 )
 
 // UpdateApplicableTradeTax removes the existing trade tax lines in the invoice
-// and re-creates new ones from the line items. er is a map that contains
-// exemption reasons for each category code.
+// and re-creates new ones from the line items and document-level allowances/charges.
+// er is a map that contains exemption reasons for each category code.
+// According to BR-45 and category-specific rules (BR-S-8, BR-AE-8, BR-E-8, etc.),
+// the VAT category taxable amount must include:
+// - Sum of invoice line net amounts for that category
+// - Minus document level allowance amounts for that category
+// - Plus document level charge amounts for that category
 func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 	var applicableTradeTaxes = make([]*TradeTax, 0, len(inv.TradeTaxes))
 
+	// Process invoice lines
 	for _, lineitem := range inv.InvoiceLines {
 		tradeTax := TradeTax{
 			CategoryCode: lineitem.TaxCategoryCode,
@@ -30,6 +36,38 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 
 		if !found {
 			applicableTradeTaxes = append(applicableTradeTaxes, &tradeTax)
+		}
+	}
+
+	// Process document-level allowances and charges
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		found := false
+		for _, att := range applicableTradeTaxes {
+			if att.CategoryCode == ac.CategoryTradeTaxCategoryCode && att.Percent.Equal(ac.CategoryTradeTaxRateApplicablePercent) {
+				// Charges add to the basis, allowances subtract
+				if ac.ChargeIndicator {
+					att.BasisAmount = att.BasisAmount.Add(ac.ActualAmount)
+				} else {
+					att.BasisAmount = att.BasisAmount.Sub(ac.ActualAmount)
+				}
+				found = true
+				break
+			}
+		}
+
+		// If not found, create a new tax entry for this category
+		if !found {
+			basisAmount := ac.ActualAmount
+			if !ac.ChargeIndicator {
+				basisAmount = basisAmount.Neg()
+			}
+			tradeTax := &TradeTax{
+				CategoryCode: ac.CategoryTradeTaxCategoryCode,
+				Percent:      ac.CategoryTradeTaxRateApplicablePercent,
+				BasisAmount:  basisAmount,
+				Typ:          "VAT",
+			}
+			applicableTradeTaxes = append(applicableTradeTaxes, tradeTax)
 		}
 	}
 

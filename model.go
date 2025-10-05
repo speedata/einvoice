@@ -46,7 +46,7 @@ func (cp CodeProfileType) String() string {
 	case CProfileExtended:
 		return "extended"
 	case CProfileEN16931:
-		return "EN 19631"
+		return "EN 16931"
 	case CProfileBasic:
 		return "basic"
 	case CProfileBasicWL:

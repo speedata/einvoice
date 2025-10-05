@@ -850,20 +850,21 @@ func (inv *Invoice) checkBR() {
 	}
 
 	// Initialize applicableTradeTaxes map for BR-45 validation
+	// Use composite key of CategoryCode + Percent to properly group by tax category
 	var applicableTradeTaxes = make(map[string]decimal.Decimal, len(inv.TradeTaxes))
 	for _, lineitem := range inv.InvoiceLines {
-		percentString := lineitem.TaxRateApplicablePercent.String()
-		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(lineitem.Total)
+		key := lineitem.TaxCategoryCode + "_" + lineitem.TaxRateApplicablePercent.String()
+		applicableTradeTaxes[key] = applicableTradeTaxes[key].Add(lineitem.Total)
 	}
 
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		// Add to applicableTradeTaxes for BR-45 validation
-		percentString := ac.CategoryTradeTaxRateApplicablePercent.String()
+		key := ac.CategoryTradeTaxCategoryCode + "_" + ac.CategoryTradeTaxRateApplicablePercent.String()
 		amount := ac.ActualAmount
 		if !ac.ChargeIndicator {
 			amount = amount.Neg()
 		}
-		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(amount)
+		applicableTradeTaxes[key] = applicableTradeTaxes[key].Add(amount)
 
 		if ac.ChargeIndicator {
 			// BR-36 Zuschläge auf Dokumentenebene
@@ -940,10 +941,11 @@ func (inv *Invoice) checkBR() {
 
 	for _, tt := range inv.TradeTaxes {
 		// BR-45 Umsatzsteueraufschlüsselung
-		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN“ (BG-23) muss die
+		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss die
 		// Summe aller nach dem jeweiligen Schlüssel zu versteuernden Beträge
-		// "VAT category taxable amount“ (BT-116) aufweisen.
-		if !applicableTradeTaxes[tt.Percent.String()].Equal(tt.BasisAmount) {
+		// "VAT category taxable amount" (BT-116) aufweisen.
+		key := tt.CategoryCode + "_" + tt.Percent.String()
+		if !applicableTradeTaxes[key].Equal(tt.BasisAmount) {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-45", InvFields: []string{"BG-23", "BT-116"}, Text: "Applicable trade tax basis amount not equal to the sum of line total"})
 
 		}
