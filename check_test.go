@@ -4886,3 +4886,111 @@ func TestBRO_ValidNotSubjectToVAT(t *testing.T) {
 		}
 	}
 }
+
+// Tests for document level allowances and charges negative amount rules
+
+func TestBR34_NegativeAllowanceAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator: false,
+				ActualAmount:    decimal.NewFromFloat(-10.0), // Negative amount
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-34" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-34 violation for negative allowance amount")
+	}
+}
+
+func TestBR35_NegativeAllowanceBaseAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator: false,
+				ActualAmount:    decimal.NewFromFloat(10.0),
+				BasisAmount:     decimal.NewFromFloat(-100.0), // Negative base amount
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-35" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-35 violation for negative allowance base amount")
+	}
+}
+
+func TestBR39_NegativeChargeAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator: true,
+				ActualAmount:    decimal.NewFromFloat(-10.0), // Negative amount
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-39" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-39 violation for negative charge amount")
+	}
+}
+
+func TestBR40_NegativeChargeBaseAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator: true,
+				ActualAmount:    decimal.NewFromFloat(10.0),
+				BasisAmount:     decimal.NewFromFloat(-100.0), // Negative base amount
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-40" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-40 violation for negative charge base amount")
+	}
+}

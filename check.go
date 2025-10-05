@@ -887,6 +887,16 @@ func (inv *Invoice) checkBR() {
 			if ac.Reason == "" && ac.ReasonCode == 0 {
 				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-38", InvFields: []string{"BG-21", "BT-104", "BT-105"}, Text: "Charge reason empty or code unset"})
 			}
+			// BR-39 Zuschläge auf Dokumentenebene
+			// Der Betrag einer Abgabe auf Dokumentenebene "Document level charge amount" (BT-99) darf nicht negativ sein.
+			if ac.ActualAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-39", InvFields: []string{"BG-21", "BT-99"}, Text: "Document level charge amount must not be negative"})
+			}
+			// BR-40 Zuschläge auf Dokumentenebene
+			// Der Basisbetrag einer Abgabe auf Dokumentenebene "Document level charge base amount" (BT-100) darf nicht negativ sein.
+			if ac.BasisAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-40", InvFields: []string{"BG-21", "BT-100"}, Text: "Document level charge base amount must not be negative"})
+			}
 		} else {
 			// BR-31 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag "Document level allowance amount"
@@ -902,9 +912,19 @@ func (inv *Invoice) checkBR() {
 			}
 			// BR-33 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Nachlassgrund "Document level allowance
-			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98) aufweisen.
+			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98") aufweisen.
 			if ac.Reason == "" && ac.ReasonCode == 0 {
 				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-33", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance reason empty or code unset"})
+			}
+			// BR-34 Abschläge auf Dokumentenebene
+			// Der Betrag eines Nachlasses auf Dokumentenebene "Document level allowance amount" (BT-92) darf nicht negativ sein.
+			if ac.ActualAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-34", InvFields: []string{"BG-20", "BT-92"}, Text: "Document level allowance amount must not be negative"})
+			}
+			// BR-35 Abschläge auf Dokumentenebene
+			// Der Basisbetrag eines Nachlasses auf Dokumentenebene "Document level allowance base amount" (BT-93) darf nicht negativ sein.
+			if ac.BasisAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-35", InvFields: []string{"BG-20", "BT-93"}, Text: "Document level allowance base amount must not be negative"})
 			}
 		}
 	}
