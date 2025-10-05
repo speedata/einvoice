@@ -816,23 +816,24 @@ func (inv *Invoice) checkBR() {
 		// BR-24 in parser.go
 
 		// BR-25 Artikelinformationen
-		// Jede Rechnungsposition "INVOICE LINE“ (BG-25) muss den Namen des Postens "Item name“ (BT-153) enthalten.
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Namen des Postens "Item name" (BT-153) enthalten.
 		if line.ItemName == "" {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-25", InvFields: []string{"BG-25", "BT-153"}, Text: "Line's item name missing"})
 		}
-		// BR-26 Detailinformationen zum Preis
-		// Jede Rechnungsposition "INVOICE LINE“ (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
-		// geltenden Rabatts "Item net price“ (BT-146) beinhalten.
+
+		// BR-26 in parser.go
 
 		// BR-27 Nettopreis des Artikels
-		// Der Artikel-Nettobetrag "Item net price“ (BT-146) darf nicht negativ sein.
+		// Der Artikel-Nettobetrag "Item net price" (BT-146) darf nicht negativ sein.
 		if line.NetPrice.IsNegative() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-27", InvFields: []string{"BG-25", "BT-146"}, Text: "Net price must not be negative"})
 		}
 		// BR-28 Detailinformationen zum Preis
-		// Der Einheitspreis ohne Umsatzsteuer vor Abzug des Postenpreisrabatts einer Rechnungsposition "Item gross price“ (BT-148) darf nicht negativ
+		// Der Einheitspreis ohne Umsatzsteuer vor Abzug des Postenpreisrabatts einer Rechnungsposition "Item gross price" (BT-148) darf nicht negativ
 		// sein.
-		// TODO
+		if line.GrossPrice.IsNegative() {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-28", InvFields: []string{"BG-25", "BT-148"}, Text: "Gross price must not be negative"})
+		}
 	}
 	// BR-29 Rechnungszeitraum
 	// Wenn Start- und Enddatum des Rechnungszeitraums gegeben sind, muss das Enddatum "Invoicing period end date“ (BT-74) nach dem Startdatum

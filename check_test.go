@@ -1090,3 +1090,70 @@ func TestBR45_CompositeKey_MultipleCategories(t *testing.T) {
 		}
 	}
 }
+
+// TestBR28_NegativeGrossPrice tests that BR-28 detects negative gross prices
+func TestBR28_NegativeGrossPrice(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BR28",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:          "1",
+				ItemName:        "Item with negative gross price",
+				BilledQuantity:  decimal.NewFromInt(1),
+				NetPrice:        decimal.NewFromInt(100),
+				GrossPrice:      decimal.NewFromInt(-150), // Negative gross price
+				Total:           decimal.NewFromInt(100),
+				TaxCategoryCode: "S",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	inv.check()
+
+	// Find BR-28 violation
+	var br28Found bool
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-28" {
+			br28Found = true
+			// Check that it references BG-25 and BT-148
+			if len(v.InvFields) < 2 {
+				t.Error("BR-28 violation should have InvFields for BG-25 and BT-148")
+			}
+			if v.InvFields[0] != "BG-25" || v.InvFields[1] != "BT-148" {
+				t.Errorf("BR-28 should reference BG-25 and BT-148, got %v", v.InvFields)
+			}
+		}
+	}
+
+	if !br28Found {
+		t.Error("Expected BR-28 violation for negative gross price")
+	}
+}
