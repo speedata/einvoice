@@ -564,17 +564,6 @@ func (inv *Invoice) checkOther() {
 
 func (inv *Invoice) checkBRO() {
 	var sum decimal.Decimal
-	// BR-CO-10 Gesamtsummen auf Dokumentenebene
-	// Der Inhalt des Elementes "Sum of Invoice line net amount“ (BT-106) entspricht der Summe aller Inhalte der Elemente "Invoice line net amount“
-	// (BT-131).
-	sum = decimal.Zero
-	for _, line := range inv.InvoiceLines {
-		sum = sum.Add(line.Total)
-	}
-	if !inv.LineTotal.Equal(sum) {
-		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-10", InvFields: []string{"BT-106", "BT-131"}, Text: fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String())})
-	}
-
 	// BR-CO-3 Rechnung
 	// Umsatzsteuerdatum "Value added tax point date" (BT-7) und Code für das Umsatzsteuerdatum "Value added tax point date code" (BT-8)
 	// schließen sich gegenseitig aus.
@@ -592,6 +581,41 @@ func (inv *Invoice) checkBRO() {
 		if line.TaxCategoryCode == "" {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-4", InvFields: []string{"BG-25", "BT-151"}, Text: fmt.Sprintf("Invoice line %s missing VAT category code", line.LineID)})
 		}
+	}
+
+	// BR-CO-10 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Sum of Invoice line net amount" (BT-106) entspricht der Summe aller Inhalte der Elemente "Invoice line net amount"
+	// (BT-131).
+	sum = decimal.Zero
+	for _, line := range inv.InvoiceLines {
+		sum = sum.Add(line.Total)
+	}
+	if !inv.LineTotal.Equal(sum) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-10", InvFields: []string{"BT-106", "BT-131"}, Text: fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String())})
+	}
+
+	// BR-CO-13 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Invoice total amount without VAT" (BT-109) entspricht der Summe aus "Sum of Invoice line net amount"
+	// (BT-106) abzüglich "Sum of allowances on document level" (BT-107) zuzüglich "Sum of charges on document level" (BT-108).
+	expectedTaxBasisTotal := inv.LineTotal.Sub(inv.AllowanceTotal).Add(inv.ChargeTotal)
+	if !inv.TaxBasisTotal.Equal(expectedTaxBasisTotal) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-13", InvFields: []string{"BT-109", "BT-106", "BT-107", "BT-108"}, Text: fmt.Sprintf("Tax basis total %s does not match LineTotal - AllowanceTotal + ChargeTotal = %s", inv.TaxBasisTotal.String(), expectedTaxBasisTotal.String())})
+	}
+
+	// BR-CO-15 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Invoice total amount with VAT" (BT-112) entspricht der Summe aus "Invoice total amount without VAT"
+	// (BT-109) und "Invoice total VAT amount" (BT-110).
+	expectedGrandTotal := inv.TaxBasisTotal.Add(inv.TaxTotal)
+	if !inv.GrandTotal.Equal(expectedGrandTotal) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-15", InvFields: []string{"BT-112", "BT-109", "BT-110"}, Text: fmt.Sprintf("Grand total %s does not match TaxBasisTotal + TaxTotal = %s", inv.GrandTotal.String(), expectedGrandTotal.String())})
+	}
+
+	// BR-CO-16 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Amount due for payment" (BT-115) entspricht der Summe aus "Invoice total amount with VAT" (BT-112)
+	// abzüglich "Paid amount" (BT-113) zuzüglich "Rounding amount" (BT-114).
+	expectedDuePayableAmount := inv.GrandTotal.Sub(inv.TotalPrepaid).Add(inv.RoundingAmount)
+	if !inv.DuePayableAmount.Equal(expectedDuePayableAmount) {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-CO-16", InvFields: []string{"BT-115", "BT-112", "BT-113", "BT-114"}, Text: fmt.Sprintf("Due payable amount %s does not match GrandTotal - TotalPrepaid + RoundingAmount = %s", inv.DuePayableAmount.String(), expectedDuePayableAmount.String())})
 	}
 
 	// BR-CO-17 Umsatzsteueraufschlüsselung
@@ -824,27 +848,24 @@ func (inv *Invoice) checkBR() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-30", InvFields: []string{"BG-25", "BT-135", "BT-134"}, Text: "Line item billing period end must be after or identical to start"})
 		}
 	}
+
+	// Initialize applicableTradeTaxes map for BR-45 validation
+	var applicableTradeTaxes = make(map[string]decimal.Decimal, len(inv.TradeTaxes))
+	for _, lineitem := range inv.InvoiceLines {
+		percentString := lineitem.TaxRateApplicablePercent.String()
+		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(lineitem.Total)
+	}
+
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		// Add to applicableTradeTaxes for BR-45 validation
+		percentString := ac.CategoryTradeTaxRateApplicablePercent.String()
+		amount := ac.ActualAmount
 		if !ac.ChargeIndicator {
-			// BR-31 Abschläge auf Dokumentenebene
-			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag "Document level allowance amount"
-			// (BT-92) aufweisen.
-			if ac.ActualAmount.IsZero() {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-31", InvFields: []string{"BG-20", "BT-92"}, Text: "Allowance must not be zero"})
-			}
-			// BR-32 Abschläge auf Dokumentenebene
-			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Umsatzsteuer-Code "Document level
-			// allowance VAT category code" (BT-95) aufweisen.
-			if ac.CategoryTradeTaxCategoryCode == "" {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance tax category code not set"})
-			}
-			// BR-33 Abschläge auf Dokumentenebene
-			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Nachlassgrund "Document level allowance
-			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98) aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == 0 {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-33", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance reason empty or code unset"})
-			}
-		} else {
+			amount = amount.Neg()
+		}
+		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(amount)
+
+		if ac.ChargeIndicator {
 			// BR-36 Zuschläge auf Dokumentenebene
 			// Jede Abgabe auf Dokumentenebene "DOCUMENT LEVEL CHARGES" (BG-21) muss einen Betrag "Document level charge amount" (BT-99)
 			// aufweisen.
@@ -864,8 +885,28 @@ func (inv *Invoice) checkBR() {
 			if ac.Reason == "" && ac.ReasonCode == 0 {
 				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-38", InvFields: []string{"BG-21", "BT-104", "BT-105"}, Text: "Charge reason empty or code unset"})
 			}
+		} else {
+			// BR-31 Abschläge auf Dokumentenebene
+			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag "Document level allowance amount"
+			// (BT-92) aufweisen.
+			if ac.ActualAmount.IsZero() {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-31", InvFields: []string{"BG-20", "BT-92"}, Text: "Allowance must not be zero"})
+			}
+			// BR-32 Abschläge auf Dokumentenebene
+			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Umsatzsteuer-Code "Document level
+			// allowance VAT category code" (BT-95) aufweisen.
+			if ac.CategoryTradeTaxCategoryCode == "" {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance tax category code not set"})
+			}
+			// BR-33 Abschläge auf Dokumentenebene
+			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Nachlassgrund "Document level allowance
+			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98) aufweisen.
+			if ac.Reason == "" && ac.ReasonCode == 0 {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-33", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance reason empty or code unset"})
+			}
 		}
 	}
+
 	for _, line := range inv.InvoiceLines {
 		// BR-41 Abschläge auf Ebene der Rechnungsposition
 		// Jeder Nachlass auf der Ebene der Rechnungsposition "INVOICE LINE ALLOWANCES“ (BG-27) muss einen Betrag "Invoice line allowance amount“
@@ -897,20 +938,6 @@ func (inv *Invoice) checkBR() {
 		}
 	}
 
-	var applicableTradeTaxes = make(map[string]decimal.Decimal, len(inv.TradeTaxes))
-	for _, lineitem := range inv.InvoiceLines {
-		percentString := lineitem.TaxRateApplicablePercent.String()
-		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(lineitem.Total)
-	}
-
-	for _, v := range inv.SpecifiedTradeAllowanceCharge {
-		percentString := v.CategoryTradeTaxRateApplicablePercent.String()
-		amount := v.ActualAmount
-		if !v.ChargeIndicator {
-			amount = amount.Neg()
-		}
-		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(amount)
-	}
 	for _, tt := range inv.TradeTaxes {
 		// BR-45 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN“ (BG-23) muss die
