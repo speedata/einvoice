@@ -4332,3 +4332,259 @@ func TestBRIG10_ValidIGIC(t *testing.T) {
 		}
 	}
 }
+
+// BR-IP tests (IPSI - Ceuta/Melilla)
+
+func TestBRIP1_MissingSellerVAT(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "M",
+			},
+		},
+		// Seller VAT missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-1" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-1 violation for missing seller VAT in IPSI")
+	}
+}
+
+func TestBRIP5_TaxableAmountMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "M",
+				Total:           decimal.NewFromFloat(100.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "M",
+				BasisAmount:  decimal.NewFromFloat(90.0), // Should be 100.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-5" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-5 violation for taxable amount mismatch in IPSI")
+	}
+}
+
+func TestBRIP6_VATAmountMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "M",
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Percent:          decimal.NewFromFloat(10.0),
+				CalculatedAmount: decimal.NewFromFloat(15.0), // Should be 10.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-6" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-6 violation for VAT amount mismatch in IPSI")
+	}
+}
+
+func TestBRIP7_TaxableAmountByRateMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "M",
+				TaxRateApplicablePercent: decimal.NewFromFloat(10.0),
+				Total:                    decimal.NewFromFloat(100.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "M",
+				Percent:      decimal.NewFromFloat(10.0),
+				BasisAmount:  decimal.NewFromFloat(80.0), // Should be 100.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-7" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-7 violation for taxable amount by rate mismatch in IPSI")
+	}
+}
+
+func TestBRIP8_VATAmountByRateMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "M",
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Percent:          decimal.NewFromFloat(10.0),
+				CalculatedAmount: decimal.NewFromFloat(15.0), // Should be 10.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-8" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-8 violation for VAT amount by rate mismatch in IPSI")
+	}
+}
+
+func TestBRIP9_HasExemptionReason(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:    "M",
+				ExemptionReason: "Should not be present", // Must not have
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-9" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-9 violation for having exemption reason in IPSI")
+	}
+}
+
+func TestBRIP10_MissingSellerTaxID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "M",
+			},
+		},
+		// Seller VAT and tax registration missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-10" && strings.Contains(v.Text, "seller") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-10 violation for missing seller tax ID in IPSI")
+	}
+}
+
+func TestBRIP10_HasBuyerVATID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "M",
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+		Buyer:  Party{VATaxRegistration: "DE456"}, // Must not have
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-10" && strings.Contains(v.Text, "buyer") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IP-10 violation for having buyer VAT ID in IPSI")
+	}
+}
+
+func TestBRIP10_ValidIPSI(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "M",
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+		// Buyer without VAT ID is OK
+	}
+
+	inv.check()
+
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IP-10" {
+			t.Errorf("Should not have BR-IP-10 violation when seller has VAT ID and buyer has no VAT ID: %v", v)
+		}
+	}
+}
