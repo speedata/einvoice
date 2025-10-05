@@ -813,15 +813,11 @@ func (inv *Invoice) checkBR() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-23", InvFields: []string{"BG-25", "BT-130"}, Text: "Line's billed quantity has no unit"})
 		}
 
-		// BR-24 in parser.go
-
 		// BR-25 Artikelinformationen
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Namen des Postens "Item name" (BT-153) enthalten.
 		if line.ItemName == "" {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-25", InvFields: []string{"BG-25", "BT-153"}, Text: "Line's item name missing"})
 		}
-
-		// BR-26 in parser.go
 
 		// BR-27 Nettopreis des Artikels
 		// Der Artikel-Nettobetrag "Item net price" (BT-146) darf nicht negativ sein.
@@ -970,9 +966,6 @@ func (inv *Invoice) checkBR() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-45", InvFields: []string{"BG-23", "BT-116"}, Text: "Applicable trade tax basis amount not equal to the sum of line total"})
 
 		}
-		// BR-46 Umsatzsteueraufschlüsselung
-		// in parser.go
-
 		// BR-47 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN“ (BG-23) muss über
 		// eine codierte Bezeichnung einer Umsatzsteuerkategorie "VAT category
@@ -980,9 +973,6 @@ func (inv *Invoice) checkBR() {
 		if tt.CategoryCode == "" {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-47", InvFields: []string{"BG-23", "BT-118"}, Text: "CategoryCode not set for applicable trade tax"})
 		}
-
-		// BR-48 Umsatzsteueraufschlüsselung
-		// in parser.go
 	}
 	for _, pm := range inv.PaymentMeans {
 		// BR-49 Zahlungsanweisungen
