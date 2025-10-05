@@ -382,8 +382,16 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		invoiceLine.Note = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:Content").String()
 
 		parseSpecifiedTradeProduct(lineItem.Eval("ram:SpecifiedTradeProduct"), &invoiceLine)
-		if err = parseSpecifiedLineTradeAgreement(lineItem.Eval("ram:SpecifiedLineTradeAgreement"), &invoiceLine); err != nil {
+		specifiedLineTradeAgreement := lineItem.Eval("ram:SpecifiedLineTradeAgreement")
+		if err = parseSpecifiedLineTradeAgreement(specifiedLineTradeAgreement, &invoiceLine); err != nil {
 			return err
+		}
+
+		// BR-26 Detailinformationen zum Preis
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
+		// geltenden Rabatts "Item net price" (BT-146) beinhalten.
+		if specifiedLineTradeAgreement.Eval("count(ram:NetPriceProductTradePrice/ram:ChargeAmount)").Int() == 0 {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-26", InvFields: []string{"BG-25", "BT-146"}, Text: "Line's item net price not found"})
 		}
 
 		invoiceLine.BilledQuantity, err = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")

@@ -41,10 +41,19 @@ There is a [dedicated example](https://pkg.go.dev/github.com/speedata/einvoice#e
 
 ## Current status
 
-Coding just started, only the basic parts are implemented.
-
 * Reading and writing of EN 16931 ZUGFeRD XML files is possible
-* Some checks are performed when reading the ZUGFeRD file (BR-1 to BR-45)
+* Comprehensive validation of business rules when reading ZUGFeRD files:
+  - BR-1 to BR-65 (all core business rules)
+  - BR-CO-3 to BR-CO-26 (calculation rules)
+  - BR-S-1 to BR-S-10 (Standard rate VAT)
+  - BR-AE-1 to BR-AE-10 (Reverse charge)
+  - BR-E-1 to BR-E-10 (Exempt from VAT)
+  - BR-Z-1 to BR-Z-10 (Zero rated VAT)
+  - BR-G-1 to BR-G-10 (Export outside EU)
+  - BR-IC-1 to BR-IC-12 (Intra-community supply)
+  - BR-IG-1 to BR-IG-10 (IGIC - Canary Islands)
+  - BR-IP-1 to BR-IP-10 (IPSI - Ceuta/Melilla)
+  - BR-O-1 to BR-O-14 (Not subject to VAT)
 * XML output for minimum and EN16931 ZUGFeRD profile
 
 ## Limitations

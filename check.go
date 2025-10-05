@@ -813,26 +813,23 @@ func (inv *Invoice) checkBR() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-23", InvFields: []string{"BG-25", "BT-130"}, Text: "Line's billed quantity has no unit"})
 		}
 
-		// BR-24 in parser.go
-
 		// BR-25 Artikelinformationen
-		// Jede Rechnungsposition "INVOICE LINE“ (BG-25) muss den Namen des Postens "Item name“ (BT-153) enthalten.
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Namen des Postens "Item name" (BT-153) enthalten.
 		if line.ItemName == "" {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-25", InvFields: []string{"BG-25", "BT-153"}, Text: "Line's item name missing"})
 		}
-		// BR-26 Detailinformationen zum Preis
-		// Jede Rechnungsposition "INVOICE LINE“ (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
-		// geltenden Rabatts "Item net price“ (BT-146) beinhalten.
 
 		// BR-27 Nettopreis des Artikels
-		// Der Artikel-Nettobetrag "Item net price“ (BT-146) darf nicht negativ sein.
+		// Der Artikel-Nettobetrag "Item net price" (BT-146) darf nicht negativ sein.
 		if line.NetPrice.IsNegative() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-27", InvFields: []string{"BG-25", "BT-146"}, Text: "Net price must not be negative"})
 		}
 		// BR-28 Detailinformationen zum Preis
-		// Der Einheitspreis ohne Umsatzsteuer vor Abzug des Postenpreisrabatts einer Rechnungsposition "Item gross price“ (BT-148) darf nicht negativ
+		// Der Einheitspreis ohne Umsatzsteuer vor Abzug des Postenpreisrabatts einer Rechnungsposition "Item gross price" (BT-148) darf nicht negativ
 		// sein.
-		// TODO
+		if line.GrossPrice.IsNegative() {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-28", InvFields: []string{"BG-25", "BT-148"}, Text: "Gross price must not be negative"})
+		}
 	}
 	// BR-29 Rechnungszeitraum
 	// Wenn Start- und Enddatum des Rechnungszeitraums gegeben sind, muss das Enddatum "Invoicing period end date“ (BT-74) nach dem Startdatum
@@ -886,6 +883,16 @@ func (inv *Invoice) checkBR() {
 			if ac.Reason == "" && ac.ReasonCode == 0 {
 				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-38", InvFields: []string{"BG-21", "BT-104", "BT-105"}, Text: "Charge reason empty or code unset"})
 			}
+			// BR-39 Zuschläge auf Dokumentenebene
+			// Der Betrag einer Abgabe auf Dokumentenebene "Document level charge amount" (BT-99) darf nicht negativ sein.
+			if ac.ActualAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-39", InvFields: []string{"BG-21", "BT-99"}, Text: "Document level charge amount must not be negative"})
+			}
+			// BR-40 Zuschläge auf Dokumentenebene
+			// Der Basisbetrag einer Abgabe auf Dokumentenebene "Document level charge base amount" (BT-100) darf nicht negativ sein.
+			if ac.BasisAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-40", InvFields: []string{"BG-21", "BT-100"}, Text: "Document level charge base amount must not be negative"})
+			}
 		} else {
 			// BR-31 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag "Document level allowance amount"
@@ -901,9 +908,19 @@ func (inv *Invoice) checkBR() {
 			}
 			// BR-33 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Nachlassgrund "Document level allowance
-			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98) aufweisen.
+			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98") aufweisen.
 			if ac.Reason == "" && ac.ReasonCode == 0 {
 				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-33", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance reason empty or code unset"})
+			}
+			// BR-34 Abschläge auf Dokumentenebene
+			// Der Betrag eines Nachlasses auf Dokumentenebene "Document level allowance amount" (BT-92) darf nicht negativ sein.
+			if ac.ActualAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-34", InvFields: []string{"BG-20", "BT-92"}, Text: "Document level allowance amount must not be negative"})
+			}
+			// BR-35 Abschläge auf Dokumentenebene
+			// Der Basisbetrag eines Nachlasses auf Dokumentenebene "Document level allowance base amount" (BT-93) darf nicht negativ sein.
+			if ac.BasisAmount.LessThan(decimal.Zero) {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-35", InvFields: []string{"BG-20", "BT-93"}, Text: "Document level allowance base amount must not be negative"})
 			}
 		}
 	}
@@ -949,9 +966,6 @@ func (inv *Invoice) checkBR() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-45", InvFields: []string{"BG-23", "BT-116"}, Text: "Applicable trade tax basis amount not equal to the sum of line total"})
 
 		}
-		// BR-46 Umsatzsteueraufschlüsselung
-		// in parser.go
-
 		// BR-47 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN“ (BG-23) muss über
 		// eine codierte Bezeichnung einer Umsatzsteuerkategorie "VAT category
@@ -959,9 +973,6 @@ func (inv *Invoice) checkBR() {
 		if tt.CategoryCode == "" {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-47", InvFields: []string{"BG-23", "BT-118"}, Text: "CategoryCode not set for applicable trade tax"})
 		}
-
-		// BR-48 Umsatzsteueraufschlüsselung
-		// in parser.go
 	}
 	for _, pm := range inv.PaymentMeans {
 		// BR-49 Zahlungsanweisungen
@@ -972,60 +983,123 @@ func (inv *Invoice) checkBR() {
 	}
 	// BR-50 Kontoinformationen
 	// Die Kennung des Kontos, auf das die Zahlung erfolgen soll "Payment
-	// account identifier“ (BT-84), muss angegeben werden, wenn
+	// account identifier" (BT-84), muss angegeben werden, wenn
 	// Überweisungsinformationen in der Rechnung angegeben werden.
+	// Note: This is a weaker version of BR-61 and is generally covered by BR-61
 
 	// BR-51 Karteninformationen
 	// Die letzten vier bis sechs Ziffern der Kreditkartennummer "Payment card
-	// primary account number“ (BT-87) sollen angegeben werden, wenn
+	// primary account number" (BT-87) sollen angegeben werden, wenn
 	// Informationen zur Kartenzahlung übermittelt werden.
+	// Note: This uses "sollen" (should) not "muss" (must), so it's a recommendation not requirement
 
 	// BR-52 Rechnungsbegründende Unterlagen
 	// Jede rechnungsbegründende Unterlage muss einen Dokumentenbezeichner
-	// "Supporting document reference“ (BT-122) haben.
+	// "Supporting document reference" (BT-122) haben.
+	for _, doc := range inv.AdditionalReferencedDocument {
+		if doc.IssuerAssignedID == "" {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-52", InvFields: []string{"BG-24", "BT-122"}, Text: "Supporting document must have a reference"})
+		}
+	}
 
 	// BR-53 Gesamtsummen auf Dokumentenebene
 	// Wenn eine Währung für die Umsatzsteuerabrechnung angegeben wurde, muss
 	// der Umsatzsteuergesamtbetrag in der Abrechnungswährung "Invoice total VAT
-	// amount in accounting currency“ (BT-111) angegeben werden.
+	// amount in accounting currency" (BT-111) angegeben werden.
+	if inv.TaxCurrencyCode != "" && inv.TaxTotalVAT.IsZero() {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-53", InvFields: []string{"BT-6", "BT-111"}, Text: "Tax total in accounting currency must be specified when tax currency code is provided"})
+	}
 
 	// BR-54 Artikelattribute
-	// Jede Eigenschaft eines in Rechnung gestellten Postens "ITEM ATTRIBUTES“
-	// (BG-32) muss eine Bezeichnung "Item attribute name“ (BT-160) und einen
-	// Wert "Item attribute value“ (BT-161) haben.
+	// Jede Eigenschaft eines in Rechnung gestellten Postens "ITEM ATTRIBUTES"
+	// (BG-32) muss eine Bezeichnung "Item attribute name" (BT-160) und einen
+	// Wert "Item attribute value" (BT-161) haben.
+	for _, line := range inv.InvoiceLines {
+		for _, char := range line.Characteristics {
+			if char.Description == "" || char.Value == "" {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-54", InvFields: []string{"BG-32", "BT-160", "BT-161"}, Text: "Item attribute must have both name and value"})
+			}
+		}
+	}
 
 	// BR-55 Referenz auf die vorausgegangene Rechnung
 	// Jede Bezugnahme auf eine vorausgegangene Rechnung "Preceding Invoice
-	// reference“ (BT-25) muss die Nummer der vorausgegangenen Rechnung
+	// reference" (BT-25) muss die Nummer der vorausgegangenen Rechnung
 	// enthalten.
+	for _, ref := range inv.InvoiceReferencedDocument {
+		if ref.ID == "" {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-55", InvFields: []string{"BG-3", "BT-25"}, Text: "Preceding invoice reference must contain invoice number"})
+		}
+	}
 
 	// BR-56 Steuerbevollmächtigter des Verkäufers
-	// Jeder Steuervertreter des Verkäufers "SELLER TAX REPRESENTATIVE PARTY“
+	// Jeder Steuervertreter des Verkäufers "SELLER TAX REPRESENTATIVE PARTY"
 	// (BG-11) muss eine Umsatzsteuer-Identifikationsnummer "Seller tax
-	// representative VAT identifier“ (BT-63) haben.
+	// representative VAT identifier" (BT-63) haben.
+	if inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration == "" {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-56", InvFields: []string{"BG-11", "BT-63"}, Text: "Seller tax representative must have VAT identifier"})
+	}
 
 	// BR-57 Lieferanschrift
-	// Jede Lieferadresse "DELIVER TO ADDRESS“ (BG-15) muss einen entsprechenden
-	// Ländercode "Deliver to country code“ (BT-80) enthalten.
+	// Jede Lieferadresse "DELIVER TO ADDRESS" (BG-15) muss einen entsprechenden
+	// Ländercode "Deliver to country code" (BT-80) enthalten.
+	if inv.ShipTo != nil && inv.ShipTo.PostalAddress != nil && inv.ShipTo.PostalAddress.CountryID == "" {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-57", InvFields: []string{"BG-15", "BT-80"}, Text: "Deliver-to address must have country code"})
+	}
 
 	// BR-61 Zahlungsanweisungen
 	// Wenn der Zahlungsmittel-Typ SEPA, lokale Überweisung oder
-	// Nicht-SEPA-Überweisung ist, muss der "Payment account identifier“ (BT-84)
+	// Nicht-SEPA-Überweisung ist, muss der "Payment account identifier" (BT-84)
 	// des Zahlungsempfängers angegeben werden.
+	for _, pm := range inv.PaymentMeans {
+		// TypeCode 30 = Credit transfer, 58 = SEPA credit transfer
+		if (pm.TypeCode == 30 || pm.TypeCode == 58) && pm.PayeePartyCreditorFinancialAccountIBAN == "" && pm.PayeePartyCreditorFinancialAccountProprietaryID == "" {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-61", InvFields: []string{"BG-16", "BT-84"}, Text: "Payment account identifier required for credit transfer payment types"})
+		}
+	}
 
 	// BR-62 Elektronische Adresse des Verkäufers
-	// Im Element "Seller electronic address“ (BT-34) muss die Komponente
-	// "Scheme Identifier“ vorhanden sein.
+	// Im Element "Seller electronic address" (BT-34) muss die Komponente
+	// "Scheme Identifier" vorhanden sein.
+	if inv.Seller.URIUniversalCommunication != "" && inv.Seller.URIUniversalCommunicationScheme == "" {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-62", InvFields: []string{"BT-34"}, Text: "Seller electronic address must have scheme identifier"})
+	}
 
 	// BR-63 Elektronische Adresse des Käufers
-	// Im Element "Buyer electronic address“ (BT-49) muss die Komponente "Scheme
-	// Identifier“ vorhanden sein.
+	// Im Element "Buyer electronic address" (BT-49) muss die Komponente "Scheme
+	// Identifier" vorhanden sein.
+	if inv.Buyer.URIUniversalCommunication != "" && inv.Buyer.URIUniversalCommunicationScheme == "" {
+		inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-63", InvFields: []string{"BT-49"}, Text: "Buyer electronic address must have scheme identifier"})
+	}
 
 	// BR-64 Kennung eines Artikels nach registriertem Schema
-	// Im Element "Item standard identifier“ (BT-157) muss die Komponente
-	// "Scheme Identifier“ vorhanden sein.
+	// Im Element "Item standard identifier" (BT-157) muss die Komponente
+	// "Scheme Identifier" vorhanden sein.
+	for _, line := range inv.InvoiceLines {
+		if line.GlobalID != "" && line.GlobalIDType == "" {
+			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-64", InvFields: []string{"BG-31", "BT-157"}, Text: "Item standard identifier must have scheme identifier"})
+		}
+	}
 
 	// BR-65 Kennung der Artikelklassifizierung
-	// Im Element "Item classification identifier“ (BT-158) muss die Komponente
-	// "Scheme Identifier“ vorhanden sein.
+	// Im Element "Item classification identifier" (BT-158) muss die Komponente
+	// "Scheme Identifier" vorhanden sein.
+	for _, line := range inv.InvoiceLines {
+		for _, classification := range line.ProductClassification {
+			if classification.ClassCode != "" && classification.ListID == "" {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-65", InvFields: []string{"BG-31", "BT-158"}, Text: "Item classification identifier must have scheme identifier"})
+			}
+		}
+	}
+
+	// VAT category validations - delegated to specialized methods
+	inv.checkVATStandard()
+	inv.checkVATReverse()
+	inv.checkVATExempt()
+	inv.checkVATZero()
+	inv.checkVATExport()
+	inv.checkVATIntracommunity()
+	inv.checkVATIGIC()
+	inv.checkVATIPSI()
+	inv.checkVATNotSubject()
 }

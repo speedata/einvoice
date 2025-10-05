@@ -57,11 +57,26 @@ go get github.com/speedata/einvoice
   - BR-CO-15: GrandTotal = TaxBasisTotal + TaxTotal (BT-112)
   - BR-CO-16: DuePayableAmount = GrandTotal - TotalPrepaid + RoundingAmount (BT-115)
 
-**Validation (`check.go`)**
-- `check()`: Validates invoice against EN 16931 business rules (BR-1 to BR-45+)
-- Returns `SemanticError` structs with rule number, affected fields, and description
-- Called automatically by `ParseReader()`
-- Methods: `checkBR()`, `checkBRO()`, `checkOther()`
+**Validation (Organized by domain)**
+The validation logic is split across multiple focused files for maintainability:
+
+- `check.go`: Main orchestrator containing core business rules (BR-1 to BR-65) and `check()` method
+- `check_vat_standard.go`: Standard rated VAT validations (BR-S-1 to BR-S-10)
+- `check_vat_reverse.go`: Reverse charge VAT validations (BR-AE-1 to BR-AE-10)
+- `check_vat_exempt.go`: Exempt from VAT validations (BR-E-1 to BR-E-10)
+- `check_vat_zero.go`: Zero rated VAT validations (BR-Z-1 to BR-Z-10)
+- `check_vat_export.go`: Export outside EU validations (BR-G-1 to BR-G-10)
+- `check_vat_intracommunity.go`: Intra-community supply validations (BR-IC-1 to BR-IC-12)
+- `check_vat_igic.go`: IGIC (Canary Islands) validations (BR-IG-1 to BR-IG-10)
+- `check_vat_ipsi.go`: IPSI (Ceuta/Melilla) validations (BR-IP-1 to BR-IP-10)
+- `check_vat_notsubject.go`: Not subject to VAT validations (BR-O-1 to BR-O-14)
+
+Each validation file contains a single method (e.g., `checkVATStandard()`) with comprehensive documentation explaining:
+- The tax category purpose and requirements
+- All business rules implemented in that file
+- Field references (BT-/BG-) per EN 16931 specification
+
+The `check()` method orchestrates all validation by calling each specialized method in sequence. Violations are accumulated in `Invoice.Violations` as `SemanticError` structs. Validation is automatically triggered by `ParseReader()`.
 
 **Writing (`writer.go`)**
 - `Invoice.Write(io.Writer)`: Outputs ZUGFeRD/Factur-X XML
