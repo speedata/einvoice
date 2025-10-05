@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -3602,5 +3603,476 @@ func TestBRG10_MissingExemptionReason(t *testing.T) {
 
 	if !found {
 		t.Error("Expected BR-G-10 violation for missing exemption reason in Export outside EU")
+	}
+}
+
+// BR-IC tests (Intra-community supply)
+
+func TestBRIC1_MissingSellerVAT(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "K",
+			},
+		},
+		Buyer: Party{VATaxRegistration: "DE456"},
+		// Seller VAT missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-1" && strings.Contains(v.Text, "seller") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-1 violation for missing seller VAT in Intra-community supply")
+	}
+}
+
+func TestBRIC1_MissingBuyerVAT(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "K",
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		// Buyer VAT and legal ID missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-1" && strings.Contains(v.Text, "buyer") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-1 violation for missing buyer VAT in Intra-community supply")
+	}
+}
+
+func TestBRIC1_BuyerLegalIDAccepted(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "K",
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{SpecifiedLegalOrganization: &SpecifiedLegalOrganization{ID: "LEGAL123"}},
+	}
+
+	inv.check()
+
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-1" && strings.Contains(v.Text, "buyer") {
+			t.Error("Should not have BR-IC-1 violation when buyer has legal registration ID")
+		}
+	}
+}
+
+func TestBRIC2_LineMissingSellerVAT(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "K",
+			},
+		},
+		Buyer: Party{VATaxRegistration: "DE456"},
+		// Seller VAT missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-2" && strings.Contains(v.Text, "seller") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-2 violation for missing seller VAT in Intra-community supply line")
+	}
+}
+
+func TestBRIC2_LineMissingBuyerVAT(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "K",
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		// Buyer VAT missing
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-2" && strings.Contains(v.Text, "buyer") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-2 violation for missing buyer VAT in Intra-community supply line")
+	}
+}
+
+func TestBRIC3_NonZeroRateInLine(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "K",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-3" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-3 violation for non-zero VAT rate in Intra-community supply line")
+	}
+}
+
+func TestBRIC4_NonZeroRateInAllowance(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       false,
+				CategoryTradeTaxCategoryCode:          "K",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-4" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-4 violation for non-zero VAT rate in Intra-community supply allowance")
+	}
+}
+
+func TestBRIC5_NonZeroRateInCharge(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       true,
+				CategoryTradeTaxCategoryCode:          "K",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-5" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-5 violation for non-zero VAT rate in Intra-community supply charge")
+	}
+}
+
+func TestBRIC6_TaxableAmountMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "K",
+				Total:           decimal.NewFromFloat(100.0),
+			},
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:              false,
+				CategoryTradeTaxCategoryCode: "K",
+				ActualAmount:                 decimal.NewFromFloat(10.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "K",
+				BasisAmount:  decimal.NewFromFloat(100.0), // Should be 90.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-6" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-6 violation for taxable amount mismatch in Intra-community supply")
+	}
+}
+
+func TestBRIC7_NonZeroVATAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "K",
+				CalculatedAmount: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-7" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-7 violation for non-zero VAT amount in Intra-community supply")
+	}
+}
+
+func TestBRIC8_TaxableAmountByRateMismatch(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "K",
+				TaxRateApplicablePercent: decimal.NewFromFloat(0.0),
+				Total:                    decimal.NewFromFloat(100.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "K",
+				Percent:      decimal.NewFromFloat(0.0),
+				BasisAmount:  decimal.NewFromFloat(80.0), // Should be 100.0
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-8" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-8 violation for taxable amount by rate mismatch in Intra-community supply")
+	}
+}
+
+func TestBRIC9_NonZeroVATAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "K",
+				CalculatedAmount: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-9" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-9 violation for non-zero VAT amount in Intra-community supply")
+	}
+}
+
+func TestBRIC10_MissingExemptionReason(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "K",
+				// ExemptionReason and ExemptionReasonCode missing
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-10" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-10 violation for missing exemption reason in Intra-community supply")
+	}
+}
+
+func TestBRIC11_MissingDeliveryDate(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "K",
+			},
+		},
+		// OccurrenceDateTime, BillingSpecifiedPeriodStart, BillingSpecifiedPeriodEnd all zero
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-11" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-11 violation for missing delivery date in Intra-community supply")
+	}
+}
+
+func TestBRIC11_HasDeliveryDate(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "K",
+			},
+		},
+		OccurrenceDateTime: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	inv.check()
+
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-11" {
+			t.Error("Should not have BR-IC-11 violation when delivery date is present")
+		}
+	}
+}
+
+func TestBRIC12_MissingDeliverToCountry(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "K",
+			},
+		},
+		// ShipTo missing or has no CountryID
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-12" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-IC-12 violation for missing deliver to country in Intra-community supply")
+	}
+}
+
+func TestBRIC12_HasDeliverToCountry(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "K",
+			},
+		},
+		ShipTo: &Party{
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+	}
+
+	inv.check()
+
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-IC-12" {
+			t.Error("Should not have BR-IC-12 violation when deliver to country is present")
+		}
 	}
 }
