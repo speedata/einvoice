@@ -80,7 +80,7 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	// BT-148
 	if !invoiceLine.GrossPrice.IsZero() {
 		gpptp := slta.CreateElement("ram:GrossPriceProductTradePrice")
-		gpptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.GrossPrice.StringFixed(12))
+		gpptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.GrossPrice.StringFixed(2))
 
 		for _, allowanceCharge := range invoiceLine.AppliedTradeAllowanceCharge {
 			acElt := gpptp.CreateElement("ram:AppliedTradeAllowanceCharge")

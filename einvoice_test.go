@@ -75,7 +75,7 @@ func ExampleInvoice_Write() {
 				TaxCategoryCode:          "S",
 			},
 			{
-				LineID:                   "1",
+				LineID:                   "2",
 				ItemName:                 "Item name two",
 				BilledQuantity:           decimal.NewFromFloat(2),
 				BilledQuantityUnit:       "HUR",
@@ -139,7 +139,7 @@ func ExampleInvoice_Write() {
 	//     </ram:IncludedSupplyChainTradeLineItem>
 	//     <ram:IncludedSupplyChainTradeLineItem>
 	//       <ram:AssociatedDocumentLineDocument>
-	//         <ram:LineID>1</ram:LineID>
+	//         <ram:LineID>2</ram:LineID>
 	//       </ram:AssociatedDocumentLineDocument>
 	//       <ram:SpecifiedTradeProduct>
 	//         <ram:Name>Item name two</ram:Name>
