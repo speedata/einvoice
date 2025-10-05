@@ -5,7 +5,7 @@ go 1.24
 tool github.com/golangci/golangci-lint/cmd/golangci-lint
 
 require (
-	github.com/beevik/etree v1.5.1
+	github.com/beevik/etree v1.6.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/speedata/cxpath v0.0.4
 )
