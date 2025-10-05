@@ -2575,3 +2575,346 @@ func TestBRAE10_MissingExemptionReason(t *testing.T) {
 		t.Error("Expected BR-AE-10 violation for missing exemption reason in Reverse charge")
 	}
 }
+
+func TestBRE1_MissingExemptBreakdown(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "E",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "S", // Wrong category
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-1" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-1 violation for missing Exempt from VAT breakdown")
+	}
+}
+
+func TestBRE2_MissingSellerVATID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "E",
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "", // Missing
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-2" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-2 violation for missing seller VAT ID")
+	}
+}
+
+func TestBRE3_AllowanceMissingSellerVATID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:              false,
+				CategoryTradeTaxCategoryCode: "E",
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "", // Missing
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-3" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-3 violation for Exempt allowance without seller VAT")
+	}
+}
+
+func TestBRE4_ChargeMissingSellerVATID(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:              true,
+				CategoryTradeTaxCategoryCode: "E",
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "", // Missing
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-4" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-4 violation for Exempt charge without seller VAT")
+	}
+}
+
+func TestBRE5_NonZeroRateInLine(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "E",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "DE123",
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-5" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-5 violation for non-zero VAT rate in Exempt line")
+	}
+}
+
+func TestBRE6_NonZeroRateInAllowance(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       false,
+				CategoryTradeTaxCategoryCode:          "E",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "DE123",
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-6" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-6 violation for non-zero VAT rate in Exempt allowance")
+	}
+}
+
+func TestBRE7_NonZeroRateInCharge(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       true,
+				CategoryTradeTaxCategoryCode:          "E",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "DE123",
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-7" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-7 violation for non-zero VAT rate in Exempt charge")
+	}
+}
+
+func TestBRE8_IncorrectTaxableAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "E",
+				TaxRateApplicablePercent: decimal.Zero,
+				Total:                    decimal.NewFromFloat(100.0),
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "DE123",
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+				BasisAmount:  decimal.NewFromFloat(50.0), // Wrong, should be 100
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-8" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-8 violation for incorrect taxable amount")
+	}
+}
+
+func TestBRE9_NonZeroVATAmount(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "E",
+				TaxRateApplicablePercent: decimal.Zero,
+				Total:                    decimal.NewFromFloat(100.0),
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "DE123",
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "E",
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				CalculatedAmount: decimal.NewFromFloat(19.0), // Should be 0
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-9" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-9 violation for non-zero VAT amount in Exempt")
+	}
+}
+
+func TestBRE10_MissingExemptionReason(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "E",
+				TaxRateApplicablePercent: decimal.Zero,
+			},
+		},
+		Seller: Party{
+			VATaxRegistration: "DE123",
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode: "E",
+				// Missing ExemptionReason and ExemptionReasonCode
+			},
+		},
+	}
+
+	inv.check()
+
+	found := false
+	for _, v := range inv.Violations {
+		if v.Rule == "BR-E-10" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-E-10 violation for missing exemption reason in Exempt")
+	}
+}
