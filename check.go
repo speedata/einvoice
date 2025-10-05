@@ -848,48 +848,65 @@ func (inv *Invoice) checkBR() {
 			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-30", InvFields: []string{"BG-25", "BT-135", "BT-134"}, Text: "Line item billing period end must be after or identical to start"})
 		}
 	}
-	for _, allowance := range inv.SpecifiedTradeAllowanceCharge {
-		// BR-31 Abschläge auf Dokumentenebene
-		// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Betrag „Document level allowance amount“
-		// (BT-92) aufweisen.
-		if allowance.ActualAmount.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-31", InvFields: []string{"BG-20", "BT-92"}, Text: "Allowance must not be zero"})
+
+	// Initialize applicableTradeTaxes map for BR-45 validation
+	var applicableTradeTaxes = make(map[string]decimal.Decimal, len(inv.TradeTaxes))
+	for _, lineitem := range inv.InvoiceLines {
+		percentString := lineitem.TaxRateApplicablePercent.String()
+		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(lineitem.Total)
+	}
+
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		// Add to applicableTradeTaxes for BR-45 validation
+		percentString := ac.CategoryTradeTaxRateApplicablePercent.String()
+		amount := ac.ActualAmount
+		if !ac.ChargeIndicator {
+			amount = amount.Neg()
 		}
-		// BR-32 Abschläge auf Dokumentenebene
-		// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Umsatzsteuer-Code „Document level
-		// allowance VAT category code“ (BT-95) aufweisen.
-		if allowance.CategoryTradeTaxCategoryCode == "" {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance tax category code not set"})
-		}
-		// BR-33 Abschläge auf Dokumentenebene
-		// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES“ (BG-20) muss einen Nachlassgrund „Document level allowance
-		// reason“ (BT-97) oder einen entsprechenden Code „Document level allowance reason code“ (BT-98) aufweisen.
-		if allowance.Reason == "" && allowance.ReasonCode == 0 {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-33", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance reason empty or code unset"})
+		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(amount)
+
+		if ac.ChargeIndicator {
+			// BR-36 Zuschläge auf Dokumentenebene
+			// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES" (BG-21) muss einen Betrag „Document level charge amount" (BT-99)
+			// aufweisen.
+			if ac.ActualAmount.IsZero() {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-36", InvFields: []string{"BG-21", "BT-99"}, Text: "Charge must not be zero"})
+			}
+
+			// BR-37 Zuschläge auf Dokumentenebene
+			// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES" (BG-21) muss einen Umsatzsteuer-Code „Document level charge VAT
+			// category code" (BT-102) aufweisen.
+			if ac.CategoryTradeTaxCategoryCode == "" {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-21", "BT-102"}, Text: "Charge tax category code not set"})
+			}
+			// BR-38 Zuschläge auf Dokumentenebene
+			// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES" (BG-21) muss einen Abgabegrund „Document level charge reason" (BT-104)
+			// oder einen entsprechenden Code „Document level charge reason code" (BT-105) aufweisen.
+			if ac.Reason == "" && ac.ReasonCode == 0 {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-38", InvFields: []string{"BG-21", "BT-104", "BT-105"}, Text: "Charge reason empty or code unset"})
+			}
+		} else {
+			// BR-31 Abschläge auf Dokumentenebene
+			// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag „Document level allowance amount"
+			// (BT-92) aufweisen.
+			if ac.ActualAmount.IsZero() {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-31", InvFields: []string{"BG-20", "BT-92"}, Text: "Allowance must not be zero"})
+			}
+			// BR-32 Abschläge auf Dokumentenebene
+			// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Umsatzsteuer-Code „Document level
+			// allowance VAT category code" (BT-95) aufweisen.
+			if ac.CategoryTradeTaxCategoryCode == "" {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance tax category code not set"})
+			}
+			// BR-33 Abschläge auf Dokumentenebene
+			// Jeder Nachlass für die Rechnung als Ganzes „DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Nachlassgrund „Document level allowance
+			// reason" (BT-97) oder einen entsprechenden Code „Document level allowance reason code" (BT-98) aufweisen.
+			if ac.Reason == "" && ac.ReasonCode == 0 {
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-33", InvFields: []string{"BG-20", "BT-95"}, Text: "Allowance reason empty or code unset"})
+			}
 		}
 	}
 
-	for _, charge := range inv.SpecifiedTradeAllowanceCharge {
-		// BR-36 Zuschläge auf Dokumentenebene
-		// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Betrag „Document level charge amount“ (BT-99)
-		// aufweisen.
-		if charge.ActualAmount.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-36", InvFields: []string{"BG-21", "BT-99"}, Text: "Charge must not be zero"})
-		}
-
-		// BR-37 Zuschläge auf Dokumentenebene
-		// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Umsatzsteuer-Code „Document level charge VAT
-		// category code“ (BT-102) aufweisen.
-		if charge.CategoryTradeTaxCategoryCode == "" {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-21", "BT-102"}, Text: "Charge tax category code not set"})
-		}
-		// BR-38 Zuschläge auf Dokumentenebene
-		// Jede Abgabe auf Dokumentenebene „DOCUMENT LEVEL CHARGES“ (BG-21) muss einen Abgabegrund „Document level charge reason“ (BT-104)
-		// oder einen entsprechenden Code „Document level charge reason code“ (BT-105) aufweisen.
-		if charge.Reason == "" && charge.ReasonCode == 0 {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-38", InvFields: []string{"BG-21", "BT-104", "BT-105"}, Text: "Charge reason empty or code unset"})
-		}
-	}
 	for _, line := range inv.InvoiceLines {
 		// BR-41 Abschläge auf Ebene der Rechnungsposition
 		// Jeder Nachlass auf der Ebene der Rechnungsposition „INVOICE LINE ALLOWANCES“ (BG-27) muss einen Betrag „Invoice line allowance amount“
@@ -921,20 +938,6 @@ func (inv *Invoice) checkBR() {
 		}
 	}
 
-	var applicableTradeTaxes = make(map[string]decimal.Decimal, len(inv.TradeTaxes))
-	for _, lineitem := range inv.InvoiceLines {
-		percentString := lineitem.TaxRateApplicablePercent.String()
-		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(lineitem.Total)
-	}
-
-	for _, v := range inv.SpecifiedTradeAllowanceCharge {
-		percentString := v.CategoryTradeTaxRateApplicablePercent.String()
-		amount := v.ActualAmount
-		if !v.ChargeIndicator {
-			amount = amount.Neg()
-		}
-		applicableTradeTaxes[percentString] = applicableTradeTaxes[percentString].Add(amount)
-	}
 	for _, tt := range inv.TradeTaxes {
 		// BR-45 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung „VAT BREAKDOWN“ (BG-23) muss die
