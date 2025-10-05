@@ -734,7 +734,7 @@ func (inv *Invoice) checkBR() {
 			// Eine postalische Anschrift des Erwerbers "BUYER POSTAL ADDRESS“ (BG-8) muss einen Erwerber-Ländercode "Buyer country code“ (BT-55)
 			// enthalten.
 			if inv.Buyer.PostalAddress.CountryID == "" {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-11", InvFields: []string{"BT-5"}, Text: "Buyer country code empty"})
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-11", InvFields: []string{"BT-55"}, Text: "Buyer country code empty"})
 			}
 		}
 	}
@@ -877,7 +877,7 @@ func (inv *Invoice) checkBR() {
 			// Jede Abgabe auf Dokumentenebene "DOCUMENT LEVEL CHARGES" (BG-21) muss einen Umsatzsteuer-Code "Document level charge VAT
 			// category code" (BT-102) aufweisen.
 			if ac.CategoryTradeTaxCategoryCode == "" {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-32", InvFields: []string{"BG-21", "BT-102"}, Text: "Charge tax category code not set"})
+				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-37", InvFields: []string{"BG-21", "BT-102"}, Text: "Charge tax category code not set"})
 			}
 			// BR-38 Zuschläge auf Dokumentenebene
 			// Jede Abgabe auf Dokumentenebene "DOCUMENT LEVEL CHARGES" (BG-21) muss einen Abgabegrund "Document level charge reason" (BT-104)
