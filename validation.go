@@ -2,6 +2,13 @@ package einvoice
 
 import "fmt"
 
+// SemanticError contains a business rule violation found during validation.
+type SemanticError struct {
+	Rule      string   // Business rule identifier (e.g., "BR-1", "BR-S-8")
+	InvFields []string // Fields involved in the violation (e.g., "BT-1", "BG-23")
+	Text      string   // Human-readable description of the violation
+}
+
 // ValidationError is returned when invoice validation fails.
 // It contains all EN 16931 business rule violations found during validation.
 //
@@ -65,4 +72,42 @@ func (e *ValidationError) HasRule(rule string) bool {
 		}
 	}
 	return false
+}
+
+// Validate checks the invoice against EN 16931 business rules.
+// It clears any previous violations and performs a fresh validation.
+// Returns a ValidationError if violations exist, nil if invoice is valid.
+//
+// This method should be called:
+// - After building an invoice programmatically
+// - After modifying invoice data (e.g., after UpdateTotals)
+// - Before writing XML to ensure compliance
+//
+// Example:
+//
+//	err := inv.Validate()
+//	if err != nil {
+//	    var valErr *ValidationError
+//	    if errors.As(err, &valErr) {
+//	        for _, v := range valErr.Violations() {
+//	            fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+//	        }
+//	    }
+//	    return err
+//	}
+func (inv *Invoice) Validate() error {
+	// Always clear previous violations to ensure idempotency
+	inv.violations = []SemanticError{}
+
+	// Run all validation checks
+	inv.checkBR()
+	inv.checkBRO()
+	inv.checkOther()
+
+	// Return error if violations exist
+	if len(inv.violations) > 0 {
+		return &ValidationError{violations: inv.violations}
+	}
+
+	return nil
 }
