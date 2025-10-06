@@ -49,10 +49,10 @@ func (inv *Invoice) checkVATIntracommunity() {
 		hasBuyerLegalID := inv.Buyer.SpecifiedLegalOrganization != nil && inv.Buyer.SpecifiedLegalOrganization.ID != ""
 
 		if !hasSellerTaxID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-1", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Intra-community supply requires seller VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-1", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Intra-community supply requires seller VAT identifier"})
 		}
 		if !hasBuyerVATID && !hasBuyerLegalID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-1", InvFields: []string{"BT-48", "BT-47"}, Text: "Intra-community supply requires buyer VAT identifier or legal registration identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-1", InvFields: []string{"BT-48", "BT-47"}, Text: "Intra-community supply requires buyer VAT identifier or legal registration identifier"})
 		}
 	}
 
@@ -66,10 +66,10 @@ func (inv *Invoice) checkVATIntracommunity() {
 			hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 
 			if !hasSellerVATID {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-2", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Intra-community supply line requires seller VAT identifier"})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-2", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Intra-community supply line requires seller VAT identifier"})
 			}
 			if !hasBuyerVATID {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-2", InvFields: []string{"BT-48"}, Text: "Intra-community supply line requires buyer VAT identifier"})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-2", InvFields: []string{"BT-48"}, Text: "Intra-community supply line requires buyer VAT identifier"})
 			}
 			break
 		}
@@ -79,7 +79,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT rate must be 0 for lines with category K
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "K" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-3", InvFields: []string{"BT-152"}, Text: "Intra-community supply VAT rate must be 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-3", InvFields: []string{"BT-152"}, Text: "Intra-community supply VAT rate must be 0"})
 		}
 	}
 
@@ -87,7 +87,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT rate must be 0 for allowances with category K
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "K" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-4", InvFields: []string{"BT-96"}, Text: "Intra-community supply allowance VAT rate must be 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-4", InvFields: []string{"BT-96"}, Text: "Intra-community supply allowance VAT rate must be 0"})
 		}
 	}
 
@@ -95,7 +95,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT rate must be 0 for charges with category K
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "K" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-5", InvFields: []string{"BT-103"}, Text: "Intra-community supply charge VAT rate must be 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-5", InvFields: []string{"BT-103"}, Text: "Intra-community supply charge VAT rate must be 0"})
 		}
 	}
 
@@ -122,7 +122,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 			}
 			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal)
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-6", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("Intra-community supply taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-6", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("Intra-community supply taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
 			}
 		}
 	}
@@ -131,7 +131,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT amount must be 0 for category K
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "K" && !tt.CalculatedAmount.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-7", InvFields: []string{"BT-117"}, Text: "Intra-community supply VAT amount must be 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-7", InvFields: []string{"BT-117"}, Text: "Intra-community supply VAT amount must be 0"})
 		}
 	}
 
@@ -159,7 +159,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 			key := tt.Percent.String()
 			expectedBasis := taxRateMap[key]
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-8", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-8", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
 			}
 		}
 	}
@@ -168,7 +168,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT amount must be 0 for category K (duplicate of BR-IC-7, but specified separately in spec)
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "K" && !tt.CalculatedAmount.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-9", InvFields: []string{"BT-117"}, Text: "Intra-community supply VAT amount must be 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-9", InvFields: []string{"BT-117"}, Text: "Intra-community supply VAT amount must be 0"})
 		}
 	}
 
@@ -176,7 +176,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// Intra-community supply breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "K" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Intra-community supply VAT breakdown must have exemption reason"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Intra-community supply VAT breakdown must have exemption reason"})
 		}
 	}
 
@@ -193,7 +193,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 		hasDeliveryDate := !inv.OccurrenceDateTime.IsZero()
 		hasBillingPeriod := !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero()
 		if !hasDeliveryDate && !hasBillingPeriod {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-11", InvFields: []string{"BT-72", "BG-14"}, Text: "Intra-community supply requires actual delivery date or invoicing period"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-11", InvFields: []string{"BT-72", "BG-14"}, Text: "Intra-community supply requires actual delivery date or invoicing period"})
 		}
 	}
 
@@ -202,7 +202,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	if hasIntraCommunityInVATBreakdown {
 		hasDeliverToCountry := inv.ShipTo != nil && inv.ShipTo.PostalAddress != nil && inv.ShipTo.PostalAddress.CountryID != ""
 		if !hasDeliverToCountry {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IC-12", InvFields: []string{"BT-80"}, Text: "Intra-community supply requires deliver to country code"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IC-12", InvFields: []string{"BT-80"}, Text: "Intra-community supply requires deliver to country code"})
 		}
 	}
 }
