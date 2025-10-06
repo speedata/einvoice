@@ -52,7 +52,7 @@ func TestBR11_BuyerCountryCodeField(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-11 violation
 	var br11Found bool
@@ -125,7 +125,7 @@ func TestBR37_ChargeRuleNumber(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-37 violation (not BR-32)
 	var br37Found bool
@@ -193,7 +193,7 @@ func TestBRCO3_TaxPointDateMutuallyExclusive(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-CO-3 violation
 	var brco3Found bool
@@ -252,7 +252,7 @@ func TestBRCO4_InvoiceLineMustHaveVATCategory(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-CO-4 violation
 	var brco4Found bool
@@ -311,7 +311,7 @@ func TestBRCO17_VATCalculation(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-CO-17 violation
 	var brco17Found bool
@@ -365,7 +365,7 @@ func TestBRCO18_AtLeastOneVATBreakdown(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-CO-18 violation
 	var brco18Found bool
@@ -432,7 +432,7 @@ func TestBRCO19_InvoicingPeriodRequiresDate(t *testing.T) {
 		// BillingSpecifiedPeriodStart and End are both zero - no period used
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Should NOT find BR-CO-19 violation
 	for _, v := range inv.violations {
@@ -490,7 +490,7 @@ func TestBRCO20_InvoiceLinePeriodRequiresDate(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Should NOT find BR-CO-20 violation
 	for _, v := range inv.violations {
@@ -545,7 +545,7 @@ func TestBRCO25_PositiveAmountRequiresPaymentInfo(t *testing.T) {
 		// Missing SpecifiedTradePaymentTerms - should trigger BR-CO-25
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-CO-25 violation
 	var brco25Found bool
@@ -609,7 +609,7 @@ func TestBRCO25_WithPaymentTerms(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Should NOT find BR-CO-25 violation
 	for _, v := range inv.violations {
@@ -668,7 +668,7 @@ func TestBRCO25_WithDueDate(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Should NOT find BR-CO-25 violation
 	for _, v := range inv.violations {
@@ -1137,7 +1137,7 @@ func TestBR28_NegativeGrossPrice(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-28 violation
 	var br28Found bool
@@ -1209,7 +1209,7 @@ func TestBR52_SupportingDocumentMustHaveReference(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-52 violation
 	var br52Found bool
@@ -1269,7 +1269,7 @@ func TestBR53_TaxAccountingCurrencyRequiresTotalVAT(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-53 violation
 	var br53Found bool
@@ -1334,7 +1334,7 @@ func TestBR54_ItemAttributeMustHaveNameAndValue(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-54 violation
 	var br54Found bool
@@ -1399,7 +1399,7 @@ func TestBR55_PrecedingInvoiceReferenceMustHaveNumber(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-55 violation
 	var br55Found bool
@@ -1462,7 +1462,7 @@ func TestBR56_TaxRepresentativeMustHaveVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-56 violation
 	var br56Found bool
@@ -1528,7 +1528,7 @@ func TestBR57_DeliverToAddressMustHaveCountryCode(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-57 violation
 	var br57Found bool
@@ -1593,7 +1593,7 @@ func TestBR61_CreditTransferRequiresAccountIdentifier(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-61 violation
 	var br61Found bool
@@ -1654,7 +1654,7 @@ func TestBR62_SellerElectronicAddressRequiresScheme(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-62 violation
 	var br62Found bool
@@ -1715,7 +1715,7 @@ func TestBR63_BuyerElectronicAddressRequiresScheme(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-63 violation
 	var br63Found bool
@@ -1776,7 +1776,7 @@ func TestBR64_ItemStandardIdentifierRequiresScheme(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-64 violation
 	var br64Found bool
@@ -1841,7 +1841,7 @@ func TestBR65_ItemClassificationRequiresScheme(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	// Find BR-65 violation
 	var br65Found bool
@@ -1872,7 +1872,7 @@ func TestBRS1_MissingStandardRatedBreakdown(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -1909,7 +1909,7 @@ func TestBRS2_MissingSellerVATForStandardLine(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -1943,7 +1943,7 @@ func TestBRS3_MissingSellerVATForStandardAllowance(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -1977,7 +1977,7 @@ func TestBRS4_MissingSellerVATForStandardCharge(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2011,7 +2011,7 @@ func TestBRS5_ZeroRateInStandardLine(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2046,7 +2046,7 @@ func TestBRS6_ZeroRateInStandardAllowance(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2081,7 +2081,7 @@ func TestBRS7_ZeroRateInStandardCharge(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2118,7 +2118,7 @@ func TestBRS8_IncorrectTaxableAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2156,7 +2156,7 @@ func TestBRS9_IncorrectVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2193,7 +2193,7 @@ func TestBRS10_ExemptionReasonInStandardRated(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2223,7 +2223,7 @@ func TestBRAE1_MissingReverseChargeBreakdown(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2259,7 +2259,7 @@ func TestBRAE2_MissingVATIDs(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2296,7 +2296,7 @@ func TestBRAE3_AllowanceMissingVATIDs(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2333,7 +2333,7 @@ func TestBRAE4_ChargeMissingVATIDs(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2370,7 +2370,7 @@ func TestBRAE5_NonZeroRateInLine(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2408,7 +2408,7 @@ func TestBRAE6_NonZeroRateInAllowance(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2446,7 +2446,7 @@ func TestBRAE7_NonZeroRateInCharge(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2485,7 +2485,7 @@ func TestBRAE8_IncorrectTaxableAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2525,7 +2525,7 @@ func TestBRAE9_NonZeroVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2563,7 +2563,7 @@ func TestBRAE10_MissingExemptionReason(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2593,7 +2593,7 @@ func TestBRE1_MissingExemptBreakdown(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2626,7 +2626,7 @@ func TestBRE2_MissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2660,7 +2660,7 @@ func TestBRE3_AllowanceMissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2694,7 +2694,7 @@ func TestBRE4_ChargeMissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2728,7 +2728,7 @@ func TestBRE5_NonZeroRateInLine(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2763,7 +2763,7 @@ func TestBRE6_NonZeroRateInAllowance(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2798,7 +2798,7 @@ func TestBRE7_NonZeroRateInCharge(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2834,7 +2834,7 @@ func TestBRE8_IncorrectTaxableAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2871,7 +2871,7 @@ func TestBRE9_NonZeroVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2906,7 +2906,7 @@ func TestBRE10_MissingExemptionReason(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2936,7 +2936,7 @@ func TestBRZ1_MissingZeroRatedBreakdown(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -2969,7 +2969,7 @@ func TestBRZ2_MissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3003,7 +3003,7 @@ func TestBRZ3_AllowanceMissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3037,7 +3037,7 @@ func TestBRZ4_ChargeMissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3071,7 +3071,7 @@ func TestBRZ5_NonZeroRateInLine(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3106,7 +3106,7 @@ func TestBRZ6_NonZeroRateInAllowance(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3141,7 +3141,7 @@ func TestBRZ7_NonZeroRateInCharge(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3177,7 +3177,7 @@ func TestBRZ8_IncorrectTaxableAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3214,7 +3214,7 @@ func TestBRZ9_NonZeroVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3249,7 +3249,7 @@ func TestBRZ10_ExemptionReasonPresent(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3279,7 +3279,7 @@ func TestBRG1_MissingExportOutsideEUBreakdown(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3312,7 +3312,7 @@ func TestBRG2_MissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3346,7 +3346,7 @@ func TestBRG3_AllowanceMissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3380,7 +3380,7 @@ func TestBRG4_ChargeMissingSellerVATID(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3414,7 +3414,7 @@ func TestBRG5_NonZeroRateInLine(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3449,7 +3449,7 @@ func TestBRG6_NonZeroRateInAllowance(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3484,7 +3484,7 @@ func TestBRG7_NonZeroRateInCharge(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3520,7 +3520,7 @@ func TestBRG8_IncorrectTaxableAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3557,7 +3557,7 @@ func TestBRG9_NonZeroVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3592,7 +3592,7 @@ func TestBRG10_MissingExemptionReason(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3621,7 +3621,7 @@ func TestBRIC1_MissingSellerVAT(t *testing.T) {
 		// Seller VAT missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3648,7 +3648,7 @@ func TestBRIC1_MissingBuyerVAT(t *testing.T) {
 		// Buyer VAT and legal ID missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3675,7 +3675,7 @@ func TestBRIC1_BuyerLegalIDAccepted(t *testing.T) {
 		Buyer:  Party{SpecifiedLegalOrganization: &SpecifiedLegalOrganization{ID: "LEGAL123"}},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	for _, v := range inv.violations {
 		if v.Rule == "BR-IC-1" && strings.Contains(v.Text, "buyer") {
@@ -3697,7 +3697,7 @@ func TestBRIC2_LineMissingSellerVAT(t *testing.T) {
 		// Seller VAT missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3724,7 +3724,7 @@ func TestBRIC2_LineMissingBuyerVAT(t *testing.T) {
 		// Buyer VAT missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3752,7 +3752,7 @@ func TestBRIC3_NonZeroRateInLine(t *testing.T) {
 		Buyer:  Party{VATaxRegistration: "DE456"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3781,7 +3781,7 @@ func TestBRIC4_NonZeroRateInAllowance(t *testing.T) {
 		Buyer:  Party{VATaxRegistration: "DE456"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3810,7 +3810,7 @@ func TestBRIC5_NonZeroRateInCharge(t *testing.T) {
 		Buyer:  Party{VATaxRegistration: "DE456"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3851,7 +3851,7 @@ func TestBRIC6_TaxableAmountMismatch(t *testing.T) {
 		Buyer:  Party{VATaxRegistration: "DE456"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3877,7 +3877,7 @@ func TestBRIC7_NonZeroVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3913,7 +3913,7 @@ func TestBRIC8_TaxableAmountByRateMismatch(t *testing.T) {
 		Buyer:  Party{VATaxRegistration: "DE456"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3939,7 +3939,7 @@ func TestBRIC9_NonZeroVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3965,7 +3965,7 @@ func TestBRIC10_MissingExemptionReason(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -3991,7 +3991,7 @@ func TestBRIC11_MissingDeliveryDate(t *testing.T) {
 		// OccurrenceDateTime, BillingSpecifiedPeriodStart, BillingSpecifiedPeriodEnd all zero
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4017,7 +4017,7 @@ func TestBRIC11_HasDeliveryDate(t *testing.T) {
 		OccurrenceDateTime: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	for _, v := range inv.violations {
 		if v.Rule == "BR-IC-11" {
@@ -4038,7 +4038,7 @@ func TestBRIC12_MissingDeliverToCountry(t *testing.T) {
 		// ShipTo missing or has no CountryID
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4068,7 +4068,7 @@ func TestBRIC12_HasDeliverToCountry(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	for _, v := range inv.violations {
 		if v.Rule == "BR-IC-12" {
@@ -4091,7 +4091,7 @@ func TestBRIG1_MissingSellerVAT(t *testing.T) {
 		// Seller VAT missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4124,7 +4124,7 @@ func TestBRIG5_TaxableAmountMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4153,7 +4153,7 @@ func TestBRIG6_VATAmountMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4188,7 +4188,7 @@ func TestBRIG7_TaxableAmountByRateMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4217,7 +4217,7 @@ func TestBRIG8_VATAmountByRateMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4244,7 +4244,7 @@ func TestBRIG9_HasExemptionReason(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4270,7 +4270,7 @@ func TestBRIG10_MissingSellerTaxID(t *testing.T) {
 		// Seller VAT and tax registration missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4297,7 +4297,7 @@ func TestBRIG10_HasBuyerVATID(t *testing.T) {
 		Buyer:  Party{VATaxRegistration: "DE456"}, // Must not have
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4324,7 +4324,7 @@ func TestBRIG10_ValidIGIC(t *testing.T) {
 		// Buyer without VAT ID is OK
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	for _, v := range inv.violations {
 		if v.Rule == "BR-IG-10" {
@@ -4347,7 +4347,7 @@ func TestBRIP1_MissingSellerVAT(t *testing.T) {
 		// Seller VAT missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4380,7 +4380,7 @@ func TestBRIP5_TaxableAmountMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4409,7 +4409,7 @@ func TestBRIP6_VATAmountMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4444,7 +4444,7 @@ func TestBRIP7_TaxableAmountByRateMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4473,7 +4473,7 @@ func TestBRIP8_VATAmountByRateMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4500,7 +4500,7 @@ func TestBRIP9_HasExemptionReason(t *testing.T) {
 		Seller: Party{VATaxRegistration: "ES123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4526,7 +4526,7 @@ func TestBRIP10_MissingSellerTaxID(t *testing.T) {
 		// Seller VAT and tax registration missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4553,7 +4553,7 @@ func TestBRIP10_HasBuyerVATID(t *testing.T) {
 		Buyer:  Party{VATaxRegistration: "DE456"}, // Must not have
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4580,7 +4580,7 @@ func TestBRIP10_ValidIPSI(t *testing.T) {
 		// Buyer without VAT ID is OK
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	for _, v := range inv.violations {
 		if v.Rule == "BR-IP-10" {
@@ -4603,7 +4603,7 @@ func TestBRO1_MissingBothTaxIDs(t *testing.T) {
 		// Both seller and buyer tax IDs missing
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4629,7 +4629,7 @@ func TestBRO1_HasSellerTaxID(t *testing.T) {
 		Seller: Party{VATaxRegistration: "DE123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	for _, v := range inv.violations {
 		if v.Rule == "BR-O-1" {
@@ -4650,7 +4650,7 @@ func TestBRO1_HasBuyerTaxID(t *testing.T) {
 		Buyer: Party{VATaxRegistration: "DE456"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	for _, v := range inv.violations {
 		if v.Rule == "BR-O-1" {
@@ -4671,7 +4671,7 @@ func TestBRO2_LineMissingSellerTaxID(t *testing.T) {
 		Buyer: Party{VATaxRegistration: "DE456"}, // Has buyer but not seller
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4698,7 +4698,7 @@ func TestBRO3_LineMissingVATBreakdown(t *testing.T) {
 		Seller: Party{VATaxRegistration: "DE123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4725,7 +4725,7 @@ func TestBRO6_NonZeroRateInLine(t *testing.T) {
 		Seller: Party{VATaxRegistration: "DE123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4758,7 +4758,7 @@ func TestBRO9_TaxableAmountMismatch(t *testing.T) {
 		Seller: Party{VATaxRegistration: "DE123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4784,7 +4784,7 @@ func TestBRO11_NonZeroVATAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4810,7 +4810,7 @@ func TestBRO13_MissingExemptionReason(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4838,7 +4838,7 @@ func TestBRO14_MultipleOCategories(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4875,7 +4875,7 @@ func TestBRO_ValidNotSubjectToVAT(t *testing.T) {
 		Seller: Party{VATaxRegistration: "DE123"},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	brORules := []string{"BR-O-1", "BR-O-2", "BR-O-3", "BR-O-6", "BR-O-9", "BR-O-11", "BR-O-13", "BR-O-14"}
 	for _, v := range inv.violations {
@@ -4901,7 +4901,7 @@ func TestBR34_NegativeAllowanceAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4928,7 +4928,7 @@ func TestBR35_NegativeAllowanceBaseAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4954,7 +4954,7 @@ func TestBR39_NegativeChargeAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
@@ -4981,7 +4981,7 @@ func TestBR40_NegativeChargeBaseAmount(t *testing.T) {
 		},
 	}
 
-	inv.Validate()
+	_ = inv.Validate()
 
 	found := false
 	for _, v := range inv.violations {
