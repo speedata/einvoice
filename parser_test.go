@@ -222,7 +222,7 @@ func TestBR26_MissingNetPrice(t *testing.T) {
 
 	// Check for BR-26 violation
 	var br26Found bool
-	for _, v := range inv.Violations {
+	for _, v := range inv.Violations() {
 		if v.Rule == "BR-26" {
 			br26Found = true
 			// Verify the violation references the correct fields

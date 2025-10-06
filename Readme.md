@@ -18,10 +18,41 @@ if err != nil {
 	...
 }
 // now invoice contains all the information from the XML file
-// invoice.Violations contains a slice of possible logical errors in the XML file
+// check for validation violations
+if violations := invoice.Violations(); len(violations) > 0 {
+	for _, v := range violations {
+		fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+	}
+}
 ```
 
-writing an invoice:
+Building and validating an invoice programmatically:
+
+```go
+import "errors"
+
+func buildInvoice() error {
+	inv := &einvoice.Invoice{
+		InvoiceNumber: "INV-001",
+		// ... set all required fields
+	}
+
+	// Validate before writing
+	if err := inv.Validate(); err != nil {
+		var valErr *einvoice.ValidationError
+		if errors.As(err, &valErr) {
+			for _, v := range valErr.Violations() {
+				fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+			}
+		}
+		return err
+	}
+
+	return inv.Write(os.Stdout)
+}
+```
+
+Writing an invoice (parsing):
 
 ```go
 func dothings() error {
@@ -29,8 +60,6 @@ func dothings() error {
 	if err != nil {
 		return err
 	}
-    // or better, create all the necessary fields yourself
-
 
 	return inv.Write(os.Stdout)
 }

@@ -47,7 +47,7 @@ go get github.com/speedata/einvoice
 - `ParseReader(io.Reader)`: Parses from any reader
 - Uses XPath-based parsing via `github.com/speedata/cxpath`
 - Automatically validates business rules during parsing
-- Detected violations stored in `Invoice.Violations`
+- Access violations via `Invoice.Violations()` method or by calling `Invoice.Validate()`
 
 **Calculation (`calculate.go`)**
 - `UpdateApplicableTradeTax(exemptReason)`: Recalculates VAT breakdown from line items and document-level allowances/charges per BR-45
@@ -60,7 +60,8 @@ go get github.com/speedata/einvoice
 **Validation (Organized by domain)**
 The validation logic is split across multiple focused files for maintainability:
 
-- `check.go`: Main orchestrator containing core business rules (BR-1 to BR-65) and `check()` method
+- `check.go`: Main orchestrator containing core business rules (BR-1 to BR-65) and public `Validate()` method
+- `validation.go`: ValidationError type with methods for accessing violations
 - `check_vat_standard.go`: Standard rated VAT validations (BR-S-1 to BR-S-10)
 - `check_vat_reverse.go`: Reverse charge VAT validations (BR-AE-1 to BR-AE-10)
 - `check_vat_exempt.go`: Exempt from VAT validations (BR-E-1 to BR-E-10)
@@ -76,7 +77,46 @@ Each validation file contains a single method (e.g., `checkVATStandard()`) with 
 - All business rules implemented in that file
 - Field references (BT-/BG-) per EN 16931 specification
 
-The `check()` method orchestrates all validation by calling each specialized method in sequence. Violations are accumulated in `Invoice.Violations` as `SemanticError` structs. Validation is automatically triggered by `ParseReader()`.
+**Public Validation API:**
+- `Invoice.Validate() error`: Validates invoice against EN 16931 business rules. Returns `ValidationError` if violations exist, nil if valid. Call this after building invoices programmatically or after modifying invoice data.
+- `ValidationError.Violations()`: Returns slice of all violations
+- `ValidationError.Count()`: Returns number of violations
+- `ValidationError.HasRule(rule string)`: Checks if specific rule violation exists
+- `Invoice.Violations()`: Deprecated accessor for backward compatibility
+
+**Usage Examples:**
+
+```go
+// Building invoice manually - validate before use
+inv := &Invoice{
+    InvoiceNumber: "INV-001",
+    // ... set all required fields
+}
+
+if err := inv.Validate(); err != nil {
+    var valErr *ValidationError
+    if errors.As(err, &valErr) {
+        for _, v := range valErr.Violations() {
+            fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+        }
+    }
+    return err
+}
+
+// Parsing - violations automatically populated
+inv, err := ParseXMLFile("invoice.xml")
+if err != nil {
+    return err
+}
+// Check violations via deprecated method
+if len(inv.Violations()) > 0 {
+    for _, v := range inv.Violations() {
+        fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+    }
+}
+```
+
+Validation is automatically triggered by `ParseReader()`. Users can call `Validate()` explicitly when building invoices programmatically or after modifications.
 
 **Writing (`writer.go`)**
 - `Invoice.Write(io.Writer)`: Outputs ZUGFeRD/Factur-X XML
@@ -91,8 +131,9 @@ Profiles are ordered by inclusiveness: Extended > EN16931 > Basic > BasicWL > Mi
 
 **Business Rule Validation**
 - Rules are named per EN 16931 spec: BR-1, BR-CO-10, BR-S-8, etc.
-- Violations are accumulated in `Invoice.Violations`, not errors
+- `Validate()` returns `ValidationError` containing violations, or nil if valid
 - Parsing succeeds even with violations (allows partial data recovery)
+- Access violations via `ValidationError.Violations()` or deprecated `Invoice.Violations()`
 
 **Decimal Precision**
 All monetary amounts use `github.com/shopspring/decimal` for exact arithmetic. Tax calculations round to 2 decimal places. VAT percentage formatting removes trailing zeros via regex.

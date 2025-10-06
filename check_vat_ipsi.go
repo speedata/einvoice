@@ -44,7 +44,7 @@ func (inv *Invoice) checkVATIPSI() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-1", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "IPSI requires seller VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-1", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "IPSI requires seller VAT identifier"})
 		}
 	}
 
@@ -80,7 +80,7 @@ func (inv *Invoice) checkVATIPSI() {
 			}
 			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal)
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-5", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IPSI taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-5", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IPSI taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
 			}
 		}
 	}
@@ -91,7 +91,7 @@ func (inv *Invoice) checkVATIPSI() {
 		if tt.CategoryCode == "M" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-6", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IPSI VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-6", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IPSI VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
 			}
 		}
 	}
@@ -120,7 +120,7 @@ func (inv *Invoice) checkVATIPSI() {
 			key := tt.Percent.String()
 			expectedBasis := ipsiRateMap[key]
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-7", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IPSI taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-7", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IPSI taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
 			}
 		}
 	}
@@ -131,7 +131,7 @@ func (inv *Invoice) checkVATIPSI() {
 		if tt.CategoryCode == "M" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-8", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IPSI VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-8", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IPSI VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
 			}
 		}
 	}
@@ -140,7 +140,7 @@ func (inv *Invoice) checkVATIPSI() {
 	// IPSI breakdown must NOT have exemption reason
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "M" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-9", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "IPSI VAT breakdown must not have exemption reason"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-9", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "IPSI VAT breakdown must not have exemption reason"})
 		}
 	}
 
@@ -158,10 +158,10 @@ func (inv *Invoice) checkVATIPSI() {
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 
 		if !hasSellerTaxID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-10", InvFields: []string{"BT-31", "BT-32"}, Text: "IPSI requires seller VAT or tax registration identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-10", InvFields: []string{"BT-31", "BT-32"}, Text: "IPSI requires seller VAT or tax registration identifier"})
 		}
 		if hasBuyerVATID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IP-10", InvFields: []string{"BT-48"}, Text: "IPSI must not have buyer VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IP-10", InvFields: []string{"BT-48"}, Text: "IPSI must not have buyer VAT identifier"})
 		}
 	}
 }
