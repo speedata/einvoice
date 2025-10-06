@@ -43,7 +43,7 @@ func (inv *Invoice) checkVATIGIC() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-1", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "IGIC requires seller VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-1", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "IGIC requires seller VAT identifier"})
 		}
 	}
 
@@ -79,7 +79,7 @@ func (inv *Invoice) checkVATIGIC() {
 			}
 			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal)
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-5", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-5", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
 			}
 		}
 	}
@@ -90,7 +90,7 @@ func (inv *Invoice) checkVATIGIC() {
 		if tt.CategoryCode == "L" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-6", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IGIC VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-6", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IGIC VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
 			}
 		}
 	}
@@ -119,7 +119,7 @@ func (inv *Invoice) checkVATIGIC() {
 			key := tt.Percent.String()
 			expectedBasis := igicRateMap[key]
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-7", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-7", InvFields: []string{"BT-116"}, Text: fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2))})
 			}
 		}
 	}
@@ -130,7 +130,7 @@ func (inv *Invoice) checkVATIGIC() {
 		if tt.CategoryCode == "L" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-8", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IGIC VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-8", InvFields: []string{"BT-117"}, Text: fmt.Sprintf("IGIC VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2))})
 			}
 		}
 	}
@@ -139,7 +139,7 @@ func (inv *Invoice) checkVATIGIC() {
 	// IGIC breakdown must NOT have exemption reason
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "L" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-9", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "IGIC VAT breakdown must not have exemption reason"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-9", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "IGIC VAT breakdown must not have exemption reason"})
 		}
 	}
 
@@ -157,10 +157,10 @@ func (inv *Invoice) checkVATIGIC() {
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 
 		if !hasSellerTaxID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-10", InvFields: []string{"BT-31", "BT-32"}, Text: "IGIC requires seller VAT or tax registration identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-10", InvFields: []string{"BT-31", "BT-32"}, Text: "IGIC requires seller VAT or tax registration identifier"})
 		}
 		if hasBuyerVATID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-IG-10", InvFields: []string{"BT-48"}, Text: "IGIC must not have buyer VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-IG-10", InvFields: []string{"BT-48"}, Text: "IGIC must not have buyer VAT identifier"})
 		}
 	}
 }

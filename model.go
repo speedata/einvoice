@@ -352,5 +352,5 @@ type Invoice struct {
 	SchemaType                                CodeSchemaType               // UBL or CII
 	InvoiceReferencedDocument                 []ReferencedDocument         // BG-3
 	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
-	Violations                                []SemanticError
+	violations                                []SemanticError // Private field - use Validate() and check error instead
 }

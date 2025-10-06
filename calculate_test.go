@@ -424,9 +424,10 @@ func TestUpdateApplicableTradeTax_MultipleCategories(t *testing.T) {
 	// Find category S and AE
 	var ttS, ttAE *TradeTax
 	for i := range inv.TradeTaxes {
-		if inv.TradeTaxes[i].CategoryCode == "S" {
+		switch inv.TradeTaxes[i].CategoryCode {
+		case "S":
 			ttS = &inv.TradeTaxes[i]
-		} else if inv.TradeTaxes[i].CategoryCode == "AE" {
+		case "AE":
 			ttAE = &inv.TradeTaxes[i]
 		}
 	}

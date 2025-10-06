@@ -46,7 +46,7 @@ func (inv *Invoice) checkVATExport() {
 			}
 		}
 		if !hasGInBreakdown {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-1", InvFields: []string{"BG-23", "BT-118"}, Text: "Invoice with Export outside EU items must have Export outside EU VAT breakdown"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-1", InvFields: []string{"BG-23", "BT-118"}, Text: "Invoice with Export outside EU items must have Export outside EU VAT breakdown"})
 		}
 	}
 
@@ -63,7 +63,7 @@ func (inv *Invoice) checkVATExport() {
 		hasSellerVATID := inv.Seller.VATaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerVATID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-2", InvFields: []string{"BT-31", "BT-63"}, Text: "Invoice with Export outside EU line must have seller VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-2", InvFields: []string{"BT-31", "BT-63"}, Text: "Invoice with Export outside EU line must have seller VAT identifier"})
 		}
 	}
 
@@ -80,7 +80,7 @@ func (inv *Invoice) checkVATExport() {
 		hasSellerVATID := inv.Seller.VATaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerVATID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-3", InvFields: []string{"BT-31", "BT-63"}, Text: "Invoice with Export outside EU allowance must have seller VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-3", InvFields: []string{"BT-31", "BT-63"}, Text: "Invoice with Export outside EU allowance must have seller VAT identifier"})
 		}
 	}
 
@@ -97,7 +97,7 @@ func (inv *Invoice) checkVATExport() {
 		hasSellerVATID := inv.Seller.VATaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerVATID {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-4", InvFields: []string{"BT-31", "BT-63"}, Text: "Invoice with Export outside EU charge must have seller VAT identifier"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-4", InvFields: []string{"BT-31", "BT-63"}, Text: "Invoice with Export outside EU charge must have seller VAT identifier"})
 		}
 	}
 
@@ -105,7 +105,7 @@ func (inv *Invoice) checkVATExport() {
 	// In invoice line with "G", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "G" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-5", InvFields: []string{"BG-25", "BT-152"}, Text: "Export outside EU invoice line must have VAT rate of 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-5", InvFields: []string{"BG-25", "BT-152"}, Text: "Export outside EU invoice line must have VAT rate of 0"})
 		}
 	}
 
@@ -113,7 +113,7 @@ func (inv *Invoice) checkVATExport() {
 	// In document level allowance with "G", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-6", InvFields: []string{"BG-20", "BT-96"}, Text: "Export outside EU allowance must have VAT rate of 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-6", InvFields: []string{"BG-20", "BT-96"}, Text: "Export outside EU allowance must have VAT rate of 0"})
 		}
 	}
 
@@ -121,7 +121,7 @@ func (inv *Invoice) checkVATExport() {
 	// In document level charge with "G", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-7", InvFields: []string{"BG-21", "BT-103"}, Text: "Export outside EU charge must have VAT rate of 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-7", InvFields: []string{"BG-21", "BT-103"}, Text: "Export outside EU charge must have VAT rate of 0"})
 		}
 	}
 
@@ -146,7 +146,7 @@ func (inv *Invoice) checkVATExport() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-8", InvFields: []string{"BG-23", "BT-116"}, Text: fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String())})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-8", InvFields: []string{"BG-23", "BT-116"}, Text: fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String())})
 			}
 		}
 	}
@@ -155,7 +155,7 @@ func (inv *Invoice) checkVATExport() {
 	// VAT amount must be 0 for Export outside EU
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "G" && !tt.CalculatedAmount.IsZero() {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-9", InvFields: []string{"BG-23", "BT-117"}, Text: "Export outside EU VAT amount must be 0"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-9", InvFields: []string{"BG-23", "BT-117"}, Text: "Export outside EU VAT amount must be 0"})
 		}
 	}
 
@@ -163,7 +163,7 @@ func (inv *Invoice) checkVATExport() {
 	// Export outside EU breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "G" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.Violations = append(inv.Violations, SemanticError{Rule: "BR-G-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Export outside EU VAT breakdown must have exemption reason"})
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-G-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Export outside EU VAT breakdown must have exemption reason"})
 		}
 	}
 }
