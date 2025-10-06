@@ -19,9 +19,13 @@ if err != nil {
 }
 // now invoice contains all the information from the XML file
 // check for validation violations
-if violations := invoice.Violations(); len(violations) > 0 {
-	for _, v := range violations {
-		fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+err = invoice.Validate()
+if err != nil {
+	var valErr *einvoice.ValidationError
+	if errors.As(err, &valErr) {
+		for _, v := range valErr.Violations() {
+			fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+		}
 	}
 }
 ```

@@ -1,6 +1,7 @@
 package einvoice_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -221,8 +222,18 @@ func TestBR26_MissingNetPrice(t *testing.T) {
 	}
 
 	// Check for BR-26 violation
+	err = inv.Validate()
+	if err == nil {
+		t.Fatal("Expected validation error for BR-26 violation")
+	}
+
+	var valErr *einvoice.ValidationError
+	if !errors.As(err, &valErr) {
+		t.Fatalf("Expected ValidationError, got %T", err)
+	}
+
 	var br26Found bool
-	for _, v := range inv.Violations() {
+	for _, v := range valErr.Violations() {
 		if v.Rule == "BR-26" {
 			br26Found = true
 			// Verify the violation references the correct fields

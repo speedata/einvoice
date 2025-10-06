@@ -354,27 +354,3 @@ type Invoice struct {
 	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
 	violations                                []SemanticError // Private field - use Validate() and check error instead
 }
-
-// Violations returns the current validation violations for backward compatibility.
-// Deprecated: Use Validate() and check the returned ValidationError instead.
-// This method will be removed in a future version.
-//
-// Example:
-//
-//	err := inv.Validate()
-//	if err != nil {
-//	    var valErr *ValidationError
-//	    if errors.As(err, &valErr) {
-//	        violations := valErr.Violations()
-//	        // handle violations
-//	    }
-//	}
-func (inv *Invoice) Violations() []SemanticError {
-	if inv.violations == nil {
-		return nil
-	}
-	// Return a copy to prevent external modification
-	violations := make([]SemanticError, len(inv.violations))
-	copy(violations, inv.violations)
-	return violations
-}

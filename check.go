@@ -288,6 +288,13 @@ func (inv *Invoice) checkBR() {
 			inv.violations = append(inv.violations, SemanticError{Rule: "BR-25", InvFields: []string{"BG-25", "BT-153"}, Text: "Line's item name missing"})
 		}
 
+		// BR-26 Detailinformationen zum Preis
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
+		// geltenden Rabatts "Item net price" (BT-146) beinhalten.
+		if line.NetPrice.IsZero() {
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-26", InvFields: []string{"BG-25", "BT-146"}, Text: "Line's item net price not found"})
+		}
+
 		// BR-27 Nettopreis des Artikels
 		// Der Artikel-Nettobetrag "Item net price" (BT-146) darf nicht negativ sein.
 		if line.NetPrice.IsNegative() {
