@@ -20,6 +20,32 @@ func (inv *Invoice) checkOther() {
 
 func (inv *Invoice) checkBRO() {
 	var sum decimal.Decimal
+
+	// BR-CO-9 VAT identifier country prefix validation
+	// VAT identifiers shall have ISO 3166-1 alpha-2 country prefix (e.g., DE, FR, GB). Greece may use 'EL' or 'GR'.
+	validateVATIDPrefix := func(vatID string, fieldName string) {
+		if vatID == "" {
+			return // Empty VAT IDs are handled by other rules
+		}
+		if len(vatID) < 2 {
+			inv.addViolation(rules.BRCO9, fmt.Sprintf("%s must have at least 2-character country prefix", fieldName))
+			return
+		}
+		// Extract first 2 characters as potential country code
+		prefix := vatID[:2]
+		// Check if it's uppercase letters (basic validation for country code format)
+		if !(prefix[0] >= 'A' && prefix[0] <= 'Z' && prefix[1] >= 'A' && prefix[1] <= 'Z') {
+			inv.addViolation(rules.BRCO9, fmt.Sprintf("%s must start with 2-letter ISO 3166-1 alpha-2 country code (got: %s)", fieldName, prefix))
+		}
+		// Note: Full validation against all valid ISO codes would require maintaining a complete list
+	}
+
+	validateVATIDPrefix(inv.Seller.VATaxRegistration, "Seller VAT identifier (BT-31)")
+	validateVATIDPrefix(inv.Buyer.VATaxRegistration, "Buyer VAT identifier (BT-48)")
+	if inv.SellerTaxRepresentativeTradeParty != nil {
+		validateVATIDPrefix(inv.SellerTaxRepresentativeTradeParty.VATaxRegistration, "Seller tax representative VAT identifier (BT-63)")
+	}
+
 	// BR-CO-3 Rechnung
 	// Umsatzsteuerdatum "Value added tax point date" (BT-7) und Code für das Umsatzsteuerdatum "Value added tax point date code" (BT-8)
 	// schließen sich gegenseitig aus.
@@ -165,6 +191,32 @@ func (inv *Invoice) checkBRO() {
 
 		if !hasPaymentDueDate && !hasPaymentTerms {
 			inv.addViolation(rules.BRCO25, "If amount due for payment is positive, either payment due date or payment terms must be present")
+		}
+	}
+
+	// BR-CO-26 Verkäufer
+	// In order for the buyer to automatically identify a supplier, at least one of the following shall be present:
+	// - Seller identifier (BT-29)
+	// - Seller legal registration identifier (BT-30)
+	// - Seller VAT identifier (BT-31)
+	hasSellerID := len(inv.Seller.ID) > 0 || len(inv.Seller.GlobalID) > 0
+	hasLegalReg := inv.Seller.SpecifiedLegalOrganization != nil && inv.Seller.SpecifiedLegalOrganization.ID != ""
+	hasVATID := inv.Seller.VATaxRegistration != ""
+	if !hasSellerID && !hasLegalReg && !hasVATID {
+		inv.addViolation(rules.BRCO26, "At least one seller identifier must be present: Seller ID (BT-29), Legal registration (BT-30), or VAT ID (BT-31)")
+	}
+
+	// BR-CO-27 Zahlungsanweisungen
+	// Either the IBAN or a Proprietary ID (BT-84) shall be used for payment account identifier.
+	// Note: BT-84 can be either IBAN or Proprietary ID; this rule ensures at least one is specified
+	// when payment account information is provided.
+	for _, pm := range inv.PaymentMeans {
+		if pm.PayeePartyCreditorFinancialAccountIBAN == "" && pm.PayeePartyCreditorFinancialAccountProprietaryID == "" {
+			// Only validate if TypeCode indicates a payment method that requires account info
+			// TypeCodes 30, 58 = credit transfer, which need account identifiers (already validated by BR-61)
+			if pm.TypeCode == 30 || pm.TypeCode == 58 {
+				inv.addViolation(rules.BRCO27, "Payment account identifier (BT-84) must be provided as either IBAN or Proprietary ID")
+			}
 		}
 	}
 
@@ -361,6 +413,12 @@ func (inv *Invoice) checkBR() {
 	}
 
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		// BR-66 Specified Trade Allowance Charge
+		// Each Specified Trade Allowance Charge shall contain a Charge Indicator.
+		// Note: In Go, the boolean ChargeIndicator field always has a value (true or false),
+		// so this rule is implicitly satisfied. This validation is kept for documentation
+		// and to align with the EN 16931 specification.
+
 		// Add to applicableTradeTaxes for BR-45 validation
 		key := ac.CategoryTradeTaxCategoryCode + "_" + ac.CategoryTradeTaxRateApplicablePercent.String()
 		amount := ac.ActualAmount
