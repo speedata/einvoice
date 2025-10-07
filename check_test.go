@@ -4994,3 +4994,269 @@ func TestBR40_NegativeChargeBaseAmount(t *testing.T) {
 		t.Error("Expected BR-40 violation for negative charge base amount")
 	}
 }
+
+func TestBR24_MissingLineNetAmount(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromFloat(100.0),
+				Total:             decimal.Zero, // Missing line net amount (BT-131)
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
+	}
+
+	_ = inv.Validate()
+
+	var br24Found bool
+	for _, v := range inv.violations {
+		if v.Rule == "BR-24" {
+			br24Found = true
+			// Verify the violation references the correct fields
+			if len(v.InvFields) < 2 {
+				t.Errorf("BR-24 violation should reference BG-25 and BT-131")
+			}
+			if v.InvFields[0] != "BG-25" || v.InvFields[1] != "BT-131" {
+				t.Errorf("BR-24 should reference BG-25 and BT-131, got %v", v.InvFields)
+			}
+			if !strings.Contains(v.Text, "net amount") {
+				t.Errorf("BR-24 violation text should mention 'net amount', got: %s", v.Text)
+			}
+		}
+	}
+
+	if !br24Found {
+		t.Error("Expected BR-24 violation for missing line net amount")
+	}
+}
+
+func TestBR26_MissingNetPrice(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.Zero, // Missing net price (BT-146)
+				Total:             decimal.NewFromFloat(100.0),
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
+	}
+
+	_ = inv.Validate()
+
+	var br26Found bool
+	for _, v := range inv.violations {
+		if v.Rule == "BR-26" {
+			br26Found = true
+			// Verify the violation references the correct fields
+			if len(v.InvFields) < 2 {
+				t.Errorf("BR-26 violation should reference BG-25 and BT-146")
+			}
+			if v.InvFields[0] != "BG-25" || v.InvFields[1] != "BT-146" {
+				t.Errorf("BR-26 should reference BG-25 and BT-146, got %v", v.InvFields)
+			}
+			if !strings.Contains(v.Text, "net price") {
+				t.Errorf("BR-26 violation text should mention 'net price', got: %s", v.Text)
+			}
+		}
+	}
+
+	if !br26Found {
+		t.Error("Expected BR-26 violation for missing line item net price")
+	}
+}
+
+func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromFloat(100.0),
+				Total:             decimal.NewFromFloat(100.0),
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CalculatedAmount: decimal.Zero, // Missing calculated amount (BT-117)
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Typ:              "VAT",
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromFloat(19.0),
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
+	}
+
+	_ = inv.Validate()
+
+	var br46Found bool
+	for _, v := range inv.violations {
+		if v.Rule == "BR-46" {
+			br46Found = true
+			// Verify the violation references the correct fields
+			if len(v.InvFields) < 2 {
+				t.Errorf("BR-46 violation should reference BG-23 and BT-117")
+			}
+			if v.InvFields[0] != "BG-23" || v.InvFields[1] != "BT-117" {
+				t.Errorf("BR-46 should reference BG-23 and BT-117, got %v", v.InvFields)
+			}
+			if !strings.Contains(v.Text, "CalculatedAmount") {
+				t.Errorf("BR-46 violation text should mention 'CalculatedAmount', got: %s", v.Text)
+			}
+		}
+	}
+
+	if !br46Found {
+		t.Error("Expected BR-46 violation for missing VAT calculated amount")
+	}
+}
+
+func TestBR48_MissingVATRatePercent(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromFloat(100.0),
+				Total:             decimal.NewFromFloat(100.0),
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CalculatedAmount: decimal.NewFromFloat(19.0),
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Typ:              "VAT",
+				CategoryCode:     "S",
+				Percent:          decimal.Zero, // Missing rate percent (BT-119)
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
+	}
+
+	_ = inv.Validate()
+
+	var br48Found bool
+	for _, v := range inv.violations {
+		if v.Rule == "BR-48" {
+			br48Found = true
+			// Verify the violation references the correct fields
+			if len(v.InvFields) < 2 {
+				t.Errorf("BR-48 violation should reference BG-23 and BT-119")
+			}
+			if v.InvFields[0] != "BG-23" || v.InvFields[1] != "BT-119" {
+				t.Errorf("BR-48 should reference BG-23 and BT-119, got %v", v.InvFields)
+			}
+			if !strings.Contains(v.Text, "RateApplicablePercent") {
+				t.Errorf("BR-48 violation text should mention 'RateApplicablePercent', got: %s", v.Text)
+			}
+		}
+	}
+
+	if !br48Found {
+		t.Error("Expected BR-48 violation for missing VAT rate percent")
+	}
+}
