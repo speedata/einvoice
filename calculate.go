@@ -105,35 +105,37 @@ func (inv *Invoice) UpdateAllowancesAndCharges() {
 }
 
 // UpdateTotals recalculates all monetary totals according to EN 16931 business rules.
-// This function implements the following business rules:
+// This function implements the following business rules in calculation order:
 // - BR-CO-10: LineTotal (BT-106) = Sum of all invoice line net amounts (BT-131)
-// - BR-CO-13: TaxBasisTotal (BT-109) = LineTotal (BT-106) - AllowanceTotal (BT-107) + ChargeTotal (BT-108)
-// - BR-CO-15: GrandTotal (BT-112) = TaxBasisTotal (BT-109) + TaxTotal (BT-110)
-// - BR-CO-16: DuePayableAmount (BT-115) = GrandTotal (BT-112) - TotalPrepaid (BT-113) + RoundingAmount (BT-114)
+// - BR-CO-11: AllowanceTotal (BT-107) = Sum of all document level allowance amounts (BT-92)
+// - BR-CO-12: ChargeTotal (BT-108) = Sum of all document level charge amounts (BT-99)
+// - BR-CO-13: TaxBasisTotal (BT-109) = LineTotal - AllowanceTotal + ChargeTotal
+// - BR-CO-15: GrandTotal (BT-112) = TaxBasisTotal + TaxTotal (BT-110)
+// - BR-CO-16: DuePayableAmount (BT-115) = GrandTotal - TotalPrepaid (BT-113) + RoundingAmount (BT-114)
 //
-// Note: This function does not recalculate AllowanceTotal or ChargeTotal. If you have modified
-// SpecifiedTradeAllowanceCharge, call UpdateAllowancesAndCharges() first.
+// This function automatically calls UpdateAllowancesAndCharges() to ensure all totals are recalculated.
 func (inv *Invoice) UpdateTotals() {
-	// Reset all calculated totals to zero to ensure idempotent behavior
-	inv.LineTotal = decimal.Zero
-	inv.TaxTotal = decimal.Zero
-
 	// BR-CO-10: Calculate line total from invoice lines (BT-106)
+	inv.LineTotal = decimal.Zero
 	for _, line := range inv.InvoiceLines {
 		inv.LineTotal = inv.LineTotal.Add(line.Total)
 	}
 
+	// BR-CO-11 & BR-CO-12: Calculate allowance and charge totals from document-level items
+	inv.UpdateAllowancesAndCharges()
+
 	// Calculate tax total from trade taxes (BT-110)
+	inv.TaxTotal = decimal.Zero
 	for _, v := range inv.TradeTaxes {
 		inv.TaxTotal = inv.TaxTotal.Add(v.CalculatedAmount)
 	}
 
-	// BR-CO-13: Apply document-level allowances and charges to calculate tax basis total
+	// BR-CO-13: TaxBasisTotal = LineTotal - AllowanceTotal + ChargeTotal
 	inv.TaxBasisTotal = inv.LineTotal.Sub(inv.AllowanceTotal).Add(inv.ChargeTotal)
 
-	// BR-CO-15: Calculate grand total
+	// BR-CO-15: GrandTotal = TaxBasisTotal + TaxTotal
 	inv.GrandTotal = inv.TaxBasisTotal.Add(inv.TaxTotal)
 
-	// BR-CO-16: Calculate due payable amount including rounding
+	// BR-CO-16: DuePayableAmount = GrandTotal - TotalPrepaid + RoundingAmount
 	inv.DuePayableAmount = inv.GrandTotal.Sub(inv.TotalPrepaid).Add(inv.RoundingAmount)
 }

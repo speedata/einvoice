@@ -62,8 +62,22 @@ func TestUpdateTotals_WithAllowancesAndCharges(t *testing.T) {
 		TradeTaxes: []TradeTax{
 			{CalculatedAmount: decimal.NewFromFloat(171.00)}, // 19% of 900
 		},
-		AllowanceTotal: decimal.NewFromFloat(150.00), // BT-107
-		ChargeTotal:    decimal.NewFromFloat(50.00),  // BT-108
+		// Provide actual allowances/charges instead of manually setting totals
+		// UpdateTotals() will calculate AllowanceTotal and ChargeTotal from these
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator: false,
+				ActualAmount:    decimal.NewFromFloat(100.00),
+			},
+			{
+				ChargeIndicator: false,
+				ActualAmount:    decimal.NewFromFloat(50.00),
+			},
+			{
+				ChargeIndicator: true,
+				ActualAmount:    decimal.NewFromFloat(50.00),
+			},
+		},
 	}
 
 	inv.UpdateTotals()
@@ -174,8 +188,21 @@ func TestUpdateTotals_ComprehensiveScenario(t *testing.T) {
 		TradeTaxes: []TradeTax{
 			{CalculatedAmount: decimal.NewFromFloat(152.00)}, // 19% VAT on 800 basis
 		},
-		AllowanceTotal: decimal.NewFromFloat(250.00), // Document discount
-		ChargeTotal:    decimal.NewFromFloat(50.00),  // Shipping charge
+		// Provide actual allowances/charges instead of manually setting totals
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator: false,
+				ActualAmount:    decimal.NewFromFloat(150.00), // Document discount
+			},
+			{
+				ChargeIndicator: false,
+				ActualAmount:    decimal.NewFromFloat(100.00), // Additional discount
+			},
+			{
+				ChargeIndicator: true,
+				ActualAmount:    decimal.NewFromFloat(50.00), // Shipping charge
+			},
+		},
 		TotalPrepaid:   decimal.NewFromFloat(100.00), // Partial payment
 		RoundingAmount: decimal.NewFromFloat(0.05),   // Rounding
 	}
