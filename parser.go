@@ -165,23 +165,6 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	}
 
 	for att := range applicableHeaderTradeSettlement.Each("ram:ApplicableTradeTax") {
-		if att.Eval("count(ram:CalculatedAmount)").Int() == 0 {
-			// BR-46 Umsatzsteueraufschlüsselung
-			// Jede Umsatzsteueraufschlüsselung „VAT BREAKDOWN“ (BG-23) muss den für
-			// die betreffende Umsatzsteuerkategorie zu entrichtenden Gesamtbetrag
-			// „VAT category tax amount“ (BT-117) aufweisen.
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-46", InvFields: []string{"BG-23", "BT-117"}, Text: "CalculatedAmount not set for applicable trade tax"})
-		}
-
-		if att.Eval("count(ram:RateApplicablePercent)").Int() == 0 {
-			// BR-48 Umsatzsteueraufschlüsselung
-			// Jede Umsatzsteueraufschlüsselung „VAT BREAKDOWN“ (BG-23) muss einen
-			// Umsatzsteuersatz gemäß einer Kategorie „VAT category rate“ (BT-119)
-			// haben. Sofern die Rechnung von der Umsatzsteuer ausgenommen ist, ist
-			// „0“ zu übermitteln.
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-48", InvFields: []string{"BG-23", "BT-119"}, Text: "RateApplicablePercent not set for applicable trade tax"})
-		}
-
 		tradeTax := TradeTax{}
 		tradeTax.CalculatedAmount, err = getDecimal(att, "ram:CalculatedAmount")
 		if err != nil {
@@ -387,27 +370,14 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 			return err
 		}
 
-		// BR-26 Detailinformationen zum Preis
-		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
-		// geltenden Rabatts "Item net price" (BT-146) beinhalten.
-		if specifiedLineTradeAgreement.Eval("count(ram:NetPriceProductTradePrice/ram:ChargeAmount)").Int() == 0 {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-26", InvFields: []string{"BG-25", "BT-146"}, Text: "Line's item net price not found"})
-		}
-
 		invoiceLine.BilledQuantity, err = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity")
 		if err != nil {
 			return err
 		}
 		invoiceLine.BilledQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
-		if lineItem.Eval("count(ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount)").Int() > 0 {
-			invoiceLine.Total, err = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
-			if err != nil {
-				return err
-			}
-		} else {
-			// BR-24 Rechnungsposition
-			// Jede Rechnungsposition „INVOICE LINE“ (BG-25) muss den Nettobetrag der Rechnungsposition „Invoice line net amount“ (BT-131) enthalten.
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-24", InvFields: []string{"BG-25", "BT-131"}, Text: "Line's net amount not found"})
+		invoiceLine.Total, err = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
+		if err != nil {
+			return err
 		}
 
 		for allowanceCharge := range lineItem.Each("ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge") {
@@ -566,8 +536,6 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 	}
 
 	inv.SchemaType = CII
-	// Run internal validation (preserves parsing violations)
-	inv.check()
 
 	return inv, nil
 }

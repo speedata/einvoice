@@ -6,20 +6,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// check is a private method used internally by ParseReader to run validation
-// without clearing existing parsing violations. For public use, call Validate() instead.
-func (inv *Invoice) check() {
-	// Initialize violations slice if nil (preserves existing parsing violations)
-	if inv.violations == nil {
-		inv.violations = []SemanticError{}
-	}
-
-	// Run all validation checks (will append to existing violations)
-	inv.checkBR()
-	inv.checkBRO()
-	inv.checkOther()
-}
-
 func (inv *Invoice) checkOther() {
 	// Check that line total = billed quantity * net price
 	for _, line := range inv.InvoiceLines {
@@ -276,10 +262,16 @@ func (inv *Invoice) checkBR() {
 			inv.violations = append(inv.violations, SemanticError{Rule: "BR-22", InvFields: []string{"BG-25", "BT-129"}, Text: "Line has no billed quantity"})
 		}
 		// BR-23 Rechnungsposition
-		// Jede Rechnungsposition "INVOICE LINE“ (BG-25) muss eine Einheit zur Mengenangabe "Invoiced quantity unit of measure code“ (BT-130)
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss eine Einheit zur Mengenangabe "Invoiced quantity unit of measure code" (BT-130)
 		// enthalten.
 		if line.BilledQuantityUnit == "" {
 			inv.violations = append(inv.violations, SemanticError{Rule: "BR-23", InvFields: []string{"BG-25", "BT-130"}, Text: "Line's billed quantity has no unit"})
+		}
+
+		// BR-24 Rechnungsposition
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Nettobetrag der Rechnungsposition "Invoice line net amount" (BT-131) enthalten.
+		if line.Total.IsZero() {
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-24", InvFields: []string{"BG-25", "BT-131"}, Text: "Line's net amount not found"})
 		}
 
 		// BR-25 Artikelinformationen
@@ -433,6 +425,23 @@ func (inv *Invoice) checkBR() {
 	}
 
 	for _, tt := range inv.TradeTaxes {
+		// BR-46 Umsatzsteueraufschlüsselung
+		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss den für
+		// die betreffende Umsatzsteuerkategorie zu entrichtenden Gesamtbetrag
+		// "VAT category tax amount" (BT-117) aufweisen.
+		if tt.CalculatedAmount.IsZero() {
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-46", InvFields: []string{"BG-23", "BT-117"}, Text: "CalculatedAmount not set for applicable trade tax"})
+		}
+
+		// BR-48 Umsatzsteueraufschlüsselung
+		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss einen
+		// Umsatzsteuersatz gemäß einer Kategorie "VAT category rate" (BT-119)
+		// haben. Sofern die Rechnung von der Umsatzsteuer ausgenommen ist, ist
+		// "0" zu übermitteln.
+		if tt.Percent.IsZero() {
+			inv.violations = append(inv.violations, SemanticError{Rule: "BR-48", InvFields: []string{"BG-23", "BT-119"}, Text: "RateApplicablePercent not set for applicable trade tax"})
+		}
+
 		// BR-45 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss die
 		// Summe aller nach dem jeweiligen Schlüssel zu versteuernden Beträge
@@ -443,9 +452,9 @@ func (inv *Invoice) checkBR() {
 
 		}
 		// BR-47 Umsatzsteueraufschlüsselung
-		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN“ (BG-23) muss über
+		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss über
 		// eine codierte Bezeichnung einer Umsatzsteuerkategorie "VAT category
-		// code“ (BT-118) definiert werden.
+		// code" (BT-118) definiert werden.
 		if tt.CategoryCode == "" {
 			inv.violations = append(inv.violations, SemanticError{Rule: "BR-47", InvFields: []string{"BG-23", "BT-118"}, Text: "CategoryCode not set for applicable trade tax"})
 		}
