@@ -71,6 +71,45 @@ func dothings() error {
 
 There is a [dedicated example](https://pkg.go.dev/github.com/speedata/einvoice#example-Invoice.Write) in [the documentation](https://pkg.go.dev/github.com/speedata/einvoice).
 
+## Command Line Tool
+
+A CLI tool is available for validating invoices from the command line.
+
+### Installation
+
+```bash
+go install github.com/speedata/einvoice/cmd/einvoice@latest
+```
+
+### Usage
+
+Validate an invoice and display violations in human-readable format:
+
+```bash
+einvoice validate invoice.xml
+```
+
+Output validation results as JSON (useful for automation and CI/CD):
+
+```bash
+einvoice validate --format json invoice.xml
+```
+
+### Exit Codes
+
+- `0` - Invoice is valid (no violations)
+- `1` - Invoice has validation violations
+- `2` - Error occurred (file not found, parse error, etc.)
+
+These exit codes make it easy to integrate the validator into shell scripts and CI/CD pipelines:
+
+```bash
+if einvoice validate invoice.xml; then
+    echo "Invoice is valid!"
+else
+    echo "Validation failed"
+fi
+```
 
 ## Current status
 
