@@ -143,6 +143,7 @@ func (inv *Invoice) Validate() error {
 	// Run all validation checks
 	inv.checkBR()
 	inv.checkBRO()
+	inv.checkBRDEC()
 	inv.checkOther()
 
 	// Return error if violations exist

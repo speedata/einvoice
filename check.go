@@ -748,3 +748,93 @@ func (inv *Invoice) checkBR() {
 	inv.checkVATIPSI()
 	inv.checkVATNotSubject()
 }
+
+// hasMaxDecimals checks if a decimal value has at most maxDecimals decimal places.
+// Returns true if the value has maxDecimals or fewer decimal places.
+func hasMaxDecimals(value decimal.Decimal, maxDecimals int) bool {
+	// The exponent is the negative of the number of decimal places
+	// e.g., 123.45 has exponent -2, 123.456 has exponent -3
+	return value.Exponent() >= -int32(maxDecimals)
+}
+
+func (inv *Invoice) checkBRDEC() {
+	// Helper function to validate decimal precision
+	checkDecimalPrecision := func(value decimal.Decimal, fieldName string, btCode string, rule rules.Rule) {
+		if !value.IsZero() && !hasMaxDecimals(value, 2) {
+			inv.addViolation(rule, fmt.Sprintf("%s (%s) has more than 2 decimal places: %s", fieldName, btCode, value.String()))
+		}
+	}
+
+	// BR-DEC-01: Document level allowance amount (BT-92)
+	// BR-DEC-02: Document level allowance base amount (BT-93)
+	// BR-DEC-05: Document level charge amount (BT-99)
+	// BR-DEC-06: Document level charge base amount (BT-100)
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if !ac.ChargeIndicator {
+			// Allowance
+			checkDecimalPrecision(ac.ActualAmount, "Document level allowance amount", "BT-92", rules.BRDEC1)
+			checkDecimalPrecision(ac.BasisAmount, "Document level allowance base amount", "BT-93", rules.BRDEC2)
+		} else {
+			// Charge
+			checkDecimalPrecision(ac.ActualAmount, "Document level charge amount", "BT-99", rules.BRDEC5)
+			checkDecimalPrecision(ac.BasisAmount, "Document level charge base amount", "BT-100", rules.BRDEC6)
+		}
+	}
+
+	// BR-DEC-09: Sum of Invoice line net amount (BT-106)
+	checkDecimalPrecision(inv.LineTotal, "Sum of Invoice line net amount", "BT-106", rules.BRDEC9)
+
+	// BR-DEC-10: Sum of allowances on document level (BT-107)
+	checkDecimalPrecision(inv.AllowanceTotal, "Sum of allowances on document level", "BT-107", rules.BRDEC10)
+
+	// BR-DEC-11: Sum of charges on document level (BT-108)
+	checkDecimalPrecision(inv.ChargeTotal, "Sum of charges on document level", "BT-108", rules.BRDEC11)
+
+	// BR-DEC-12: Invoice total amount without VAT (BT-109)
+	checkDecimalPrecision(inv.TaxBasisTotal, "Invoice total amount without VAT", "BT-109", rules.BRDEC12)
+
+	// BR-DEC-13: Invoice total VAT amount (BT-110)
+	checkDecimalPrecision(inv.TaxTotal, "Invoice total VAT amount", "BT-110", rules.BRDEC13)
+
+	// BR-DEC-14: Invoice total amount with VAT (BT-112)
+	checkDecimalPrecision(inv.GrandTotal, "Invoice total amount with VAT", "BT-112", rules.BRDEC14)
+
+	// BR-DEC-15: Invoice total VAT amount in accounting currency (BT-111)
+	checkDecimalPrecision(inv.TaxTotalVAT, "Invoice total VAT amount in accounting currency", "BT-111", rules.BRDEC15)
+
+	// BR-DEC-16: Paid amount (BT-113)
+	checkDecimalPrecision(inv.TotalPrepaid, "Paid amount", "BT-113", rules.BRDEC16)
+
+	// BR-DEC-17: Rounding amount (BT-114)
+	checkDecimalPrecision(inv.RoundingAmount, "Rounding amount", "BT-114", rules.BRDEC17)
+
+	// BR-DEC-18: Amount due for payment (BT-115)
+	checkDecimalPrecision(inv.DuePayableAmount, "Amount due for payment", "BT-115", rules.BRDEC18)
+
+	// BR-DEC-19: VAT category taxable amount (BT-116)
+	// BR-DEC-20: VAT category tax amount (BT-117)
+	for _, tt := range inv.TradeTaxes {
+		checkDecimalPrecision(tt.BasisAmount, "VAT category taxable amount", "BT-116", rules.BRDEC19)
+		checkDecimalPrecision(tt.CalculatedAmount, "VAT category tax amount", "BT-117", rules.BRDEC20)
+	}
+
+	// BR-DEC-23: Invoice line net amount (BT-131)
+	// BR-DEC-24: Invoice line allowance amount (BT-136)
+	// BR-DEC-25: Invoice line allowance base amount (BT-137)
+	// BR-DEC-27: Invoice line charge amount (BT-141)
+	// BR-DEC-28: Invoice line charge base amount (BT-142)
+	for i, line := range inv.InvoiceLines {
+		linePrefix := fmt.Sprintf("Line %d: ", i+1)
+		checkDecimalPrecision(line.Total, linePrefix+"Invoice line net amount", "BT-131", rules.BRDEC23)
+
+		for _, allowance := range line.InvoiceLineAllowances {
+			checkDecimalPrecision(allowance.ActualAmount, linePrefix+"Invoice line allowance amount", "BT-136", rules.BRDEC24)
+			checkDecimalPrecision(allowance.BasisAmount, linePrefix+"Invoice line allowance base amount", "BT-137", rules.BRDEC25)
+		}
+
+		for _, charge := range line.InvoiceLineCharges {
+			checkDecimalPrecision(charge.ActualAmount, linePrefix+"Invoice line charge amount", "BT-141", rules.BRDEC27)
+			checkDecimalPrecision(charge.BasisAmount, linePrefix+"Invoice line charge base amount", "BT-142", rules.BRDEC28)
+		}
+	}
+}
