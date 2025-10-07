@@ -1,21 +1,19 @@
-package einvoice_test
+package einvoice
 
 import (
 	"strings"
 	"testing"
-
-	"github.com/speedata/einvoice"
 )
 
 func TestSimple(t *testing.T) {
 	t.Parallel()
 
-	inv, err := einvoice.ParseXMLFile("testcases/zugferd_2p0_EN16931_1_Teilrechnung.xml")
+	inv, err := ParseXMLFile("testcases/zugferd_2p0_EN16931_1_Teilrechnung.xml")
 	if err != nil {
 		t.Error(err)
 	}
 
-	expected := einvoice.Invoice{
+	expected := Invoice{
 		InvoiceNumber: "471102",
 	}
 	if got := inv.InvoiceNumber; got != expected.InvoiceNumber {
@@ -59,7 +57,7 @@ func TestInvalidDecimalValue(t *testing.T) {
   </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>`
 
-	_, err := einvoice.ParseReader(strings.NewReader(xml))
+	_, err := ParseReader(strings.NewReader(xml))
 	if err == nil {
 		t.Error("expected error for invalid decimal value, got nil")
 	}
@@ -122,7 +120,7 @@ func TestCountrySubDivisionNameParsing(t *testing.T) {
   </rsm:SupplyChainTradeTransaction>
 </rsm:CrossIndustryInvoice>`
 
-	inv, err := einvoice.ParseReader(strings.NewReader(xml))
+	inv, err := ParseReader(strings.NewReader(xml))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

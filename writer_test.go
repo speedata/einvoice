@@ -1,4 +1,4 @@
-package einvoice_test
+package einvoice
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/speedata/einvoice"
 )
 
 // TestWrite_PayeeTradeParty tests that PayeeTradeParty is written with correct XML structure
@@ -17,25 +16,25 @@ func TestWrite_PayeeTradeParty(t *testing.T) {
 
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
-	inv := einvoice.Invoice{
+	inv := Invoice{
 		InvoiceNumber:       "TEST-001",
 		InvoiceTypeCode:     380,
-		Profile:             einvoice.CProfileEN16931,
+		Profile:             CProfileEN16931,
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR",
-		Seller: einvoice.Party{
+		Seller: Party{
 			Name:              "Seller Company",
 			VATaxRegistration: "DE123456",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Seller Street 1",
 				City:         "Berlin",
 				PostcodeCode: "10115",
 				CountryID:    "DE",
 			},
 		},
-		Buyer: einvoice.Party{
+		Buyer: Party{
 			Name: "Buyer Company",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Buyer Street 1",
 				City:         "Paris",
 				PostcodeCode: "75001",
@@ -43,17 +42,17 @@ func TestWrite_PayeeTradeParty(t *testing.T) {
 			},
 		},
 		// BG-10: PayeeTradeParty - different from seller
-		PayeeTradeParty: &einvoice.Party{
+		PayeeTradeParty: &Party{
 			Name:              "Payment Receiver Inc",
 			VATaxRegistration: "DE789012",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Payee Street 1",
 				City:         "Munich",
 				PostcodeCode: "80331",
 				CountryID:    "DE",
 			},
 		},
-		InvoiceLines: []einvoice.InvoiceLine{
+		InvoiceLines: []InvoiceLine{
 			{
 				LineID:                   "1",
 				ItemName:                 "Test Item",
@@ -123,33 +122,33 @@ func TestWrite_MultiCurrencyTaxTotal(t *testing.T) {
 
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
-	inv := einvoice.Invoice{
+	inv := Invoice{
 		InvoiceNumber:       "MULTI-CURR-001",
 		InvoiceTypeCode:     380,
-		Profile:             einvoice.CProfileEN16931,
+		Profile:             CProfileEN16931,
 		InvoiceDate:         fixedDate,
-		InvoiceCurrencyCode: "USD",        // BT-5: Invoice in USD
-		TaxCurrencyCode:     "EUR",        // BT-6: Tax accounting in EUR
-		Seller: einvoice.Party{
+		InvoiceCurrencyCode: "USD", // BT-5: Invoice in USD
+		TaxCurrencyCode:     "EUR", // BT-6: Tax accounting in EUR
+		Seller: Party{
 			Name:              "Seller Company",
 			VATaxRegistration: "DE123456",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Seller Street 1",
 				City:         "Berlin",
 				PostcodeCode: "10115",
 				CountryID:    "DE",
 			},
 		},
-		Buyer: einvoice.Party{
+		Buyer: Party{
 			Name: "Buyer Company",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Buyer Street 1",
 				City:         "New York",
 				PostcodeCode: "10001",
 				CountryID:    "US",
 			},
 		},
-		InvoiceLines: []einvoice.InvoiceLine{
+		InvoiceLines: []InvoiceLine{
 			{
 				LineID:                   "1",
 				ItemName:                 "Test Item",
@@ -210,33 +209,33 @@ func TestWrite_SingleCurrencyTaxTotal(t *testing.T) {
 
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
-	inv := einvoice.Invoice{
+	inv := Invoice{
 		InvoiceNumber:       "SINGLE-CURR-001",
 		InvoiceTypeCode:     380,
-		Profile:             einvoice.CProfileEN16931,
+		Profile:             CProfileEN16931,
 		InvoiceDate:         fixedDate,
-		InvoiceCurrencyCode: "EUR",  // BT-5
-		TaxCurrencyCode:     "EUR",  // BT-6: Same as invoice currency
-		Seller: einvoice.Party{
+		InvoiceCurrencyCode: "EUR", // BT-5
+		TaxCurrencyCode:     "EUR", // BT-6: Same as invoice currency
+		Seller: Party{
 			Name:              "Seller Company",
 			VATaxRegistration: "DE123456",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Seller Street 1",
 				City:         "Berlin",
 				PostcodeCode: "10115",
 				CountryID:    "DE",
 			},
 		},
-		Buyer: einvoice.Party{
+		Buyer: Party{
 			Name: "Buyer Company",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Buyer Street 1",
 				City:         "Paris",
 				PostcodeCode: "75001",
 				CountryID:    "FR",
 			},
 		},
-		InvoiceLines: []einvoice.InvoiceLine{
+		InvoiceLines: []InvoiceLine{
 			{
 				LineID:                   "1",
 				ItemName:                 "Test Item",
@@ -280,33 +279,33 @@ func TestWrite_NoTaxCurrencyCode(t *testing.T) {
 
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
-	inv := einvoice.Invoice{
+	inv := Invoice{
 		InvoiceNumber:       "NO-TAX-CURR-001",
 		InvoiceTypeCode:     380,
-		Profile:             einvoice.CProfileEN16931,
+		Profile:             CProfileEN16931,
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR",
 		// TaxCurrencyCode not set (empty string)
-		Seller: einvoice.Party{
+		Seller: Party{
 			Name:              "Seller Company",
 			VATaxRegistration: "DE123456",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Seller Street 1",
 				City:         "Berlin",
 				PostcodeCode: "10115",
 				CountryID:    "DE",
 			},
 		},
-		Buyer: einvoice.Party{
+		Buyer: Party{
 			Name: "Buyer Company",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Buyer Street 1",
 				City:         "Paris",
 				PostcodeCode: "75001",
 				CountryID:    "FR",
 			},
 		},
-		InvoiceLines: []einvoice.InvoiceLine{
+		InvoiceLines: []InvoiceLine{
 			{
 				LineID:                   "1",
 				ItemName:                 "Test Item",
