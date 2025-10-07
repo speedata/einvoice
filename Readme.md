@@ -1,4 +1,5 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/speedata/einvoice.svg)](https://pkg.go.dev/github.com/speedata/einvoice)
+[![Go Report Card](https://goreportcard.com/badge/github.com/speedata/einvoice)](https://goreportcard.com/report/github.com/speedata/einvoice)
 
 # einvoice - a Go library to read, write and verify electronic invoices
 
