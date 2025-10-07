@@ -38,7 +38,7 @@ func runValidate(args []string) int {
 	var format string
 	validateFlags.StringVar(&format, "format", "text", "Output format: text, json")
 	validateFlags.Usage = validateUsage
-	validateFlags.Parse(args)
+	_ = validateFlags.Parse(args)
 
 	// Require exactly one file argument
 	if validateFlags.NArg() != 1 {

@@ -46,7 +46,7 @@ func TestRun(t *testing.T) {
 
 			exitCode := run()
 
-			w.Close()
+			_ = w.Close()
 			os.Stderr = oldStderr
 
 			if exitCode != tt.wantExit {
@@ -64,11 +64,11 @@ func TestUsage(t *testing.T) {
 
 	usage()
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	var buf strings.Builder
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	// Verify usage output contains expected elements
@@ -123,11 +123,11 @@ func TestSubcommandDispatch(t *testing.T) {
 
 			exitCode := run()
 
-			w.Close()
+			_ = w.Close()
 			os.Stderr = oldStderr
 
 			var buf strings.Builder
-			io.Copy(&buf, r)
+			_, _ = io.Copy(&buf, r)
 			stderrOutput := buf.String()
 
 			if exitCode != tt.wantExit {

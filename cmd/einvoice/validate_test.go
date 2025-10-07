@@ -61,12 +61,12 @@ func TestValidateInvoice_MalformedXML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	if _, err := tmpfile.Write([]byte("<invalid>xml</wrong>")); err != nil {
 		t.Fatal(err)
 	}
-	tmpfile.Close()
+	_ = tmpfile.Close()
 
 	result := validateInvoice(tmpfile.Name())
 
@@ -101,11 +101,11 @@ func TestOutputJSON(t *testing.T) {
 
 	outputJSON(result)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf strings.Builder
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	// Verify it's valid JSON
@@ -183,14 +183,14 @@ func TestOutputText(t *testing.T) {
 
 			outputText(tt.result)
 
-			wOut.Close()
-			wErr.Close()
+			_ = wOut.Close()
+			_ = wErr.Close()
 			os.Stdout = oldStdout
 			os.Stderr = oldStderr
 
 			var bufOut, bufErr strings.Builder
-			io.Copy(&bufOut, rOut)
-			io.Copy(&bufErr, rErr)
+			_, _ = io.Copy(&bufOut, rOut)
+			_, _ = io.Copy(&bufErr, rErr)
 
 			output := bufOut.String()
 			errOutput := bufErr.String()
@@ -240,7 +240,7 @@ func TestRunValidate(t *testing.T) {
 
 			exitCode := runValidate(tt.args)
 
-			w.Close()
+			_ = w.Close()
 			os.Stderr = oldStderr
 
 			if exitCode != tt.wantExit {
@@ -323,8 +323,8 @@ func TestIntegration_ValidateCommand(t *testing.T) {
 
 			exitCode := runValidate(tt.args)
 
-			wOut.Close()
-			wErr.Close()
+			_ = wOut.Close()
+			_ = wErr.Close()
 			os.Stdout = oldStdout
 			os.Stderr = oldStderr
 
