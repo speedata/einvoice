@@ -1,11 +1,15 @@
 package einvoice
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/speedata/einvoice/rules"
+)
 
 // SemanticError contains a business rule violation found during validation.
 type SemanticError struct {
-	Rule Rule   // The business rule that was violated
-	Text string // Human-readable description with actual values
+	Rule rules.Rule // The business rule that was violated
+	Text string     // Human-readable description with actual values
 }
 
 // ValidationError is returned when invoice validation fails.
@@ -63,14 +67,14 @@ func (e *ValidationError) Count() int {
 }
 
 // HasRule checks if a specific business rule violation exists.
-// Accepts a Rule constant (e.g., BR1, BRS8, BRCO14).
+// Accepts a Rule constant (e.g., rules.BR1, rules.BRS8, rules.BRCO14).
 //
 // Example:
 //
-//	if valErr.HasRule(BR1) {
+//	if valErr.HasRule(rules.BR1) {
 //	    // Handle missing specification identifier
 //	}
-func (e *ValidationError) HasRule(rule Rule) bool {
+func (e *ValidationError) HasRule(rule rules.Rule) bool {
 	for _, v := range e.violations {
 		if v.Rule.Code == rule.Code {
 			return true
@@ -101,10 +105,10 @@ func (e *ValidationError) HasRuleCode(code string) bool {
 //
 // Example:
 //
-//	inv.addViolation(BRCO14, fmt.Sprintf(
+//	inv.addViolation(rules.BRCO14, fmt.Sprintf(
 //	    "Invoice total VAT amount %s does not match sum %s",
 //	    inv.TaxTotal.String(), calculatedTaxTotal.String()))
-func (inv *Invoice) addViolation(rule Rule, text string) {
+func (inv *Invoice) addViolation(rule rules.Rule, text string) {
 	inv.violations = append(inv.violations, SemanticError{
 		Rule: rule,
 		Text: text,

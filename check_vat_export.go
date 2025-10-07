@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -46,7 +47,7 @@ func (inv *Invoice) checkVATExport() {
 			}
 		}
 		if !hasGInBreakdown {
-			inv.addViolation(BRG1, "Invoice with Export outside EU items must have Export outside EU VAT breakdown")
+			inv.addViolation(rules.BRG1, "Invoice with Export outside EU items must have Export outside EU VAT breakdown")
 		}
 	}
 
@@ -63,7 +64,7 @@ func (inv *Invoice) checkVATExport() {
 		hasSellerVATID := inv.Seller.VATaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerVATID {
-			inv.addViolation(BRG2, "Invoice with Export outside EU line must have seller VAT identifier")
+			inv.addViolation(rules.BRG2, "Invoice with Export outside EU line must have seller VAT identifier")
 		}
 	}
 
@@ -80,7 +81,7 @@ func (inv *Invoice) checkVATExport() {
 		hasSellerVATID := inv.Seller.VATaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerVATID {
-			inv.addViolation(BRG3, "Invoice with Export outside EU allowance must have seller VAT identifier")
+			inv.addViolation(rules.BRG3, "Invoice with Export outside EU allowance must have seller VAT identifier")
 		}
 	}
 
@@ -97,7 +98,7 @@ func (inv *Invoice) checkVATExport() {
 		hasSellerVATID := inv.Seller.VATaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerVATID {
-			inv.addViolation(BRG4, "Invoice with Export outside EU charge must have seller VAT identifier")
+			inv.addViolation(rules.BRG4, "Invoice with Export outside EU charge must have seller VAT identifier")
 		}
 	}
 
@@ -105,7 +106,7 @@ func (inv *Invoice) checkVATExport() {
 	// In invoice line with "G", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "G" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRG5, "Export outside EU invoice line must have VAT rate of 0")
+			inv.addViolation(rules.BRG5, "Export outside EU invoice line must have VAT rate of 0")
 		}
 	}
 
@@ -113,7 +114,7 @@ func (inv *Invoice) checkVATExport() {
 	// In document level allowance with "G", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRG6, "Export outside EU allowance must have VAT rate of 0")
+			inv.addViolation(rules.BRG6, "Export outside EU allowance must have VAT rate of 0")
 		}
 	}
 
@@ -121,7 +122,7 @@ func (inv *Invoice) checkVATExport() {
 	// In document level charge with "G", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRG7, "Export outside EU charge must have VAT rate of 0")
+			inv.addViolation(rules.BRG7, "Export outside EU charge must have VAT rate of 0")
 		}
 	}
 
@@ -146,7 +147,7 @@ func (inv *Invoice) checkVATExport() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				inv.addViolation(rules.BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -155,7 +156,7 @@ func (inv *Invoice) checkVATExport() {
 	// VAT amount must be 0 for Export outside EU
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "G" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRG9, "Export outside EU VAT amount must be 0")
+			inv.addViolation(rules.BRG9, "Export outside EU VAT amount must be 0")
 		}
 	}
 
@@ -163,7 +164,7 @@ func (inv *Invoice) checkVATExport() {
 	// Export outside EU breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "G" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.addViolation(BRG10, "Export outside EU VAT breakdown must have exemption reason")
+			inv.addViolation(rules.BRG10, "Export outside EU VAT breakdown must have exemption reason")
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -49,10 +50,10 @@ func (inv *Invoice) checkVATIntracommunity() {
 		hasBuyerLegalID := inv.Buyer.SpecifiedLegalOrganization != nil && inv.Buyer.SpecifiedLegalOrganization.ID != ""
 
 		if !hasSellerTaxID {
-			inv.addViolation(BRIC1, "Intra-community supply requires seller VAT identifier")
+			inv.addViolation(rules.BRIC1, "Intra-community supply requires seller VAT identifier")
 		}
 		if !hasBuyerVATID && !hasBuyerLegalID {
-			inv.addViolation(BRIC1, "Intra-community supply requires buyer VAT identifier or legal registration identifier")
+			inv.addViolation(rules.BRIC1, "Intra-community supply requires buyer VAT identifier or legal registration identifier")
 		}
 	}
 
@@ -66,10 +67,10 @@ func (inv *Invoice) checkVATIntracommunity() {
 			hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 
 			if !hasSellerVATID {
-				inv.addViolation(BRIC2, "Intra-community supply line requires seller VAT identifier")
+				inv.addViolation(rules.BRIC2, "Intra-community supply line requires seller VAT identifier")
 			}
 			if !hasBuyerVATID {
-				inv.addViolation(BRIC2, "Intra-community supply line requires buyer VAT identifier")
+				inv.addViolation(rules.BRIC2, "Intra-community supply line requires buyer VAT identifier")
 			}
 			break
 		}
@@ -79,7 +80,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT rate must be 0 for lines with category K
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "K" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRIC3, "Intra-community supply VAT rate must be 0")
+			inv.addViolation(rules.BRIC3, "Intra-community supply VAT rate must be 0")
 		}
 	}
 
@@ -87,7 +88,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT rate must be 0 for allowances with category K
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "K" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRIC4, "Intra-community supply allowance VAT rate must be 0")
+			inv.addViolation(rules.BRIC4, "Intra-community supply allowance VAT rate must be 0")
 		}
 	}
 
@@ -95,7 +96,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT rate must be 0 for charges with category K
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "K" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRIC5, "Intra-community supply charge VAT rate must be 0")
+			inv.addViolation(rules.BRIC5, "Intra-community supply charge VAT rate must be 0")
 		}
 	}
 
@@ -122,7 +123,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 			}
 			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal)
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRIC6, fmt.Sprintf("Intra-community supply taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRIC6, fmt.Sprintf("Intra-community supply taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -131,7 +132,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT amount must be 0 for category K
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "K" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRIC7, "Intra-community supply VAT amount must be 0")
+			inv.addViolation(rules.BRIC7, "Intra-community supply VAT amount must be 0")
 		}
 	}
 
@@ -159,7 +160,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 			key := tt.Percent.String()
 			expectedBasis := taxRateMap[key]
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRIC8, fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRIC8, fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -168,7 +169,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// VAT amount must be 0 for category K (duplicate of BR-IC-7, but specified separately in spec)
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "K" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRIC9, "Intra-community supply VAT amount must be 0")
+			inv.addViolation(rules.BRIC9, "Intra-community supply VAT amount must be 0")
 		}
 	}
 
@@ -176,7 +177,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	// Intra-community supply breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "K" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.addViolation(BRIC10, "Intra-community supply VAT breakdown must have exemption reason")
+			inv.addViolation(rules.BRIC10, "Intra-community supply VAT breakdown must have exemption reason")
 		}
 	}
 
@@ -193,7 +194,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 		hasDeliveryDate := !inv.OccurrenceDateTime.IsZero()
 		hasBillingPeriod := !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero()
 		if !hasDeliveryDate && !hasBillingPeriod {
-			inv.addViolation(BRIC11, "Intra-community supply requires actual delivery date or invoicing period")
+			inv.addViolation(rules.BRIC11, "Intra-community supply requires actual delivery date or invoicing period")
 		}
 	}
 
@@ -202,7 +203,7 @@ func (inv *Invoice) checkVATIntracommunity() {
 	if hasIntraCommunityInVATBreakdown {
 		hasDeliverToCountry := inv.ShipTo != nil && inv.ShipTo.PostalAddress != nil && inv.ShipTo.PostalAddress.CountryID != ""
 		if !hasDeliverToCountry {
-			inv.addViolation(BRIC12, "Intra-community supply requires deliver to country code")
+			inv.addViolation(rules.BRIC12, "Intra-community supply requires deliver to country code")
 		}
 	}
 }

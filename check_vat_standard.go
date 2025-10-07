@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -44,7 +45,7 @@ func (inv *Invoice) checkVATStandard() {
 			}
 		}
 		if !hasStandardInBreakdown {
-			inv.addViolation(BRS1, "Invoice with Standard rated items must have Standard rated VAT breakdown")
+			inv.addViolation(rules.BRS1, "Invoice with Standard rated items must have Standard rated VAT breakdown")
 		}
 	}
 
@@ -62,7 +63,7 @@ func (inv *Invoice) checkVATStandard() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRS2, "Invoice with Standard rated line must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRS2, "Invoice with Standard rated line must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -80,7 +81,7 @@ func (inv *Invoice) checkVATStandard() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRS3, "Invoice with Standard rated allowance must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRS3, "Invoice with Standard rated allowance must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -98,7 +99,7 @@ func (inv *Invoice) checkVATStandard() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRS4, "Invoice with Standard rated charge must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRS4, "Invoice with Standard rated charge must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -106,7 +107,7 @@ func (inv *Invoice) checkVATStandard() {
 	// In invoice line with "Standard rated", VAT rate must be > 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "S" && !line.TaxRateApplicablePercent.IsPositive() {
-			inv.addViolation(BRS5, "Standard rated invoice line must have VAT rate greater than 0")
+			inv.addViolation(rules.BRS5, "Standard rated invoice line must have VAT rate greater than 0")
 		}
 	}
 
@@ -114,7 +115,7 @@ func (inv *Invoice) checkVATStandard() {
 	// In document level allowance with "Standard rated", VAT rate must be > 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" && !ac.CategoryTradeTaxRateApplicablePercent.IsPositive() {
-			inv.addViolation(BRS6, "Standard rated allowance must have VAT rate greater than 0")
+			inv.addViolation(rules.BRS6, "Standard rated allowance must have VAT rate greater than 0")
 		}
 	}
 
@@ -122,7 +123,7 @@ func (inv *Invoice) checkVATStandard() {
 	// In document level charge with "Standard rated", VAT rate must be > 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" && !ac.CategoryTradeTaxRateApplicablePercent.IsPositive() {
-			inv.addViolation(BRS7, "Standard rated charge must have VAT rate greater than 0")
+			inv.addViolation(rules.BRS7, "Standard rated charge must have VAT rate greater than 0")
 		}
 	}
 
@@ -149,7 +150,7 @@ func (inv *Invoice) checkVATStandard() {
 			// Round to 2 decimals for comparison
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String()))
+				inv.addViolation(rules.BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -160,7 +161,7 @@ func (inv *Invoice) checkVATStandard() {
 		if tt.CategoryCode == "S" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(BRS9, fmt.Sprintf("Standard rated VAT amount must equal basis * rate (expected %s, got %s)", expectedVAT.String(), tt.CalculatedAmount.String()))
+				inv.addViolation(rules.BRS9, fmt.Sprintf("Standard rated VAT amount must equal basis * rate (expected %s, got %s)", expectedVAT.String(), tt.CalculatedAmount.String()))
 			}
 		}
 	}
@@ -169,7 +170,7 @@ func (inv *Invoice) checkVATStandard() {
 	// Standard rated breakdown must not have exemption reason or code
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "S" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.addViolation(BRS10, "Standard rated VAT breakdown must not have exemption reason")
+			inv.addViolation(rules.BRS10, "Standard rated VAT breakdown must not have exemption reason")
 		}
 	}
 }

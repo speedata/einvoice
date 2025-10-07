@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -45,7 +46,7 @@ func (inv *Invoice) checkVATZero() {
 			}
 		}
 		if !hasZInBreakdown {
-			inv.addViolation(BRZ1, "Invoice with Zero rated items must have Zero rated VAT breakdown")
+			inv.addViolation(rules.BRZ1, "Invoice with Zero rated items must have Zero rated VAT breakdown")
 		}
 	}
 
@@ -63,7 +64,7 @@ func (inv *Invoice) checkVATZero() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRZ2, "Invoice with Zero rated line must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRZ2, "Invoice with Zero rated line must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -81,7 +82,7 @@ func (inv *Invoice) checkVATZero() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRZ3, "Invoice with Zero rated allowance must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRZ3, "Invoice with Zero rated allowance must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -99,7 +100,7 @@ func (inv *Invoice) checkVATZero() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRZ4, "Invoice with Zero rated charge must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRZ4, "Invoice with Zero rated charge must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -107,7 +108,7 @@ func (inv *Invoice) checkVATZero() {
 	// In invoice line with "Z", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "Z" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRZ5, "Zero rated invoice line must have VAT rate of 0")
+			inv.addViolation(rules.BRZ5, "Zero rated invoice line must have VAT rate of 0")
 		}
 	}
 
@@ -115,7 +116,7 @@ func (inv *Invoice) checkVATZero() {
 	// In document level allowance with "Z", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "Z" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRZ6, "Zero rated allowance must have VAT rate of 0")
+			inv.addViolation(rules.BRZ6, "Zero rated allowance must have VAT rate of 0")
 		}
 	}
 
@@ -123,7 +124,7 @@ func (inv *Invoice) checkVATZero() {
 	// In document level charge with "Z", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "Z" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRZ7, "Zero rated charge must have VAT rate of 0")
+			inv.addViolation(rules.BRZ7, "Zero rated charge must have VAT rate of 0")
 		}
 	}
 
@@ -148,7 +149,7 @@ func (inv *Invoice) checkVATZero() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(BRZ8, fmt.Sprintf("Zero rated taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				inv.addViolation(rules.BRZ8, fmt.Sprintf("Zero rated taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -157,7 +158,7 @@ func (inv *Invoice) checkVATZero() {
 	// VAT amount must be 0 for Zero rated
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "Z" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRZ9, "Zero rated VAT amount must be 0")
+			inv.addViolation(rules.BRZ9, "Zero rated VAT amount must be 0")
 		}
 	}
 
@@ -165,7 +166,7 @@ func (inv *Invoice) checkVATZero() {
 	// Zero rated breakdown must not have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "Z" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.addViolation(BRZ10, "Zero rated VAT breakdown must not have exemption reason")
+			inv.addViolation(rules.BRZ10, "Zero rated VAT breakdown must not have exemption reason")
 		}
 	}
 }

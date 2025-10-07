@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -44,7 +45,7 @@ func (inv *Invoice) checkVATIPSI() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRIP1, "IPSI requires seller VAT identifier")
+			inv.addViolation(rules.BRIP1, "IPSI requires seller VAT identifier")
 		}
 	}
 
@@ -80,7 +81,7 @@ func (inv *Invoice) checkVATIPSI() {
 			}
 			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal)
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRIP5, fmt.Sprintf("IPSI taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRIP5, fmt.Sprintf("IPSI taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -91,7 +92,7 @@ func (inv *Invoice) checkVATIPSI() {
 		if tt.CategoryCode == "M" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(BRIP6, fmt.Sprintf("IPSI VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
+				inv.addViolation(rules.BRIP6, fmt.Sprintf("IPSI VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
 		}
 	}
@@ -120,7 +121,7 @@ func (inv *Invoice) checkVATIPSI() {
 			key := tt.Percent.String()
 			expectedBasis := ipsiRateMap[key]
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRIP7, fmt.Sprintf("IPSI taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRIP7, fmt.Sprintf("IPSI taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -131,7 +132,7 @@ func (inv *Invoice) checkVATIPSI() {
 		if tt.CategoryCode == "M" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(BRIP8, fmt.Sprintf("IPSI VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
+				inv.addViolation(rules.BRIP8, fmt.Sprintf("IPSI VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
 		}
 	}
@@ -140,7 +141,7 @@ func (inv *Invoice) checkVATIPSI() {
 	// IPSI breakdown must NOT have exemption reason
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "M" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.addViolation(BRIP9, "IPSI VAT breakdown must not have exemption reason")
+			inv.addViolation(rules.BRIP9, "IPSI VAT breakdown must not have exemption reason")
 		}
 	}
 
@@ -158,10 +159,10 @@ func (inv *Invoice) checkVATIPSI() {
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 
 		if !hasSellerTaxID {
-			inv.addViolation(BRIP10, "IPSI requires seller VAT or tax registration identifier")
+			inv.addViolation(rules.BRIP10, "IPSI requires seller VAT or tax registration identifier")
 		}
 		if hasBuyerVATID {
-			inv.addViolation(BRIP10, "IPSI must not have buyer VAT identifier")
+			inv.addViolation(rules.BRIP10, "IPSI must not have buyer VAT identifier")
 		}
 	}
 }

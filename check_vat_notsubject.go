@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -46,7 +47,7 @@ func (inv *Invoice) checkVATNotSubject() {
 			(inv.Buyer.SpecifiedLegalOrganization != nil && inv.Buyer.SpecifiedLegalOrganization.ID != "")
 
 		if !hasSellerTaxID && !hasBuyerTaxID {
-			inv.addViolation(BRO1, "Not subject to VAT requires seller or buyer tax identifier")
+			inv.addViolation(rules.BRO1, "Not subject to VAT requires seller or buyer tax identifier")
 		}
 	}
 
@@ -59,7 +60,7 @@ func (inv *Invoice) checkVATNotSubject() {
 				(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 
 			if !hasSellerTaxID {
-				inv.addViolation(BRO2, "Not subject to VAT line requires seller tax identifier")
+				inv.addViolation(rules.BRO2, "Not subject to VAT line requires seller tax identifier")
 			}
 			break
 		}
@@ -77,7 +78,7 @@ func (inv *Invoice) checkVATNotSubject() {
 				}
 			}
 			if !found {
-				inv.addViolation(BRO3, "Invoice line with Not subject to VAT must have corresponding VAT breakdown")
+				inv.addViolation(rules.BRO3, "Invoice line with Not subject to VAT must have corresponding VAT breakdown")
 			}
 			break
 		}
@@ -95,7 +96,7 @@ func (inv *Invoice) checkVATNotSubject() {
 				}
 			}
 			if !found {
-				inv.addViolation(BRO4, "Allowance with Not subject to VAT must have corresponding VAT breakdown")
+				inv.addViolation(rules.BRO4, "Allowance with Not subject to VAT must have corresponding VAT breakdown")
 			}
 			break
 		}
@@ -113,7 +114,7 @@ func (inv *Invoice) checkVATNotSubject() {
 				}
 			}
 			if !found {
-				inv.addViolation(BRO5, "Charge with Not subject to VAT must have corresponding VAT breakdown")
+				inv.addViolation(rules.BRO5, "Charge with Not subject to VAT must have corresponding VAT breakdown")
 			}
 			break
 		}
@@ -123,7 +124,7 @@ func (inv *Invoice) checkVATNotSubject() {
 	// VAT rate must be 0 for lines with category O
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "O" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRO6, "Not subject to VAT rate must be 0")
+			inv.addViolation(rules.BRO6, "Not subject to VAT rate must be 0")
 		}
 	}
 
@@ -131,7 +132,7 @@ func (inv *Invoice) checkVATNotSubject() {
 	// VAT rate must be 0 for allowances with category O
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "O" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRO7, "Not subject to VAT allowance rate must be 0")
+			inv.addViolation(rules.BRO7, "Not subject to VAT allowance rate must be 0")
 		}
 	}
 
@@ -139,7 +140,7 @@ func (inv *Invoice) checkVATNotSubject() {
 	// VAT rate must be 0 for charges with category O
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "O" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRO8, "Not subject to VAT charge rate must be 0")
+			inv.addViolation(rules.BRO8, "Not subject to VAT charge rate must be 0")
 		}
 	}
 
@@ -166,7 +167,7 @@ func (inv *Invoice) checkVATNotSubject() {
 			}
 			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal)
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRO9, fmt.Sprintf("Not subject to VAT taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRO9, fmt.Sprintf("Not subject to VAT taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -195,7 +196,7 @@ func (inv *Invoice) checkVATNotSubject() {
 			key := tt.Percent.String()
 			expectedBasis := notSubjectRateMap[key]
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRO10, fmt.Sprintf("Not subject to VAT taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRO10, fmt.Sprintf("Not subject to VAT taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -204,7 +205,7 @@ func (inv *Invoice) checkVATNotSubject() {
 	// VAT amount must be 0 for category O
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "O" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRO11, "Not subject to VAT amount must be 0")
+			inv.addViolation(rules.BRO11, "Not subject to VAT amount must be 0")
 		}
 	}
 
@@ -212,7 +213,7 @@ func (inv *Invoice) checkVATNotSubject() {
 	// For each different VAT rate, VAT amount must be 0
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "O" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRO12, "Not subject to VAT amount for each rate must be 0")
+			inv.addViolation(rules.BRO12, "Not subject to VAT amount for each rate must be 0")
 		}
 	}
 
@@ -220,7 +221,7 @@ func (inv *Invoice) checkVATNotSubject() {
 	// Not subject to VAT breakdown must have exemption reason
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "O" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.addViolation(BRO13, "Not subject to VAT breakdown must have exemption reason")
+			inv.addViolation(rules.BRO13, "Not subject to VAT breakdown must have exemption reason")
 		}
 	}
 
@@ -233,6 +234,6 @@ func (inv *Invoice) checkVATNotSubject() {
 		}
 	}
 	if oCount > 1 {
-		inv.addViolation(BRO14, "Only one Not subject to VAT category allowed in VAT breakdown")
+		inv.addViolation(rules.BRO14, "Only one Not subject to VAT category allowed in VAT breakdown")
 	}
 }

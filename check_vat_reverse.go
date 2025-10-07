@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -44,7 +45,7 @@ func (inv *Invoice) checkVATReverse() {
 			}
 		}
 		if !hasAEInBreakdown {
-			inv.addViolation(BRAE1, "Invoice with Reverse charge items must have Reverse charge VAT breakdown")
+			inv.addViolation(rules.BRAE1, "Invoice with Reverse charge items must have Reverse charge VAT breakdown")
 		}
 	}
 
@@ -63,7 +64,7 @@ func (inv *Invoice) checkVATReverse() {
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 		if !hasSellerTaxID || !hasBuyerVATID {
-			inv.addViolation(BRAE2, "Invoice with Reverse charge line must have seller and buyer VAT identifiers")
+			inv.addViolation(rules.BRAE2, "Invoice with Reverse charge line must have seller and buyer VAT identifiers")
 		}
 	}
 
@@ -82,7 +83,7 @@ func (inv *Invoice) checkVATReverse() {
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 		if !hasSellerTaxID || !hasBuyerVATID {
-			inv.addViolation(BRAE3, "Invoice with Reverse charge allowance must have seller and buyer VAT identifiers")
+			inv.addViolation(rules.BRAE3, "Invoice with Reverse charge allowance must have seller and buyer VAT identifiers")
 		}
 	}
 
@@ -101,7 +102,7 @@ func (inv *Invoice) checkVATReverse() {
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 		if !hasSellerTaxID || !hasBuyerVATID {
-			inv.addViolation(BRAE4, "Invoice with Reverse charge charge must have seller and buyer VAT identifiers")
+			inv.addViolation(rules.BRAE4, "Invoice with Reverse charge charge must have seller and buyer VAT identifiers")
 		}
 	}
 
@@ -109,7 +110,7 @@ func (inv *Invoice) checkVATReverse() {
 	// In invoice line with "AE", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "AE" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRAE5, "Reverse charge invoice line must have VAT rate of 0")
+			inv.addViolation(rules.BRAE5, "Reverse charge invoice line must have VAT rate of 0")
 		}
 	}
 
@@ -117,7 +118,7 @@ func (inv *Invoice) checkVATReverse() {
 	// In document level allowance with "AE", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "AE" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRAE6, "Reverse charge allowance must have VAT rate of 0")
+			inv.addViolation(rules.BRAE6, "Reverse charge allowance must have VAT rate of 0")
 		}
 	}
 
@@ -125,7 +126,7 @@ func (inv *Invoice) checkVATReverse() {
 	// In document level charge with "AE", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "AE" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRAE7, "Reverse charge charge must have VAT rate of 0")
+			inv.addViolation(rules.BRAE7, "Reverse charge charge must have VAT rate of 0")
 		}
 	}
 
@@ -150,7 +151,7 @@ func (inv *Invoice) checkVATReverse() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(BRAE8, fmt.Sprintf("Reverse charge taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				inv.addViolation(rules.BRAE8, fmt.Sprintf("Reverse charge taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -159,7 +160,7 @@ func (inv *Invoice) checkVATReverse() {
 	// VAT amount must be 0 for Reverse charge
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "AE" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRAE9, "Reverse charge VAT amount must be 0")
+			inv.addViolation(rules.BRAE9, "Reverse charge VAT amount must be 0")
 		}
 	}
 
@@ -167,7 +168,7 @@ func (inv *Invoice) checkVATReverse() {
 	// Reverse charge breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "AE" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.addViolation(BRAE10, "Reverse charge VAT breakdown must have exemption reason")
+			inv.addViolation(rules.BRAE10, "Reverse charge VAT breakdown must have exemption reason")
 		}
 	}
 }
