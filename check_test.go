@@ -1233,12 +1233,12 @@ func TestBR28_NegativeGrossPrice(t *testing.T) {
 	for _, v := range inv.violations {
 		if v.Rule.Code == "BR-28" {
 			br28Found = true
-			// Check that it references BG-25 and BT-148
-			if len(v.Rule.Fields) < 2 {
-				t.Error("BR-28 violation should have InvFields for BG-25 and BT-148")
+			// Check that it references BT-148 (per official EN 16931 spec)
+			if len(v.Rule.Fields) < 1 {
+				t.Error("BR-28 violation should have BT-148 in Fields")
 			}
-			if v.Rule.Fields[0] != "BG-25" || v.Rule.Fields[1] != "BT-148" {
-				t.Errorf("BR-28 should reference BG-25 and BT-148, got %v", v.Rule.Fields)
+			if v.Rule.Fields[0] != "BT-148" {
+				t.Errorf("BR-28 should reference BT-148, got %v", v.Rule.Fields)
 			}
 		}
 	}
@@ -1967,8 +1967,20 @@ func TestBRS1_MissingStandardRatedBreakdown(t *testing.T) {
 	for _, v := range inv.violations {
 		if v.Rule.Code == "BR-S-1" {
 			found = true
-			if len(v.Rule.Fields) < 2 || v.Rule.Fields[0] != "BG-23" || v.Rule.Fields[1] != "BT-118" {
-				t.Errorf("BR-S-1 should reference BG-23 and BT-118, got %v", v.Rule.Fields)
+			// Per official EN 16931 spec, BR-S-1 references multiple fields
+			// Check that key fields BG-23 and BT-118 are included
+			hasBG23 := false
+			hasBT118 := false
+			for _, field := range v.Rule.Fields {
+				if field == "BG-23" {
+					hasBG23 = true
+				}
+				if field == "BT-118" {
+					hasBT118 = true
+				}
+			}
+			if !hasBG23 || !hasBT118 {
+				t.Errorf("BR-S-1 should include BG-23 and BT-118, got %v", v.Rule.Fields)
 			}
 		}
 	}
