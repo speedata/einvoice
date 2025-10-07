@@ -63,10 +63,33 @@ func (e *ValidationError) Count() int {
 }
 
 // HasRule checks if a specific business rule violation exists.
-// The rule parameter should be a business rule identifier like "BR-1", "BR-S-8", etc.
-func (e *ValidationError) HasRule(rule string) bool {
+// Accepts a Rule constant (e.g., BR1, BRS8, BRCO14).
+//
+// Example:
+//
+//	if valErr.HasRule(BR1) {
+//	    // Handle missing specification identifier
+//	}
+func (e *ValidationError) HasRule(rule Rule) bool {
 	for _, v := range e.violations {
-		if v.Rule.Code == rule {
+		if v.Rule.Code == rule.Code {
+			return true
+		}
+	}
+	return false
+}
+
+// HasRuleCode checks if a specific business rule code violation exists.
+// The code parameter should be a business rule identifier string like "BR-1", "BR-S-8", etc.
+//
+// Example:
+//
+//	if valErr.HasRuleCode("BR-1") {
+//	    // Handle missing specification identifier
+//	}
+func (e *ValidationError) HasRuleCode(code string) bool {
+	for _, v := range e.violations {
+		if v.Rule.Code == code {
 			return true
 		}
 	}

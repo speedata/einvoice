@@ -5425,7 +5425,7 @@ func TestBR46_AllowsZeroCalculatedAmount(t *testing.T) {
 	err := inv.Validate()
 	if err != nil {
 		valErr, ok := err.(*ValidationError)
-		if ok && valErr.HasRule("BR-46") {
+		if ok && valErr.HasRuleCode("BR-46") {
 			t.Errorf("BR-46 should not fail on zero CalculatedAmount for exempt categories")
 		}
 	}
@@ -5484,7 +5484,7 @@ func TestBR48_AllowsZeroPercent(t *testing.T) {
 	err := inv.Validate()
 	if err != nil {
 		valErr, ok := err.(*ValidationError)
-		if ok && valErr.HasRule("BR-48") {
+		if ok && valErr.HasRuleCode("BR-48") {
 			t.Errorf("BR-48 should not fail on zero Percent for exempt categories")
 		}
 	}
@@ -5559,7 +5559,7 @@ func TestBRCO11_ValidatesAllowanceTotal(t *testing.T) {
 	}
 
 	valErr := err.(*ValidationError)
-	if !valErr.HasRule("BR-CO-11") {
+	if !valErr.HasRuleCode("BR-CO-11") {
 		t.Errorf("Expected BR-CO-11 violation for incorrect allowance total")
 	}
 }
@@ -5627,7 +5627,7 @@ func TestBRCO12_ValidatesChargeTotal(t *testing.T) {
 	}
 
 	valErr := err.(*ValidationError)
-	if !valErr.HasRule("BR-CO-12") {
+	if !valErr.HasRuleCode("BR-CO-12") {
 		t.Errorf("Expected BR-CO-12 violation for incorrect charge total")
 	}
 }
@@ -5688,7 +5688,7 @@ func TestBR20_ErrorMessage(t *testing.T) {
 	}
 
 	valErr := err.(*ValidationError)
-	if !valErr.HasRule("BR-20") {
+	if !valErr.HasRuleCode("BR-20") {
 		t.Fatalf("Expected BR-20 violation")
 	}
 

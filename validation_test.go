@@ -138,45 +138,84 @@ func TestValidationError_HasRule(t *testing.T) {
 	}
 	e := &ValidationError{violations: violations}
 
-	tests := []struct {
-		name string
-		rule string
-		want bool
-	}{
-		{
-			name: "rule exists - BR-1",
-			rule: "BR-1",
-			want: true,
-		},
-		{
-			name: "rule exists - BR-S-8",
-			rule: "BR-S-8",
-			want: true,
-		},
-		{
-			name: "rule exists - BR-CO-10",
-			rule: "BR-CO-10",
-			want: true,
-		},
-		{
-			name: "rule does not exist",
-			rule: "BR-99",
-			want: false,
-		},
-		{
-			name: "empty rule",
-			rule: "",
-			want: false,
-		},
-	}
+	t.Run("HasRule with Rule constants", func(t *testing.T) {
+		tests := []struct {
+			name string
+			rule Rule
+			want bool
+		}{
+			{
+				name: "rule exists - BR1",
+				rule: BR1,
+				want: true,
+			},
+			{
+				name: "rule exists - BRS8",
+				rule: BRS8,
+				want: true,
+			},
+			{
+				name: "rule exists - BRCO10",
+				rule: BRCO10,
+				want: true,
+			},
+			{
+				name: "rule does not exist",
+				rule: BR2,
+				want: false,
+			},
+		}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := e.HasRule(tt.rule); got != tt.want {
-				t.Errorf("HasRule(%v) = %v, want %v", tt.rule, got, tt.want)
-			}
-		})
-	}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				if got := e.HasRule(tt.rule); got != tt.want {
+					t.Errorf("HasRule(%v) = %v, want %v", tt.rule.Code, got, tt.want)
+				}
+			})
+		}
+	})
+
+	t.Run("HasRuleCode with string codes", func(t *testing.T) {
+		tests := []struct {
+			name string
+			code string
+			want bool
+		}{
+			{
+				name: "rule exists - BR-1",
+				code: "BR-1",
+				want: true,
+			},
+			{
+				name: "rule exists - BR-S-8",
+				code: "BR-S-8",
+				want: true,
+			},
+			{
+				name: "rule exists - BR-CO-10",
+				code: "BR-CO-10",
+				want: true,
+			},
+			{
+				name: "rule does not exist",
+				code: "BR-99",
+				want: false,
+			},
+			{
+				name: "empty rule",
+				code: "",
+				want: false,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				if got := e.HasRuleCode(tt.code); got != tt.want {
+					t.Errorf("HasRuleCode(%v) = %v, want %v", tt.code, got, tt.want)
+				}
+			})
+		}
+	})
 }
 
 func TestValidationError_AsError(t *testing.T) {
@@ -198,8 +237,12 @@ func TestValidationError_AsError(t *testing.T) {
 			t.Errorf("Count() = %d, want 1", valErr.Count())
 		}
 
-		if !valErr.HasRule("BR-1") {
-			t.Error("HasRule(BR-1) = false, want true")
+		if !valErr.HasRule(BR1) {
+			t.Error("HasRule(BR1) = false, want true")
+		}
+
+		if !valErr.HasRuleCode("BR-1") {
+			t.Error("HasRuleCode(BR-1) = false, want true")
 		}
 	})
 }
