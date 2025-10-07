@@ -31,6 +31,12 @@ var (
 	helpFlag    = flag.Bool("help", false, "Show help message")
 )
 
+// SchematronSchema represents a schematron schema root element
+type SchematronSchema struct {
+	XMLName  xml.Name             `xml:"schema"`
+	Patterns []SchematronPattern  `xml:"pattern"`
+}
+
 // SchematronPattern represents a schematron pattern element
 type SchematronPattern struct {
 	XMLName xml.Name         `xml:"pattern"`
@@ -144,28 +150,52 @@ func readSource(source string) ([]byte, error) {
 }
 
 // parseSchematron parses the schematron XML and extracts business rules
+// Handles both full schema documents and single pattern documents
 func parseSchematron(data []byte) ([]Rule, error) {
-	var pattern SchematronPattern
-	if err := xml.Unmarshal(data, &pattern); err != nil {
-		return nil, fmt.Errorf("failed to parse XML: %w", err)
+	// Try parsing as full schema first
+	var schema SchematronSchema
+	var patterns []SchematronPattern
+
+	if err := xml.Unmarshal(data, &schema); err == nil && len(schema.Patterns) > 0 {
+		// Successfully parsed as schema with patterns
+		patterns = schema.Patterns
+	} else {
+		// Try parsing as single pattern
+		var pattern SchematronPattern
+		if err := xml.Unmarshal(data, &pattern); err != nil {
+			return nil, fmt.Errorf("failed to parse XML: %w", err)
+		}
+		patterns = []SchematronPattern{pattern}
 	}
 
-	var rules []Rule
-	for _, schemaRule := range pattern.Rules {
-		for _, assert := range schemaRule.Asserts {
-			if assert.ID == "" {
-				continue // Skip asserts without IDs
-			}
+	// Use map to deduplicate rules by code
+	ruleMap := make(map[string]Rule)
+	for _, pattern := range patterns {
+		for _, schemaRule := range pattern.Rules {
+			for _, assert := range schemaRule.Asserts {
+				if assert.ID == "" {
+					continue // Skip asserts without IDs
+				}
 
-			rule := Rule{
-				ID:          ruleCodeToIdentifier(assert.ID),
-				Code:        assert.ID,
-				Description: cleanDescription(assert.Description),
-				Fields:      extractFields(assert.Description),
-			}
+				rule := Rule{
+					ID:          ruleCodeToIdentifier(assert.ID),
+					Code:        assert.ID,
+					Description: cleanDescription(assert.Description),
+					Fields:      extractFields(assert.Description),
+				}
 
-			rules = append(rules, rule)
+				// Only add if not already present (first occurrence wins)
+				if _, exists := ruleMap[assert.ID]; !exists {
+					ruleMap[assert.ID] = rule
+				}
+			}
 		}
+	}
+
+	// Convert map to slice
+	var rules []Rule
+	for _, rule := range ruleMap {
+		rules = append(rules, rule)
 	}
 
 	// Sort rules by code
@@ -175,37 +205,85 @@ func parseSchematron(data []byte) ([]Rule, error) {
 }
 
 // ruleCodeToIdentifier converts a rule code to a valid Go identifier
-// Examples: "BR-1" → "BR1", "BR-S-8" → "BRS8", "BR-CO-14" → "BRCO14", "BR-01" → "BR1"
+// Examples:
+//   - "BR-01" → "BR1", "BR-S-08" → "BRS8", "BR-CO-14" → "BRCO14"
+//   - "PEPPOL-EN16931-R001" → "PEPPOLEN16931R1"
+//   - "PEPPOL-COMMON-R040" → "PEPPOLCOMMONR40"
+//   - "DK-R-002" → "DKR2"
 func ruleCodeToIdentifier(code string) string {
-	// Remove "BR-" prefix: "BR-S-8" → "S-8"
-	s := strings.TrimPrefix(code, "BR-")
+	// Split on dashes
+	parts := strings.Split(code, "-")
 
-	// Split on dashes to handle each part
-	parts := strings.Split(s, "-")
-
-	// Remove leading zeros from each part
-	for i, part := range parts {
-		// Try to parse as number to remove leading zeros
-		trimmed := strings.TrimLeft(part, "0")
-		if trimmed == "" {
-			// All zeros, keep one
-			parts[i] = "0"
+	var result strings.Builder
+	for _, part := range parts {
+		// Check if part is all digits
+		if len(part) > 0 && isAllDigits(part) {
+			// Remove leading zeros from numeric parts
+			trimmed := strings.TrimLeft(part, "0")
+			if trimmed == "" {
+				// All zeros, keep one
+				result.WriteString("0")
+			} else {
+				result.WriteString(trimmed)
+			}
 		} else {
-			parts[i] = trimmed
+			// For compound parts like "R001", strip leading zeros from trailing digits
+			result.WriteString(stripLeadingZerosFromSuffix(part))
 		}
 	}
 
-	// Join parts: ["S", "8"] → "S8"
-	result := strings.Join(parts, "")
-
-	// Prepend BR: "S8" → "BRS8"
-	return "BR" + result
+	return result.String()
 }
 
-// cleanDescription removes the [BR-XX]- prefix and normalizes whitespace
+// isAllDigits checks if a string contains only digits
+func isAllDigits(s string) bool {
+	for _, ch := range s {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
+}
+
+// stripLeadingZerosFromSuffix removes leading zeros from numeric suffix
+// Examples: "R001" → "R1", "CL005" → "CL5", "ABC" → "ABC"
+func stripLeadingZerosFromSuffix(s string) string {
+	// Find where digits start from the right
+	i := len(s) - 1
+	for i >= 0 && s[i] >= '0' && s[i] <= '9' {
+		i--
+	}
+
+	// i now points to last non-digit (or -1 if all digits)
+	if i < 0 {
+		// All digits - shouldn't happen if isAllDigits check is done first
+		return strings.ToUpper(s)
+	}
+
+	prefix := s[:i+1]
+	suffix := s[i+1:]
+
+	if len(suffix) == 0 {
+		// No digits
+		return strings.ToUpper(s)
+	}
+
+	// Remove leading zeros from suffix
+	trimmed := strings.TrimLeft(suffix, "0")
+	if trimmed == "" {
+		// All zeros
+		trimmed = "0"
+	}
+
+	return strings.ToUpper(prefix) + trimmed
+}
+
+// cleanDescription removes rule ID prefixes and normalizes whitespace
+// Handles both EN16931 format ([BR-XX]-) and PEPPOL format ([RULE-ID])
 func cleanDescription(desc string) string {
-	// Find and remove [BR-XX]- prefix
-	re := regexp.MustCompile(`^\[BR-[^\]]+\]-\s*`)
+	// Find and remove [RULE-ID]- or [RULE-ID] prefix
+	// Matches: [BR-XX]-, [IT-R-001], [PEPPOL-EN16931-R001], etc.
+	re := regexp.MustCompile(`^\[[^\]]+\]-?\s*`)
 	desc = re.ReplaceAllString(desc, "")
 
 	// Normalize whitespace (collapse multiple spaces/newlines to single space)
