@@ -23,7 +23,7 @@ func TestValidationError_Error(t *testing.T) {
 			violations: []SemanticError{
 				{Rule: rules.BR1, Text: "Invoice number is required"},
 			},
-			want: "validation failed: BR-1 - Invoice number is required",
+			want: "validation failed: BR-01 - Invoice number is required",
 		},
 		{
 			name: "multiple violations",
@@ -32,7 +32,7 @@ func TestValidationError_Error(t *testing.T) {
 				{Rule: rules.BR2, Text: "Invoice date is required"},
 				{Rule: rules.BR3, Text: "Currency is required"},
 			},
-			want: "validation failed with 3 violations (first: BR-1 - Invoice number is required)",
+			want: "validation failed with 3 violations (first: BR-01 - Invoice number is required)",
 		},
 	}
 
@@ -60,7 +60,7 @@ func TestValidationError_Violations(t *testing.T) {
 		if len(violations) != 1 {
 			t.Errorf("Violations() returned %d violations, want 1", len(violations))
 		}
-		if violations[0].Rule.Code != "BR-1" {
+		if violations[0].Rule.Code != "BR-01" {
 			t.Errorf("Violations()[0].Rule.Code = %v, want BR-1", violations[0].Rule.Code)
 		}
 
@@ -68,7 +68,7 @@ func TestValidationError_Violations(t *testing.T) {
 		violations[0].Rule = rules.BR2
 
 		// Verify internal state unchanged
-		if e.violations[0].Rule.Code != "BR-1" {
+		if e.violations[0].Rule.Code != "BR-01" {
 			t.Errorf("Internal violations were modified, want BR-1, got %v", e.violations[0].Rule.Code)
 		}
 	})
@@ -185,12 +185,12 @@ func TestValidationError_HasRule(t *testing.T) {
 		}{
 			{
 				name: "rule exists - BR-1",
-				code: "BR-1",
+				code: "BR-01",
 				want: true,
 			},
 			{
 				name: "rule exists - BR-S-8",
-				code: "BR-S-8",
+				code: "BR-S-08",
 				want: true,
 			},
 			{
@@ -243,7 +243,7 @@ func TestValidationError_AsError(t *testing.T) {
 			t.Error("HasRule(rules.BR1) = false, want true")
 		}
 
-		if !valErr.HasRuleCode("BR-1") {
+		if !valErr.HasRuleCode("BR-01") {
 			t.Error("HasRuleCode(BR-1) = false, want true")
 		}
 	})

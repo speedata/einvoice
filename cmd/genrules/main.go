@@ -33,16 +33,16 @@ var (
 
 // SchematronPattern represents a schematron pattern element
 type SchematronPattern struct {
-	XMLName xml.Name          `xml:"pattern"`
-	ID      string            `xml:"id,attr"`
-	Rules   []SchematronRule  `xml:"rule"`
+	XMLName xml.Name         `xml:"pattern"`
+	ID      string           `xml:"id,attr"`
+	Rules   []SchematronRule `xml:"rule"`
 }
 
 // SchematronRule represents a schematron rule element
 type SchematronRule struct {
-	XMLName xml.Name            `xml:"rule"`
-	Context string              `xml:"context,attr"`
-	Asserts []SchematronAssert  `xml:"assert"`
+	XMLName xml.Name           `xml:"rule"`
+	Context string             `xml:"context,attr"`
+	Asserts []SchematronAssert `xml:"assert"`
 }
 
 // SchematronAssert represents a schematron assert element
