@@ -34,7 +34,7 @@ func (inv *Invoice) checkBRO() {
 		// Extract first 2 characters as potential country code
 		prefix := vatID[:2]
 		// Check if it's uppercase letters (basic validation for country code format)
-		if !(prefix[0] >= 'A' && prefix[0] <= 'Z' && prefix[1] >= 'A' && prefix[1] <= 'Z') {
+		if prefix[0] < 'A' || prefix[0] > 'Z' || prefix[1] < 'A' || prefix[1] > 'Z' {
 			inv.addViolation(rules.BRCO9, fmt.Sprintf("%s must start with 2-letter ISO 3166-1 alpha-2 country code (got: %s)", fieldName, prefix))
 		}
 		// Note: Full validation against all valid ISO codes would require maintaining a complete list
