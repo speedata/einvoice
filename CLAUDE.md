@@ -82,35 +82,18 @@ Each validation file contains a single method (e.g., `checkVATStandard()`) with 
 - Automatically runs during parsing; call explicitly when building invoices programmatically
 
 **Business Rules (`rules/` package)**
-- Auto-generated from official EN 16931 schematron specifications
+- 203 rules auto-generated from EN 16931 schematron (v1.3.14.1)
 - Source: [ConnectingEurope/eInvoicing-EN16931](https://github.com/ConnectingEurope/eInvoicing-EN16931)
-- Current version: v1.3.14.1
-- 203 rules extracted from schematron XML
-- Generation tool: `cmd/genrules` - See [cmd/genrules/README.md](cmd/genrules/README.md)
-- Regenerate with: `cd rules && go generate`
+- Regenerate: `cd rules && go generate`
+- Details: [cmd/genrules/README.md](cmd/genrules/README.md)
 
-**Rule Structure:**
-```go
-type Rule struct {
-    Code        string      // EN 16931 rule code (e.g., "BR-01", "BR-S-08")
-    Fields      []string    // BT-/BG- identifiers from semantic model
-    Description string      // Official specification requirement text
-}
-```
+Package structure:
+- `types.go`: Rule struct (manual)
+- `custom.go`: Custom rules and aliases (manual)
+- `en16931.go`: Generated rule constants (auto-generated)
+- `generate.go`: go:generate directive (manual)
 
-**Rule Naming:**
-- `BR-01` → `rules.BR1` (remove leading zeros)
-- `BR-S-08` → `rules.BRS8` (remove dashes and zeros)
-- `BR-CO-14` → `rules.BRCO14` (remove all dashes)
-
-**Custom Rules:**
-The `rules/en16931.go` file includes custom rules not in the official schematron:
-- `Check`: Line total calculation validation
-- `BR34`, `BR35`, `BR39`, `BR40`: Non-negative amount validations
-- `BRIG1-10`: Aliases for IGIC rules (Canary Islands - official: BR-AF-*)
-- `BRIP1-10`: Aliases for IPSI rules (Ceuta/Melilla - official: BR-AG-*)
-
-⚠️ When regenerating rules, manually preserve the custom rules section marked by the comment banner.
+Rule naming: `BR-01` → `rules.BR1`, `BR-S-08` → `rules.BRS8`, `BR-CO-14` → `rules.BRCO14`
 
 **Writing (`writer.go`)**
 - `Invoice.Write(io.Writer)`: Outputs ZUGFeRD/Factur-X XML
