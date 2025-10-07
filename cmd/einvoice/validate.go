@@ -105,8 +105,8 @@ func validateInvoice(filename string) Result {
 		result.Violations = make([]Violation, len(semanticErrors))
 		for i, se := range semanticErrors {
 			result.Violations[i] = Violation{
-				Rule:   se.Rule,
-				Fields: se.InvFields,
+				Rule:   se.Rule.Code,
+				Fields: se.Rule.Fields,
 				Text:   se.Text,
 			}
 		}
