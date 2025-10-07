@@ -81,6 +81,37 @@ Each validation file contains a single method (e.g., `checkVATStandard()`) with 
 - Private: `Invoice.violations` field - use `Validate()` or deprecated `Violations()` accessor
 - Automatically runs during parsing; call explicitly when building invoices programmatically
 
+**Business Rules (`rules/` package)**
+- Auto-generated from official EN 16931 schematron specifications
+- Source: [ConnectingEurope/eInvoicing-EN16931](https://github.com/ConnectingEurope/eInvoicing-EN16931)
+- Current version: v1.3.14.1
+- 203 rules extracted from schematron XML
+- Generation tool: `cmd/genrules` - See [cmd/genrules/README.md](cmd/genrules/README.md)
+- Regenerate with: `cd rules && go generate`
+
+**Rule Structure:**
+```go
+type Rule struct {
+    Code        string      // EN 16931 rule code (e.g., "BR-01", "BR-S-08")
+    Fields      []string    // BT-/BG- identifiers from semantic model
+    Description string      // Official specification requirement text
+}
+```
+
+**Rule Naming:**
+- `BR-01` → `rules.BR1` (remove leading zeros)
+- `BR-S-08` → `rules.BRS8` (remove dashes and zeros)
+- `BR-CO-14` → `rules.BRCO14` (remove all dashes)
+
+**Custom Rules:**
+The `rules/en16931.go` file includes custom rules not in the official schematron:
+- `Check`: Line total calculation validation
+- `BR34`, `BR35`, `BR39`, `BR40`: Non-negative amount validations
+- `BRIG1-10`: Aliases for IGIC rules (Canary Islands - official: BR-AF-*)
+- `BRIP1-10`: Aliases for IPSI rules (Ceuta/Melilla - official: BR-AG-*)
+
+⚠️ When regenerating rules, manually preserve the custom rules section marked by the comment banner.
+
 **Writing (`writer.go`)**
 - `Invoice.Write(io.Writer)`: Outputs ZUGFeRD/Factur-X XML
 - Uses `github.com/beevik/etree` for XML generation
