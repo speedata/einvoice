@@ -19,7 +19,7 @@
 - ✅ TODO list created (23 tasks)
 - ✅ Branch created and pushed
 
-## Next Phase: Phase 1 - Prototype (Tasks 1-7)
+## Next Phase: Phase 1 - Prototype (Tasks 1-8)
 
 ### Immediate Next Steps:
 1. Create `cmd/genrules/main.go` skeleton
@@ -27,9 +27,19 @@
 3. Implement basic schematron parser
 4. Implement field extraction regex
 5. Test with 5-10 sample rules
+6. Create `rules/` package directory
+7. Generate into separate package
 
-### Expected Output:
+### Expected Output (rules/en16931.go):
 ```go
+package rules
+
+type Rule struct {
+    Code        string
+    Fields      []string
+    Description string
+}
+
 var (
     BR1 = Rule{
         Code:        "BR-01",
@@ -38,6 +48,15 @@ var (
     }
     // ... 5-10 more sample rules
 )
+```
+
+### Package Structure:
+```
+einvoice/
+├── rules/              # NEW: Generated rules package
+│   └── en16931.go      # Generated EN 16931 rules
+├── cmd/genrules/       # Rule generation tool
+└── validation.go       # Imports rules package
 ```
 
 ## Source Data
@@ -77,16 +96,16 @@ Schematron XML → Parse → Extract → Transform → Generate Go Code
 
 ## Todo List Overview
 
-### Completed (4/23)
+### Completed (4/28)
 - ✅ Create branch
 - ✅ Research sources
 - ✅ Analyze structure
 - ✅ Document findings
 
-### In Progress (0/23)
+### In Progress (0/28)
 - ⏸️ Ready to start implementation
 
-### Pending (19/23)
+### Pending (24/28)
 - 📋 Setup and XML parsing (tasks 1-3)
 - 📋 Data extraction (tasks 4-6)
 - 📋 Testing extraction logic (task 7)
@@ -133,12 +152,20 @@ git checkout feature/autogen-rules-en16931
 ```bash
 go run ./cmd/genrules \
   -source /tmp/EN16931-CII-model-abstract.sch \
-  -output rules_generated.go
+  -package rules \
+  -output rules/en16931.go
 ```
 
-### Compare Command (future):
+### Validation Commands (future):
 ```bash
-diff -u rules.go rules_generated.go | head -100
+# Validate generated package compiles
+go build ./rules
+
+# Check main package can import it
+go build ./...
+
+# Run tests
+go test ./...
 ```
 
 ## Context Preservation
