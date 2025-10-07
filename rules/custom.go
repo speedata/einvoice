@@ -33,32 +33,4 @@ var (
 		Fields:      []string{"BT-100"},
 		Description: `Document level charge base amount (BT-100) must not be negative.`,
 	}
-
-	// IGIC aliases (Canary Islands tax - category code 'L')
-	// The EN 16931 schematron uses BR-AF-* codes but the codebase uses
-	// BR-IG-* naming following the German notation "IGIC".
-	BRIG1  = BRAF1
-	BRIG2  = BRAF2
-	BRIG3  = BRAF3
-	BRIG4  = BRAF4
-	BRIG5  = BRAF5
-	BRIG6  = BRAF6
-	BRIG7  = BRAF7
-	BRIG8  = BRAF8
-	BRIG9  = BRAF9
-	BRIG10 = BRAF10
-
-	// IPSI aliases (Ceuta/Melilla tax - category code 'M')
-	// The EN 16931 schematron uses BR-AG-* codes but the codebase uses
-	// BR-IP-* naming following the German notation "IPSI".
-	BRIP1  = BRAG1
-	BRIP2  = BRAG2
-	BRIP3  = BRAG3
-	BRIP4  = BRAG4
-	BRIP5  = BRAG5
-	BRIP6  = BRAG6
-	BRIP7  = BRAG7
-	BRIP8  = BRAG8
-	BRIP9  = BRAG9
-	BRIP10 = BRAG10
 )
