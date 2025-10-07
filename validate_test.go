@@ -50,7 +50,7 @@ func TestValidate_ManualInvoiceConstruction(t *testing.T) {
 	}
 
 	// Check specific violations
-	expectedRules := []string{"BR-2", "BR-3", "BR-5", "BR-6", "BR-9", "BR-12", "BR-13", "BR-14", "BR-15", "BR-16"}
+	expectedRules := []string{"BR-02", "BR-03", "BR-05", "BR-06", "BR-09", "BR-12", "BR-13", "BR-14", "BR-15", "BR-16"}
 	for _, rule := range expectedRules {
 		if !valErr.HasRuleCode(rule) {
 			t.Errorf("Expected violation for rule %s, but not found", rule)

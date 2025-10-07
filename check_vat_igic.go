@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -43,7 +44,7 @@ func (inv *Invoice) checkVATIGIC() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRIG1, "IGIC requires seller VAT identifier")
+			inv.addViolation(rules.BRIG1, "IGIC requires seller VAT identifier")
 		}
 	}
 
@@ -79,7 +80,7 @@ func (inv *Invoice) checkVATIGIC() {
 			}
 			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal)
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRIG5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRIG5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -90,7 +91,7 @@ func (inv *Invoice) checkVATIGIC() {
 		if tt.CategoryCode == "L" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(BRIG6, fmt.Sprintf("IGIC VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
+				inv.addViolation(rules.BRIG6, fmt.Sprintf("IGIC VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
 		}
 	}
@@ -119,7 +120,7 @@ func (inv *Invoice) checkVATIGIC() {
 			key := tt.Percent.String()
 			expectedBasis := igicRateMap[key]
 			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(BRIG7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				inv.addViolation(rules.BRIG7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
 		}
 	}
@@ -130,7 +131,7 @@ func (inv *Invoice) checkVATIGIC() {
 		if tt.CategoryCode == "L" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(BRIG8, fmt.Sprintf("IGIC VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
+				inv.addViolation(rules.BRIG8, fmt.Sprintf("IGIC VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
 		}
 	}
@@ -139,7 +140,7 @@ func (inv *Invoice) checkVATIGIC() {
 	// IGIC breakdown must NOT have exemption reason
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "L" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.addViolation(BRIG9, "IGIC VAT breakdown must not have exemption reason")
+			inv.addViolation(rules.BRIG9, "IGIC VAT breakdown must not have exemption reason")
 		}
 	}
 
@@ -157,10 +158,10 @@ func (inv *Invoice) checkVATIGIC() {
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 
 		if !hasSellerTaxID {
-			inv.addViolation(BRIG10, "IGIC requires seller VAT or tax registration identifier")
+			inv.addViolation(rules.BRIG10, "IGIC requires seller VAT or tax registration identifier")
 		}
 		if hasBuyerVATID {
-			inv.addViolation(BRIG10, "IGIC must not have buyer VAT identifier")
+			inv.addViolation(rules.BRIG10, "IGIC must not have buyer VAT identifier")
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -45,7 +46,7 @@ func (inv *Invoice) checkVATExempt() {
 			}
 		}
 		if !hasEInBreakdown {
-			inv.addViolation(BRE1, "Invoice with Exempt from VAT items must have Exempt from VAT breakdown")
+			inv.addViolation(rules.BRE1, "Invoice with Exempt from VAT items must have Exempt from VAT breakdown")
 		}
 	}
 
@@ -63,7 +64,7 @@ func (inv *Invoice) checkVATExempt() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRE2, "Invoice with Exempt from VAT line must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRE2, "Invoice with Exempt from VAT line must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -81,7 +82,7 @@ func (inv *Invoice) checkVATExempt() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRE3, "Invoice with Exempt from VAT allowance must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRE3, "Invoice with Exempt from VAT allowance must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -99,7 +100,7 @@ func (inv *Invoice) checkVATExempt() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.addViolation(BRE4, "Invoice with Exempt from VAT charge must have seller VAT identifier or tax registration")
+			inv.addViolation(rules.BRE4, "Invoice with Exempt from VAT charge must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -107,7 +108,7 @@ func (inv *Invoice) checkVATExempt() {
 	// In invoice line with "E", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "E" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRE5, "Exempt from VAT invoice line must have VAT rate of 0")
+			inv.addViolation(rules.BRE5, "Exempt from VAT invoice line must have VAT rate of 0")
 		}
 	}
 
@@ -115,7 +116,7 @@ func (inv *Invoice) checkVATExempt() {
 	// In document level allowance with "E", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "E" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRE6, "Exempt from VAT allowance must have VAT rate of 0")
+			inv.addViolation(rules.BRE6, "Exempt from VAT allowance must have VAT rate of 0")
 		}
 	}
 
@@ -123,7 +124,7 @@ func (inv *Invoice) checkVATExempt() {
 	// In document level charge with "E", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "E" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.addViolation(BRE7, "Exempt from VAT charge must have VAT rate of 0")
+			inv.addViolation(rules.BRE7, "Exempt from VAT charge must have VAT rate of 0")
 		}
 	}
 
@@ -148,7 +149,7 @@ func (inv *Invoice) checkVATExempt() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(BRE8, fmt.Sprintf("Exempt from VAT taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				inv.addViolation(rules.BRE8, fmt.Sprintf("Exempt from VAT taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -157,7 +158,7 @@ func (inv *Invoice) checkVATExempt() {
 	// VAT amount must be 0 for Exempt from VAT
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "E" && !tt.CalculatedAmount.IsZero() {
-			inv.addViolation(BRE9, "Exempt from VAT amount must be 0")
+			inv.addViolation(rules.BRE9, "Exempt from VAT amount must be 0")
 		}
 	}
 
@@ -165,7 +166,7 @@ func (inv *Invoice) checkVATExempt() {
 	// Exempt from VAT breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "E" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.addViolation(BRE10, "Exempt from VAT breakdown must have exemption reason")
+			inv.addViolation(rules.BRE10, "Exempt from VAT breakdown must have exemption reason")
 		}
 	}
 }

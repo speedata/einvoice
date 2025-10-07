@@ -3,6 +3,8 @@ package einvoice
 import (
 	"errors"
 	"testing"
+
+	"github.com/speedata/einvoice/rules"
 )
 
 func TestValidationError_Error(t *testing.T) {
@@ -19,18 +21,18 @@ func TestValidationError_Error(t *testing.T) {
 		{
 			name: "single violation",
 			violations: []SemanticError{
-				{Rule: BR1, Text: "Invoice number is required"},
+				{Rule: rules.BR1, Text: "Invoice number is required"},
 			},
-			want: "validation failed: BR-1 - Invoice number is required",
+			want: "validation failed: BR-01 - Invoice number is required",
 		},
 		{
 			name: "multiple violations",
 			violations: []SemanticError{
-				{Rule: BR1, Text: "Invoice number is required"},
-				{Rule: BR2, Text: "Invoice date is required"},
-				{Rule: BR3, Text: "Currency is required"},
+				{Rule: rules.BR1, Text: "Invoice number is required"},
+				{Rule: rules.BR2, Text: "Invoice date is required"},
+				{Rule: rules.BR3, Text: "Currency is required"},
 			},
-			want: "validation failed with 3 violations (first: BR-1 - Invoice number is required)",
+			want: "validation failed with 3 violations (first: BR-01 - Invoice number is required)",
 		},
 	}
 
@@ -47,7 +49,7 @@ func TestValidationError_Error(t *testing.T) {
 func TestValidationError_Violations(t *testing.T) {
 	t.Run("returns copy of violations", func(t *testing.T) {
 		original := []SemanticError{
-			{Rule: BR1, Text: "Test violation"},
+			{Rule: rules.BR1, Text: "Test violation"},
 		}
 		e := &ValidationError{violations: original}
 
@@ -58,15 +60,15 @@ func TestValidationError_Violations(t *testing.T) {
 		if len(violations) != 1 {
 			t.Errorf("Violations() returned %d violations, want 1", len(violations))
 		}
-		if violations[0].Rule.Code != "BR-1" {
+		if violations[0].Rule.Code != "BR-01" {
 			t.Errorf("Violations()[0].Rule.Code = %v, want BR-1", violations[0].Rule.Code)
 		}
 
 		// Modify the returned slice - should not affect internal state
-		violations[0].Rule = BR2
+		violations[0].Rule = rules.BR2
 
 		// Verify internal state unchanged
-		if e.violations[0].Rule.Code != "BR-1" {
+		if e.violations[0].Rule.Code != "BR-01" {
 			t.Errorf("Internal violations were modified, want BR-1, got %v", e.violations[0].Rule.Code)
 		}
 	})
@@ -105,16 +107,16 @@ func TestValidationError_Count(t *testing.T) {
 		{
 			name: "one violation",
 			violations: []SemanticError{
-				{Rule: BR1, Text: "Test"},
+				{Rule: rules.BR1, Text: "Test"},
 			},
 			want: 1,
 		},
 		{
 			name: "multiple violations",
 			violations: []SemanticError{
-				{Rule: BR1, Text: "Test 1"},
-				{Rule: BR2, Text: "Test 2"},
-				{Rule: BR3, Text: "Test 3"},
+				{Rule: rules.BR1, Text: "Test 1"},
+				{Rule: rules.BR2, Text: "Test 2"},
+				{Rule: rules.BR3, Text: "Test 3"},
 			},
 			want: 3,
 		},
@@ -132,36 +134,36 @@ func TestValidationError_Count(t *testing.T) {
 
 func TestValidationError_HasRule(t *testing.T) {
 	violations := []SemanticError{
-		{Rule: BR1, Text: "Test 1"},
-		{Rule: BRS8, Text: "Test 2"},
-		{Rule: BRCO10, Text: "Test 3"},
+		{Rule: rules.BR1, Text: "Test 1"},
+		{Rule: rules.BRS8, Text: "Test 2"},
+		{Rule: rules.BRCO10, Text: "Test 3"},
 	}
 	e := &ValidationError{violations: violations}
 
 	t.Run("HasRule with Rule constants", func(t *testing.T) {
 		tests := []struct {
 			name string
-			rule Rule
+			rule rules.Rule
 			want bool
 		}{
 			{
-				name: "rule exists - BR1",
-				rule: BR1,
+				name: "rule exists - rules.BR1",
+				rule: rules.BR1,
 				want: true,
 			},
 			{
-				name: "rule exists - BRS8",
-				rule: BRS8,
+				name: "rule exists - rules.BRS8",
+				rule: rules.BRS8,
 				want: true,
 			},
 			{
-				name: "rule exists - BRCO10",
-				rule: BRCO10,
+				name: "rule exists - rules.BRCO10",
+				rule: rules.BRCO10,
 				want: true,
 			},
 			{
 				name: "rule does not exist",
-				rule: BR2,
+				rule: rules.BR2,
 				want: false,
 			},
 		}
@@ -183,12 +185,12 @@ func TestValidationError_HasRule(t *testing.T) {
 		}{
 			{
 				name: "rule exists - BR-1",
-				code: "BR-1",
+				code: "BR-01",
 				want: true,
 			},
 			{
 				name: "rule exists - BR-S-8",
-				code: "BR-S-8",
+				code: "BR-S-08",
 				want: true,
 			},
 			{
@@ -222,7 +224,7 @@ func TestValidationError_AsError(t *testing.T) {
 	t.Run("can be used with errors.As", func(t *testing.T) {
 		originalErr := &ValidationError{
 			violations: []SemanticError{
-				{Rule: BR1, Text: "Test violation"},
+				{Rule: rules.BR1, Text: "Test violation"},
 			},
 		}
 
@@ -237,11 +239,11 @@ func TestValidationError_AsError(t *testing.T) {
 			t.Errorf("Count() = %d, want 1", valErr.Count())
 		}
 
-		if !valErr.HasRule(BR1) {
-			t.Error("HasRule(BR1) = false, want true")
+		if !valErr.HasRule(rules.BR1) {
+			t.Error("HasRule(rules.BR1) = false, want true")
 		}
 
-		if !valErr.HasRuleCode("BR-1") {
+		if !valErr.HasRuleCode("BR-01") {
 			t.Error("HasRuleCode(BR-1) = false, want true")
 		}
 	})

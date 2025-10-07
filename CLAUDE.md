@@ -81,6 +81,20 @@ Each validation file contains a single method (e.g., `checkVATStandard()`) with 
 - Private: `Invoice.violations` field - use `Validate()` or deprecated `Violations()` accessor
 - Automatically runs during parsing; call explicitly when building invoices programmatically
 
+**Business Rules (`rules/` package)**
+- 203 rules auto-generated from EN 16931 schematron (v1.3.14.1)
+- Source: [ConnectingEurope/eInvoicing-EN16931](https://github.com/ConnectingEurope/eInvoicing-EN16931)
+- Regenerate: `cd rules && go generate`
+- Details: [cmd/genrules/README.md](cmd/genrules/README.md)
+
+Package structure:
+- `types.go`: Rule struct (manual)
+- `custom.go`: Custom rules and aliases (manual)
+- `en16931.go`: Generated rule constants (auto-generated)
+- `generate.go`: go:generate directive (manual)
+
+Rule naming: `BR-01` → `rules.BR1`, `BR-S-08` → `rules.BRS8`, `BR-CO-14` → `rules.BRCO14`
+
 **Writing (`writer.go`)**
 - `Invoice.Write(io.Writer)`: Outputs ZUGFeRD/Factur-X XML
 - Uses `github.com/beevik/etree` for XML generation
