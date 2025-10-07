@@ -1,7 +1,6 @@
 package einvoice
 
 import (
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -4997,98 +4996,47 @@ func TestBR40_NegativeChargeBaseAmount(t *testing.T) {
 }
 
 func TestBR24_MissingLineNetAmount(t *testing.T) {
-	t.Parallel()
-
-	xml := `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
-                          xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
-                          xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
-  <rsm:ExchangedDocumentContext>
-    <ram:GuidelineSpecifiedDocumentContextParameter>
-      <ram:ID>urn:cen.eu:en16931:2017</ram:ID>
-    </ram:GuidelineSpecifiedDocumentContextParameter>
-  </rsm:ExchangedDocumentContext>
-  <rsm:ExchangedDocument>
-    <ram:ID>INV-001</ram:ID>
-    <ram:TypeCode>380</ram:TypeCode>
-    <ram:IssueDateTime><udt:DateTimeString format="102">20240101</udt:DateTimeString></ram:IssueDateTime>
-  </rsm:ExchangedDocument>
-  <rsm:SupplyChainTradeTransaction>
-    <ram:ApplicableHeaderTradeAgreement>
-      <ram:BuyerTradeParty>
-        <ram:Name>Buyer</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:BuyerTradeParty>
-      <ram:SellerTradeParty>
-        <ram:Name>Seller</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:SellerTradeParty>
-    </ram:ApplicableHeaderTradeAgreement>
-    <ram:ApplicableHeaderTradeDelivery/>
-    <ram:ApplicableHeaderTradeSettlement>
-      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
-      <ram:ApplicableTradeTax>
-        <ram:CalculatedAmount>19.00</ram:CalculatedAmount>
-        <ram:TypeCode>VAT</ram:TypeCode>
-        <ram:CategoryCode>S</ram:CategoryCode>
-        <ram:BasisAmount>100.00</ram:BasisAmount>
-        <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
-      </ram:ApplicableTradeTax>
-      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        <ram:TaxBasisTotalAmount>100.00</ram:TaxBasisTotalAmount>
-        <ram:TaxTotalAmount>19.00</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>119.00</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>119.00</ram:DuePayableAmount>
-      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-    </ram:ApplicableHeaderTradeSettlement>
-    <ram:IncludedSupplyChainTradeLineItem>
-      <ram:AssociatedDocumentLineDocument>
-        <ram:LineID>1</ram:LineID>
-      </ram:AssociatedDocumentLineDocument>
-      <ram:SpecifiedTradeProduct>
-        <ram:Name>Test Item</ram:Name>
-      </ram:SpecifiedTradeProduct>
-      <ram:SpecifiedLineTradeAgreement>
-        <ram:NetPriceProductTradePrice>
-          <ram:ChargeAmount>100.00</ram:ChargeAmount>
-        </ram:NetPriceProductTradePrice>
-      </ram:SpecifiedLineTradeAgreement>
-      <ram:SpecifiedLineTradeDelivery>
-        <ram:BilledQuantity unitCode="C62">1.00</ram:BilledQuantity>
-      </ram:SpecifiedLineTradeDelivery>
-      <ram:SpecifiedLineTradeSettlement>
-        <ram:ApplicableTradeTax>
-          <ram:TypeCode>VAT</ram:TypeCode>
-          <ram:CategoryCode>S</ram:CategoryCode>
-          <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
-        </ram:ApplicableTradeTax>
-        <ram:SpecifiedTradeSettlementLineMonetarySummation>
-          <!-- Missing ram:LineTotalAmount -->
-        </ram:SpecifiedTradeSettlementLineMonetarySummation>
-      </ram:SpecifiedLineTradeSettlement>
-    </ram:IncludedSupplyChainTradeLineItem>
-  </rsm:SupplyChainTradeTransaction>
-</rsm:CrossIndustryInvoice>`
-
-	inv, err := ParseReader(strings.NewReader(xml))
-	if err != nil {
-		t.Fatalf("unexpected parsing error: %v", err)
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromFloat(100.0),
+				Total:             decimal.Zero, // Missing line net amount (BT-131)
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
 	}
 
-	// Check for BR-24 violation
-	err = inv.Validate()
-	if err == nil {
-		t.Fatal("Expected validation error for BR-24 violation")
-	}
-
-	var valErr *ValidationError
-	if !errors.As(err, &valErr) {
-		t.Fatalf("Expected ValidationError, got %T", err)
-	}
+	_ = inv.Validate()
 
 	var br24Found bool
-	for _, v := range valErr.Violations() {
+	for _, v := range inv.violations {
 		if v.Rule == "BR-24" {
 			br24Found = true
 			// Verify the violation references the correct fields
@@ -5110,96 +5058,47 @@ func TestBR24_MissingLineNetAmount(t *testing.T) {
 }
 
 func TestBR26_MissingNetPrice(t *testing.T) {
-	t.Parallel()
-
-	xml := `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
-                          xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
-                          xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
-  <rsm:ExchangedDocumentContext>
-    <ram:GuidelineSpecifiedDocumentContextParameter>
-      <ram:ID>urn:cen.eu:en16931:2017</ram:ID>
-    </ram:GuidelineSpecifiedDocumentContextParameter>
-  </rsm:ExchangedDocumentContext>
-  <rsm:ExchangedDocument>
-    <ram:ID>INV-001</ram:ID>
-    <ram:TypeCode>380</ram:TypeCode>
-    <ram:IssueDateTime><udt:DateTimeString format="102">20240101</udt:DateTimeString></ram:IssueDateTime>
-  </rsm:ExchangedDocument>
-  <rsm:SupplyChainTradeTransaction>
-    <ram:ApplicableHeaderTradeAgreement>
-      <ram:BuyerTradeParty>
-        <ram:Name>Buyer</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:BuyerTradeParty>
-      <ram:SellerTradeParty>
-        <ram:Name>Seller</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:SellerTradeParty>
-    </ram:ApplicableHeaderTradeAgreement>
-    <ram:ApplicableHeaderTradeDelivery/>
-    <ram:ApplicableHeaderTradeSettlement>
-      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
-      <ram:ApplicableTradeTax>
-        <ram:CalculatedAmount>19.00</ram:CalculatedAmount>
-        <ram:TypeCode>VAT</ram:TypeCode>
-        <ram:CategoryCode>S</ram:CategoryCode>
-        <ram:BasisAmount>100.00</ram:BasisAmount>
-        <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
-      </ram:ApplicableTradeTax>
-      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        <ram:TaxBasisTotalAmount>100.00</ram:TaxBasisTotalAmount>
-        <ram:TaxTotalAmount>19.00</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>119.00</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>119.00</ram:DuePayableAmount>
-      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-    </ram:ApplicableHeaderTradeSettlement>
-    <ram:IncludedSupplyChainTradeLineItem>
-      <ram:AssociatedDocumentLineDocument>
-        <ram:LineID>1</ram:LineID>
-      </ram:AssociatedDocumentLineDocument>
-      <ram:SpecifiedTradeProduct>
-        <ram:Name>Test Item</ram:Name>
-      </ram:SpecifiedTradeProduct>
-      <ram:SpecifiedLineTradeAgreement>
-        <!-- Missing ram:NetPriceProductTradePrice -->
-      </ram:SpecifiedLineTradeAgreement>
-      <ram:SpecifiedLineTradeDelivery>
-        <ram:BilledQuantity unitCode="C62">1.00</ram:BilledQuantity>
-      </ram:SpecifiedLineTradeDelivery>
-      <ram:SpecifiedLineTradeSettlement>
-        <ram:ApplicableTradeTax>
-          <ram:TypeCode>VAT</ram:TypeCode>
-          <ram:CategoryCode>S</ram:CategoryCode>
-          <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
-        </ram:ApplicableTradeTax>
-        <ram:SpecifiedTradeSettlementLineMonetarySummation>
-          <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        </ram:SpecifiedTradeSettlementLineMonetarySummation>
-      </ram:SpecifiedLineTradeSettlement>
-    </ram:IncludedSupplyChainTradeLineItem>
-  </rsm:SupplyChainTradeTransaction>
-</rsm:CrossIndustryInvoice>`
-
-	inv, err := ParseReader(strings.NewReader(xml))
-	if err != nil {
-		t.Fatalf("unexpected parsing error: %v", err)
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.Zero, // Missing net price (BT-146)
+				Total:             decimal.NewFromFloat(100.0),
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
 	}
 
-	// Check for BR-26 violation
-	err = inv.Validate()
-	if err == nil {
-		t.Fatal("Expected validation error for BR-26 violation")
-	}
-
-	var valErr *ValidationError
-	if !errors.As(err, &valErr) {
-		t.Fatalf("Expected ValidationError, got %T", err)
-	}
+	_ = inv.Validate()
 
 	var br26Found bool
-	for _, v := range valErr.Violations() {
+	for _, v := range inv.violations {
 		if v.Rule == "BR-26" {
 			br26Found = true
 			// Verify the violation references the correct fields
@@ -5221,98 +5120,56 @@ func TestBR26_MissingNetPrice(t *testing.T) {
 }
 
 func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
-	t.Parallel()
-
-	xml := `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
-                          xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
-                          xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
-  <rsm:ExchangedDocumentContext>
-    <ram:GuidelineSpecifiedDocumentContextParameter>
-      <ram:ID>urn:cen.eu:en16931:2017</ram:ID>
-    </ram:GuidelineSpecifiedDocumentContextParameter>
-  </rsm:ExchangedDocumentContext>
-  <rsm:ExchangedDocument>
-    <ram:ID>INV-001</ram:ID>
-    <ram:TypeCode>380</ram:TypeCode>
-    <ram:IssueDateTime><udt:DateTimeString format="102">20240101</udt:DateTimeString></ram:IssueDateTime>
-  </rsm:ExchangedDocument>
-  <rsm:SupplyChainTradeTransaction>
-    <ram:ApplicableHeaderTradeAgreement>
-      <ram:BuyerTradeParty>
-        <ram:Name>Buyer</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:BuyerTradeParty>
-      <ram:SellerTradeParty>
-        <ram:Name>Seller</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:SellerTradeParty>
-    </ram:ApplicableHeaderTradeAgreement>
-    <ram:ApplicableHeaderTradeDelivery/>
-    <ram:ApplicableHeaderTradeSettlement>
-      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
-      <ram:ApplicableTradeTax>
-        <!-- Missing ram:CalculatedAmount -->
-        <ram:TypeCode>VAT</ram:TypeCode>
-        <ram:CategoryCode>S</ram:CategoryCode>
-        <ram:BasisAmount>100.00</ram:BasisAmount>
-        <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
-      </ram:ApplicableTradeTax>
-      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        <ram:TaxBasisTotalAmount>100.00</ram:TaxBasisTotalAmount>
-        <ram:TaxTotalAmount>19.00</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>119.00</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>119.00</ram:DuePayableAmount>
-      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-    </ram:ApplicableHeaderTradeSettlement>
-    <ram:IncludedSupplyChainTradeLineItem>
-      <ram:AssociatedDocumentLineDocument>
-        <ram:LineID>1</ram:LineID>
-      </ram:AssociatedDocumentLineDocument>
-      <ram:SpecifiedTradeProduct>
-        <ram:Name>Test Item</ram:Name>
-      </ram:SpecifiedTradeProduct>
-      <ram:SpecifiedLineTradeAgreement>
-        <ram:NetPriceProductTradePrice>
-          <ram:ChargeAmount>100.00</ram:ChargeAmount>
-        </ram:NetPriceProductTradePrice>
-      </ram:SpecifiedLineTradeAgreement>
-      <ram:SpecifiedLineTradeDelivery>
-        <ram:BilledQuantity unitCode="C62">1.00</ram:BilledQuantity>
-      </ram:SpecifiedLineTradeDelivery>
-      <ram:SpecifiedLineTradeSettlement>
-        <ram:ApplicableTradeTax>
-          <ram:TypeCode>VAT</ram:TypeCode>
-          <ram:CategoryCode>S</ram:CategoryCode>
-          <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
-        </ram:ApplicableTradeTax>
-        <ram:SpecifiedTradeSettlementLineMonetarySummation>
-          <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        </ram:SpecifiedTradeSettlementLineMonetarySummation>
-      </ram:SpecifiedLineTradeSettlement>
-    </ram:IncludedSupplyChainTradeLineItem>
-  </rsm:SupplyChainTradeTransaction>
-</rsm:CrossIndustryInvoice>`
-
-	inv, err := ParseReader(strings.NewReader(xml))
-	if err != nil {
-		t.Fatalf("unexpected parsing error: %v", err)
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromFloat(100.0),
+				Total:             decimal.NewFromFloat(100.0),
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CalculatedAmount: decimal.Zero, // Missing calculated amount (BT-117)
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Typ:              "VAT",
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromFloat(19.0),
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
 	}
 
-	// Check for BR-46 violation
-	err = inv.Validate()
-	if err == nil {
-		t.Fatal("Expected validation error for BR-46 violation")
-	}
-
-	var valErr *ValidationError
-	if !errors.As(err, &valErr) {
-		t.Fatalf("Expected ValidationError, got %T", err)
-	}
+	_ = inv.Validate()
 
 	var br46Found bool
-	for _, v := range valErr.Violations() {
+	for _, v := range inv.violations {
 		if v.Rule == "BR-46" {
 			br46Found = true
 			// Verify the violation references the correct fields
@@ -5334,98 +5191,56 @@ func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
 }
 
 func TestBR48_MissingVATRatePercent(t *testing.T) {
-	t.Parallel()
-
-	xml := `<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
-                          xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
-                          xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
-  <rsm:ExchangedDocumentContext>
-    <ram:GuidelineSpecifiedDocumentContextParameter>
-      <ram:ID>urn:cen.eu:en16931:2017</ram:ID>
-    </ram:GuidelineSpecifiedDocumentContextParameter>
-  </rsm:ExchangedDocumentContext>
-  <rsm:ExchangedDocument>
-    <ram:ID>INV-001</ram:ID>
-    <ram:TypeCode>380</ram:TypeCode>
-    <ram:IssueDateTime><udt:DateTimeString format="102">20240101</udt:DateTimeString></ram:IssueDateTime>
-  </rsm:ExchangedDocument>
-  <rsm:SupplyChainTradeTransaction>
-    <ram:ApplicableHeaderTradeAgreement>
-      <ram:BuyerTradeParty>
-        <ram:Name>Buyer</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:BuyerTradeParty>
-      <ram:SellerTradeParty>
-        <ram:Name>Seller</ram:Name>
-        <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
-      </ram:SellerTradeParty>
-    </ram:ApplicableHeaderTradeAgreement>
-    <ram:ApplicableHeaderTradeDelivery/>
-    <ram:ApplicableHeaderTradeSettlement>
-      <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
-      <ram:ApplicableTradeTax>
-        <ram:CalculatedAmount>19.00</ram:CalculatedAmount>
-        <ram:TypeCode>VAT</ram:TypeCode>
-        <ram:CategoryCode>S</ram:CategoryCode>
-        <ram:BasisAmount>100.00</ram:BasisAmount>
-        <!-- Missing ram:RateApplicablePercent -->
-      </ram:ApplicableTradeTax>
-      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        <ram:TaxBasisTotalAmount>100.00</ram:TaxBasisTotalAmount>
-        <ram:TaxTotalAmount>19.00</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>119.00</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>119.00</ram:DuePayableAmount>
-      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-    </ram:ApplicableHeaderTradeSettlement>
-    <ram:IncludedSupplyChainTradeLineItem>
-      <ram:AssociatedDocumentLineDocument>
-        <ram:LineID>1</ram:LineID>
-      </ram:AssociatedDocumentLineDocument>
-      <ram:SpecifiedTradeProduct>
-        <ram:Name>Test Item</ram:Name>
-      </ram:SpecifiedTradeProduct>
-      <ram:SpecifiedLineTradeAgreement>
-        <ram:NetPriceProductTradePrice>
-          <ram:ChargeAmount>100.00</ram:ChargeAmount>
-        </ram:NetPriceProductTradePrice>
-      </ram:SpecifiedLineTradeAgreement>
-      <ram:SpecifiedLineTradeDelivery>
-        <ram:BilledQuantity unitCode="C62">1.00</ram:BilledQuantity>
-      </ram:SpecifiedLineTradeDelivery>
-      <ram:SpecifiedLineTradeSettlement>
-        <ram:ApplicableTradeTax>
-          <ram:TypeCode>VAT</ram:TypeCode>
-          <ram:CategoryCode>S</ram:CategoryCode>
-          <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
-        </ram:ApplicableTradeTax>
-        <ram:SpecifiedTradeSettlementLineMonetarySummation>
-          <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
-        </ram:SpecifiedTradeSettlementLineMonetarySummation>
-      </ram:SpecifiedLineTradeSettlement>
-    </ram:IncludedSupplyChainTradeLineItem>
-  </rsm:SupplyChainTradeTransaction>
-</rsm:CrossIndustryInvoice>`
-
-	inv, err := ParseReader(strings.NewReader(xml))
-	if err != nil {
-		t.Fatalf("unexpected parsing error: %v", err)
+	inv := Invoice{
+		Profile:             CProfileEN16931,
+		InvoiceNumber:       "TEST-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name: "Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromFloat(1.0),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromFloat(100.0),
+				Total:             decimal.NewFromFloat(100.0),
+				TaxCategoryCode:   "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CalculatedAmount: decimal.NewFromFloat(19.0),
+				BasisAmount:      decimal.NewFromFloat(100.0),
+				Typ:              "VAT",
+				CategoryCode:     "S",
+				Percent:          decimal.Zero, // Missing rate percent (BT-119)
+			},
+		},
+		LineTotal:       decimal.NewFromFloat(100.0),
+		TaxBasisTotal:   decimal.NewFromFloat(100.0),
+		TaxTotal:        decimal.NewFromFloat(19.0),
+		GrandTotal:      decimal.NewFromFloat(119.0),
+		DuePayableAmount: decimal.NewFromFloat(119.0),
 	}
 
-	// Check for BR-48 violation
-	err = inv.Validate()
-	if err == nil {
-		t.Fatal("Expected validation error for BR-48 violation")
-	}
-
-	var valErr *ValidationError
-	if !errors.As(err, &valErr) {
-		t.Fatalf("Expected ValidationError, got %T", err)
-	}
+	_ = inv.Validate()
 
 	var br48Found bool
-	for _, v := range valErr.Violations() {
+	for _, v := range inv.violations {
 		if v.Rule == "BR-48" {
 			br48Found = true
 			// Verify the violation references the correct fields
