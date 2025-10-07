@@ -37,7 +37,6 @@ func runValidate(args []string) int {
 	validateFlags := flag.NewFlagSet("validate", flag.ExitOnError)
 	var format string
 	validateFlags.StringVar(&format, "format", "text", "Output format: text, json")
-	validateFlags.StringVar(&format, "f", "text", "Output format: text, json (shorthand)")
 	validateFlags.Usage = validateUsage
 	validateFlags.Parse(args)
 
@@ -149,8 +148,8 @@ func validateUsage() {
 Validates an electronic invoice against EN 16931 business rules.
 
 Options:
-  -f, --format string   Output format: text, json (default "text")
-  -h, --help            Show this help message
+  --format string   Output format: text, json (default "text")
+  --help            Show this help message
 
 Exit codes:
   0  Invoice is valid
