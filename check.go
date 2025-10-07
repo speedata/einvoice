@@ -737,6 +737,62 @@ func (inv *Invoice) checkBR() {
 		}
 	}
 
+	// BR-B-1 Split payment (Italian domestic invoices)
+	// An Invoice where the VAT category code is "Split payment" (B) shall be a domestic Italian invoice.
+	// This means both seller and buyer must be located in Italy (IT).
+	hasSplitPayment := false
+	for _, line := range inv.InvoiceLines {
+		if line.TaxCategoryCode == "B" {
+			hasSplitPayment = true
+			break
+		}
+	}
+	if !hasSplitPayment {
+		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+			if ac.CategoryTradeTaxCategoryCode == "B" {
+				hasSplitPayment = true
+				break
+			}
+		}
+	}
+	if hasSplitPayment {
+		// Check seller country
+		sellerCountry := ""
+		if inv.Seller.PostalAddress != nil {
+			sellerCountry = inv.Seller.PostalAddress.CountryID
+		}
+		// Check buyer country
+		buyerCountry := ""
+		if inv.Buyer.PostalAddress != nil {
+			buyerCountry = inv.Buyer.PostalAddress.CountryID
+		}
+
+		if sellerCountry != "IT" || buyerCountry != "IT" {
+			inv.addViolation(rules.BRB1, "Split payment VAT category (B) requires both seller and buyer to be in Italy (IT)")
+		}
+	}
+
+	// BR-B-2 Split payment and Standard rated exclusion
+	// An Invoice with Split payment (B) shall not contain Standard rated (S) VAT category.
+	hasStandardRated := false
+	for _, line := range inv.InvoiceLines {
+		if line.TaxCategoryCode == "S" {
+			hasStandardRated = true
+			break
+		}
+	}
+	if !hasStandardRated {
+		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+			if ac.CategoryTradeTaxCategoryCode == "S" {
+				hasStandardRated = true
+				break
+			}
+		}
+	}
+	if hasSplitPayment && hasStandardRated {
+		inv.addViolation(rules.BRB2, "Invoice with Split payment VAT category (B) must not contain Standard rated (S) category")
+	}
+
 	// VAT category validations - delegated to specialized methods
 	inv.checkVATStandard()
 	inv.checkVATReverse()
