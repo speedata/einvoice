@@ -5120,6 +5120,9 @@ func TestBR26_MissingNetPrice(t *testing.T) {
 }
 
 func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
+	// This test verifies that zero calculated amounts for standard rated (S) invoices
+	// are caught by category-specific rules (BR-CO-17, BR-S-9), not BR-46.
+	// BR-46 was incorrectly failing on zero values, but zero is valid for exempt categories.
 	inv := Invoice{
 		Profile:             CProfileEN16931,
 		InvoiceNumber:       "TEST-001",
@@ -5131,6 +5134,7 @@ func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
 			PostalAddress: &PostalAddress{
 				CountryID: "DE",
 			},
+			VATaxRegistration: "DE123456789",
 		},
 		Buyer: Party{
 			Name: "Buyer",
@@ -5152,7 +5156,7 @@ func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
 		},
 		TradeTaxes: []TradeTax{
 			{
-				CalculatedAmount: decimal.Zero, // Missing calculated amount (BT-117)
+				CalculatedAmount: decimal.Zero, // Incorrect for standard rate (should be 19)
 				BasisAmount:      decimal.NewFromFloat(100.0),
 				Typ:              "VAT",
 				CategoryCode:     "S",
@@ -5161,36 +5165,45 @@ func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
 		},
 		LineTotal:       decimal.NewFromFloat(100.0),
 		TaxBasisTotal:   decimal.NewFromFloat(100.0),
-		TaxTotal:        decimal.NewFromFloat(19.0),
-		GrandTotal:      decimal.NewFromFloat(119.0),
-		DuePayableAmount: decimal.NewFromFloat(119.0),
+		TaxTotal:        decimal.Zero, // Should be 19
+		GrandTotal:      decimal.NewFromFloat(100.0),
+		DuePayableAmount: decimal.NewFromFloat(100.0),
 	}
 
 	_ = inv.Validate()
 
-	var br46Found bool
+	// Should fail BR-CO-17 (VAT amount calculation) and BR-S-9 (category-specific check)
+	// but NOT BR-46 (which now correctly allows zero for exempt categories)
+	var foundCO17 bool
+	var foundS9 bool
+	var foundBR46 bool
 	for _, v := range inv.violations {
+		if v.Rule == "BR-CO-17" {
+			foundCO17 = true
+		}
+		if v.Rule == "BR-S-9" {
+			foundS9 = true
+		}
 		if v.Rule == "BR-46" {
-			br46Found = true
-			// Verify the violation references the correct fields
-			if len(v.InvFields) < 2 {
-				t.Errorf("BR-46 violation should reference BG-23 and BT-117")
-			}
-			if v.InvFields[0] != "BG-23" || v.InvFields[1] != "BT-117" {
-				t.Errorf("BR-46 should reference BG-23 and BT-117, got %v", v.InvFields)
-			}
-			if !strings.Contains(v.Text, "CalculatedAmount") {
-				t.Errorf("BR-46 violation text should mention 'CalculatedAmount', got: %s", v.Text)
-			}
+			foundBR46 = true
 		}
 	}
 
-	if !br46Found {
-		t.Error("Expected BR-46 violation for missing VAT calculated amount")
+	if foundBR46 {
+		t.Error("BR-46 should not fail on zero calculated amount (zero is valid for exempt categories)")
+	}
+	if !foundCO17 {
+		t.Error("Expected BR-CO-17 violation for incorrect VAT calculation")
+	}
+	if !foundS9 {
+		t.Error("Expected BR-S-9 violation for standard rate with zero calculated amount")
 	}
 }
 
 func TestBR48_MissingVATRatePercent(t *testing.T) {
+	// This test verifies that zero rates for standard rated (S) invoices
+	// are caught by category-specific rules (BR-S-5), not BR-48.
+	// BR-48 was incorrectly failing on zero values, but zero is valid and required for exempt categories.
 	inv := Invoice{
 		Profile:             CProfileEN16931,
 		InvoiceNumber:       "TEST-001",
@@ -5202,6 +5215,7 @@ func TestBR48_MissingVATRatePercent(t *testing.T) {
 			PostalAddress: &PostalAddress{
 				CountryID: "DE",
 			},
+			VATaxRegistration: "DE123456789",
 		},
 		Buyer: Party{
 			Name: "Buyer",
@@ -5218,45 +5232,44 @@ func TestBR48_MissingVATRatePercent(t *testing.T) {
 				NetPrice:          decimal.NewFromFloat(100.0),
 				Total:             decimal.NewFromFloat(100.0),
 				TaxCategoryCode:   "S",
-				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
+				TaxRateApplicablePercent: decimal.Zero, // Invalid for standard rate
 			},
 		},
 		TradeTaxes: []TradeTax{
 			{
-				CalculatedAmount: decimal.NewFromFloat(19.0),
+				CalculatedAmount: decimal.Zero,
 				BasisAmount:      decimal.NewFromFloat(100.0),
 				Typ:              "VAT",
 				CategoryCode:     "S",
-				Percent:          decimal.Zero, // Missing rate percent (BT-119)
+				Percent:          decimal.Zero, // Invalid for standard rate (should be > 0)
 			},
 		},
 		LineTotal:       decimal.NewFromFloat(100.0),
 		TaxBasisTotal:   decimal.NewFromFloat(100.0),
-		TaxTotal:        decimal.NewFromFloat(19.0),
-		GrandTotal:      decimal.NewFromFloat(119.0),
-		DuePayableAmount: decimal.NewFromFloat(119.0),
+		TaxTotal:        decimal.Zero,
+		GrandTotal:      decimal.NewFromFloat(100.0),
+		DuePayableAmount: decimal.NewFromFloat(100.0),
 	}
 
 	_ = inv.Validate()
 
-	var br48Found bool
+	// Should fail BR-S-5 (standard rate must be > 0) but NOT BR-48
+	// (which now correctly allows zero for exempt categories)
+	var foundS5 bool
+	var foundBR48 bool
 	for _, v := range inv.violations {
+		if v.Rule == "BR-S-5" {
+			foundS5 = true
+		}
 		if v.Rule == "BR-48" {
-			br48Found = true
-			// Verify the violation references the correct fields
-			if len(v.InvFields) < 2 {
-				t.Errorf("BR-48 violation should reference BG-23 and BT-119")
-			}
-			if v.InvFields[0] != "BG-23" || v.InvFields[1] != "BT-119" {
-				t.Errorf("BR-48 should reference BG-23 and BT-119, got %v", v.InvFields)
-			}
-			if !strings.Contains(v.Text, "RateApplicablePercent") {
-				t.Errorf("BR-48 violation text should mention 'RateApplicablePercent', got: %s", v.Text)
-			}
+			foundBR48 = true
 		}
 	}
 
-	if !br48Found {
-		t.Error("Expected BR-48 violation for missing VAT rate percent")
+	if foundBR48 {
+		t.Error("BR-48 should not fail on zero rate percent (zero is required for exempt categories)")
+	}
+	if !foundS5 {
+		t.Error("Expected BR-S-5 violation for standard rate with zero percent")
 	}
 }

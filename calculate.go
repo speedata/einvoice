@@ -84,12 +84,35 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 	}
 }
 
+// UpdateAllowancesAndCharges recalculates the document-level allowance and charge totals
+// according to EN 16931 business rules.
+// This function implements the following business rules:
+// - BR-CO-11: AllowanceTotal (BT-107) = Sum of all document level allowance amounts (BT-92)
+// - BR-CO-12: ChargeTotal (BT-108) = Sum of all document level charge amounts (BT-99)
+func (inv *Invoice) UpdateAllowancesAndCharges() {
+	// Reset totals to zero to ensure idempotent behavior
+	inv.AllowanceTotal = decimal.Zero
+	inv.ChargeTotal = decimal.Zero
+
+	// BR-CO-11 and BR-CO-12: Calculate allowance and charge totals
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if ac.ChargeIndicator {
+			inv.ChargeTotal = inv.ChargeTotal.Add(ac.ActualAmount)
+		} else {
+			inv.AllowanceTotal = inv.AllowanceTotal.Add(ac.ActualAmount)
+		}
+	}
+}
+
 // UpdateTotals recalculates all monetary totals according to EN 16931 business rules.
 // This function implements the following business rules:
 // - BR-CO-10: LineTotal (BT-106) = Sum of all invoice line net amounts (BT-131)
 // - BR-CO-13: TaxBasisTotal (BT-109) = LineTotal (BT-106) - AllowanceTotal (BT-107) + ChargeTotal (BT-108)
 // - BR-CO-15: GrandTotal (BT-112) = TaxBasisTotal (BT-109) + TaxTotal (BT-110)
 // - BR-CO-16: DuePayableAmount (BT-115) = GrandTotal (BT-112) - TotalPrepaid (BT-113) + RoundingAmount (BT-114)
+//
+// Note: This function does not recalculate AllowanceTotal or ChargeTotal. If you have modified
+// SpecifiedTradeAllowanceCharge, call UpdateAllowancesAndCharges() first.
 func (inv *Invoice) UpdateTotals() {
 	// Reset all calculated totals to zero to ensure idempotent behavior
 	inv.LineTotal = decimal.Zero
