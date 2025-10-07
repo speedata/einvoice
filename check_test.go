@@ -771,6 +771,95 @@ func TestCheckBRO_BR_CO_13_Invalid(t *testing.T) {
 	}
 }
 
+// TestCheckBRO_BR_CO_14_Valid tests that BR-CO-14 validation passes when TaxTotal matches sum of VAT category amounts
+func TestCheckBRO_BR_CO_14_Valid(t *testing.T) {
+	inv := &Invoice{
+		TaxTotal: decimal.NewFromFloat(190.00), // 100 + 90
+		TradeTaxes: []TradeTax{
+			{CalculatedAmount: decimal.NewFromFloat(100.00)},
+			{CalculatedAmount: decimal.NewFromFloat(90.00)},
+		},
+	}
+
+	inv.checkBRO()
+
+	// Check that no BR-CO-14 violations were added
+	for _, v := range inv.violations {
+		if v.Rule == "BR-CO-14" {
+			t.Errorf("Expected no BR-CO-14 violation, but got: %s", v.Text)
+		}
+	}
+}
+
+// TestCheckBRO_BR_CO_14_Invalid tests that BR-CO-14 violation is detected when TaxTotal doesn't match
+func TestCheckBRO_BR_CO_14_Invalid(t *testing.T) {
+	inv := &Invoice{
+		TaxTotal: decimal.NewFromFloat(200.00), // Wrong: should be 190
+		TradeTaxes: []TradeTax{
+			{CalculatedAmount: decimal.NewFromFloat(100.00)},
+			{CalculatedAmount: decimal.NewFromFloat(90.00)},
+		},
+	}
+
+	inv.checkBRO()
+
+	// Check that BR-CO-14 violation was added
+	found := false
+	for _, v := range inv.violations {
+		if v.Rule == "BR-CO-14" {
+			found = true
+			expectedFields := []string{"BT-110", "BT-117"}
+			if len(v.InvFields) != len(expectedFields) {
+				t.Errorf("BR-CO-14 violation has incorrect number of InvFields: got %v, want %v", v.InvFields, expectedFields)
+			}
+		}
+	}
+	if !found {
+		t.Error("Expected BR-CO-14 violation, but none was found")
+	}
+}
+
+// TestCheckBRO_BR_CO_14_MultipleCategories tests BR-CO-14 with multiple VAT categories
+func TestCheckBRO_BR_CO_14_MultipleCategories(t *testing.T) {
+	inv := &Invoice{
+		TaxTotal: decimal.NewFromFloat(315.50), // 100 + 90.50 + 125
+		TradeTaxes: []TradeTax{
+			{CategoryCode: "S", CalculatedAmount: decimal.NewFromFloat(100.00)},
+			{CategoryCode: "S", CalculatedAmount: decimal.NewFromFloat(90.50)},
+			{CategoryCode: "E", CalculatedAmount: decimal.NewFromFloat(125.00)},
+		},
+	}
+
+	inv.checkBRO()
+
+	// Check that no BR-CO-14 violations were added
+	for _, v := range inv.violations {
+		if v.Rule == "BR-CO-14" {
+			t.Errorf("Expected no BR-CO-14 violation, but got: %s", v.Text)
+		}
+	}
+}
+
+// TestCheckBRO_BR_CO_14_ZeroTax tests BR-CO-14 with zero tax amounts
+func TestCheckBRO_BR_CO_14_ZeroTax(t *testing.T) {
+	inv := &Invoice{
+		TaxTotal: decimal.Zero, // All categories are exempt
+		TradeTaxes: []TradeTax{
+			{CategoryCode: "E", CalculatedAmount: decimal.Zero},
+			{CategoryCode: "Z", CalculatedAmount: decimal.Zero},
+		},
+	}
+
+	inv.checkBRO()
+
+	// Check that no BR-CO-14 violations were added
+	for _, v := range inv.violations {
+		if v.Rule == "BR-CO-14" {
+			t.Errorf("Expected no BR-CO-14 violation, but got: %s", v.Text)
+		}
+	}
+}
+
 // TestCheckBRO_BR_CO_15_Valid tests that BR-CO-15 validation passes when GrandTotal is correct
 func TestCheckBRO_BR_CO_15_Valid(t *testing.T) {
 	inv := &Invoice{

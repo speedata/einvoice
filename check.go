@@ -83,6 +83,17 @@ func (inv *Invoice) checkBRO() {
 		inv.violations = append(inv.violations, SemanticError{Rule: "BR-CO-13", InvFields: []string{"BT-109", "BT-106", "BT-107", "BT-108"}, Text: fmt.Sprintf("Tax basis total %s does not match LineTotal - AllowanceTotal + ChargeTotal = %s", inv.TaxBasisTotal.String(), expectedTaxBasisTotal.String())})
 	}
 
+	// BR-CO-14 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Invoice total VAT amount" (BT-110) entspricht der
+	// Summe aller Inhalte der Elemente "VAT category tax amount" (BT-117).
+	calculatedTaxTotal := decimal.Zero
+	for _, tax := range inv.TradeTaxes {
+		calculatedTaxTotal = calculatedTaxTotal.Add(tax.CalculatedAmount)
+	}
+	if !inv.TaxTotal.Equal(calculatedTaxTotal) {
+		inv.violations = append(inv.violations, SemanticError{Rule: "BR-CO-14", InvFields: []string{"BT-110", "BT-117"}, Text: fmt.Sprintf("Invoice total VAT amount %s does not match sum of VAT category amounts %s", inv.TaxTotal.String(), calculatedTaxTotal.String())})
+	}
+
 	// BR-CO-15 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Invoice total amount with VAT" (BT-112) entspricht der Summe aus "Invoice total amount without VAT"
 	// (BT-109) und "Invoice total VAT amount" (BT-110).
