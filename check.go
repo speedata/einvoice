@@ -49,6 +49,32 @@ func (inv *Invoice) checkBRO() {
 		inv.violations = append(inv.violations, SemanticError{Rule: "BR-CO-10", InvFields: []string{"BT-106", "BT-131"}, Text: fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String())})
 	}
 
+	// BR-CO-11 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Sum of allowances on document level" (BT-107) entspricht der Summe aller Inhalte
+	// der Elemente "Document level allowance amount" (BT-92).
+	calculatedAllowanceTotal := decimal.Zero
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if !ac.ChargeIndicator {
+			calculatedAllowanceTotal = calculatedAllowanceTotal.Add(ac.ActualAmount)
+		}
+	}
+	if !inv.AllowanceTotal.Equal(calculatedAllowanceTotal) {
+		inv.violations = append(inv.violations, SemanticError{Rule: "BR-CO-11", InvFields: []string{"BT-107", "BT-92"}, Text: fmt.Sprintf("Allowance total %s does not match sum of document level allowances %s", inv.AllowanceTotal.String(), calculatedAllowanceTotal.String())})
+	}
+
+	// BR-CO-12 Gesamtsummen auf Dokumentenebene
+	// Der Inhalt des Elementes "Sum of charges on document level" (BT-108) entspricht der Summe aller Inhalte
+	// der Elemente "Document level charge amount" (BT-99).
+	calculatedChargeTotal := decimal.Zero
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if ac.ChargeIndicator {
+			calculatedChargeTotal = calculatedChargeTotal.Add(ac.ActualAmount)
+		}
+	}
+	if !inv.ChargeTotal.Equal(calculatedChargeTotal) {
+		inv.violations = append(inv.violations, SemanticError{Rule: "BR-CO-12", InvFields: []string{"BT-108", "BT-99"}, Text: fmt.Sprintf("Charge total %s does not match sum of document level charges %s", inv.ChargeTotal.String(), calculatedChargeTotal.String())})
+	}
+
 	// BR-CO-13 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Invoice total amount without VAT" (BT-109) entspricht der Summe aus "Sum of Invoice line net amount"
 	// (BT-106) abzüglich "Sum of allowances on document level" (BT-107) zuzüglich "Sum of charges on document level" (BT-108).
@@ -242,10 +268,10 @@ func (inv *Invoice) checkBR() {
 			inv.violations = append(inv.violations, SemanticError{Rule: "BR-19", InvFields: []string{"BG-4", "BG-12"}, Text: "Tax representative has no postal address"})
 		} else {
 			// BR-20 Steuerbevollmächtigter des Verkäufers
-			// Die postalische Anschrift des Steuervertreters des Verkäufers "SELLER TAX REPRESENTATIVE POSTAL ADDRESS“ (BG-12) muss einen
-			// Steuervertreter-Ländercode enthalten, wenn der Verkäufer "SELLER“ (BG-4) einen Steuervertreter hat.
+			// Die postalische Anschrift des Steuervertreters des Verkäufers "SELLER TAX REPRESENTATIVE POSTAL ADDRESS" (BG-12) muss einen
+			// Steuervertreter-Ländercode enthalten, wenn der Verkäufer "SELLER" (BG-4) einen Steuervertreter hat.
 			if trp.PostalAddress.CountryID == "" {
-				inv.violations = append(inv.violations, SemanticError{Rule: "BR-20", InvFields: []string{"BG-4", "BG-12"}, Text: "Tax representative has no postal address"})
+				inv.violations = append(inv.violations, SemanticError{Rule: "BR-20", InvFields: []string{"BG-4", "BG-12"}, Text: "Tax representative postal address missing country code"})
 			}
 		}
 	}
@@ -429,18 +455,18 @@ func (inv *Invoice) checkBR() {
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss den für
 		// die betreffende Umsatzsteuerkategorie zu entrichtenden Gesamtbetrag
 		// "VAT category tax amount" (BT-117) aufweisen.
-		if tt.CalculatedAmount.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-46", InvFields: []string{"BG-23", "BT-117"}, Text: "CalculatedAmount not set for applicable trade tax"})
-		}
+		// Note: Zero is a valid value for exempt categories (E, AE, Z, G, O, IC, IG, IP).
+		// Category-specific rules (BR-E-9, BR-AE-9, BR-Z-9, etc.) enforce when zero is required.
+		// This rule only ensures the field is present, which it always is after parsing or calculation.
 
 		// BR-48 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss einen
 		// Umsatzsteuersatz gemäß einer Kategorie "VAT category rate" (BT-119)
 		// haben. Sofern die Rechnung von der Umsatzsteuer ausgenommen ist, ist
 		// "0" zu übermitteln.
-		if tt.Percent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-48", InvFields: []string{"BG-23", "BT-119"}, Text: "RateApplicablePercent not set for applicable trade tax"})
-		}
+		// Note: Zero is a valid and required value for categories E, AE, Z, G, O, IC, IG, IP.
+		// Category-specific rules (BR-S-5, BR-E-5, BR-AE-5, etc.) enforce the correct rate per category.
+		// This rule only ensures the field is present, which it always is after parsing or calculation.
 
 		// BR-45 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss die
