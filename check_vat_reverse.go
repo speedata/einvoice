@@ -44,7 +44,7 @@ func (inv *Invoice) checkVATReverse() {
 			}
 		}
 		if !hasAEInBreakdown {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-1", InvFields: []string{"BG-23", "BT-118"}, Text: "Invoice with Reverse charge items must have Reverse charge VAT breakdown"})
+			inv.addViolation(BRAE1, "Invoice with Reverse charge items must have Reverse charge VAT breakdown")
 		}
 	}
 
@@ -63,7 +63,7 @@ func (inv *Invoice) checkVATReverse() {
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 		if !hasSellerTaxID || !hasBuyerVATID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-2", InvFields: []string{"BT-31", "BT-32", "BT-63", "BT-48"}, Text: "Invoice with Reverse charge line must have seller and buyer VAT identifiers"})
+			inv.addViolation(BRAE2, "Invoice with Reverse charge line must have seller and buyer VAT identifiers")
 		}
 	}
 
@@ -82,7 +82,7 @@ func (inv *Invoice) checkVATReverse() {
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 		if !hasSellerTaxID || !hasBuyerVATID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-3", InvFields: []string{"BT-31", "BT-32", "BT-63", "BT-48"}, Text: "Invoice with Reverse charge allowance must have seller and buyer VAT identifiers"})
+			inv.addViolation(BRAE3, "Invoice with Reverse charge allowance must have seller and buyer VAT identifiers")
 		}
 	}
 
@@ -101,7 +101,7 @@ func (inv *Invoice) checkVATReverse() {
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		hasBuyerVATID := inv.Buyer.VATaxRegistration != ""
 		if !hasSellerTaxID || !hasBuyerVATID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-4", InvFields: []string{"BT-31", "BT-32", "BT-63", "BT-48"}, Text: "Invoice with Reverse charge charge must have seller and buyer VAT identifiers"})
+			inv.addViolation(BRAE4, "Invoice with Reverse charge charge must have seller and buyer VAT identifiers")
 		}
 	}
 
@@ -109,7 +109,7 @@ func (inv *Invoice) checkVATReverse() {
 	// In invoice line with "AE", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "AE" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-5", InvFields: []string{"BG-25", "BT-152"}, Text: "Reverse charge invoice line must have VAT rate of 0"})
+			inv.addViolation(BRAE5, "Reverse charge invoice line must have VAT rate of 0")
 		}
 	}
 
@@ -117,7 +117,7 @@ func (inv *Invoice) checkVATReverse() {
 	// In document level allowance with "AE", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "AE" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-6", InvFields: []string{"BG-20", "BT-96"}, Text: "Reverse charge allowance must have VAT rate of 0"})
+			inv.addViolation(BRAE6, "Reverse charge allowance must have VAT rate of 0")
 		}
 	}
 
@@ -125,7 +125,7 @@ func (inv *Invoice) checkVATReverse() {
 	// In document level charge with "AE", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "AE" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-7", InvFields: []string{"BG-21", "BT-103"}, Text: "Reverse charge charge must have VAT rate of 0"})
+			inv.addViolation(BRAE7, "Reverse charge charge must have VAT rate of 0")
 		}
 	}
 
@@ -150,7 +150,7 @@ func (inv *Invoice) checkVATReverse() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-8", InvFields: []string{"BG-23", "BT-116"}, Text: fmt.Sprintf("Reverse charge taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String())})
+				inv.addViolation(BRAE8, fmt.Sprintf("Reverse charge taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -159,7 +159,7 @@ func (inv *Invoice) checkVATReverse() {
 	// VAT amount must be 0 for Reverse charge
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "AE" && !tt.CalculatedAmount.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-9", InvFields: []string{"BG-23", "BT-117"}, Text: "Reverse charge VAT amount must be 0"})
+			inv.addViolation(BRAE9, "Reverse charge VAT amount must be 0")
 		}
 	}
 
@@ -167,7 +167,7 @@ func (inv *Invoice) checkVATReverse() {
 	// Reverse charge breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "AE" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-AE-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Reverse charge VAT breakdown must have exemption reason"})
+			inv.addViolation(BRAE10, "Reverse charge VAT breakdown must have exemption reason")
 		}
 	}
 }

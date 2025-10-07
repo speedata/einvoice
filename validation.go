@@ -4,9 +4,8 @@ import "fmt"
 
 // SemanticError contains a business rule violation found during validation.
 type SemanticError struct {
-	Rule      string   // Business rule identifier (e.g., "BR-1", "BR-S-8")
-	InvFields []string // Fields involved in the violation (e.g., "BT-1", "BG-23")
-	Text      string   // Human-readable description of the violation
+	Rule Rule   // The business rule that was violated
+	Text string // Human-readable description with actual values
 }
 
 // ValidationError is returned when invoice validation fails.
@@ -19,7 +18,7 @@ type SemanticError struct {
 //	    var valErr *ValidationError
 //	    if errors.As(err, &valErr) {
 //	        for _, v := range valErr.Violations() {
-//	            fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+//	            fmt.Printf("Rule %s: %s\n", v.Rule.Code, v.Text)
 //	        }
 //	    }
 //	}
@@ -36,12 +35,12 @@ func (e *ValidationError) Error() string {
 
 	if len(e.violations) == 1 {
 		v := e.violations[0]
-		return fmt.Sprintf("validation failed: %s - %s", v.Rule, v.Text)
+		return fmt.Sprintf("validation failed: %s - %s", v.Rule.Code, v.Text)
 	}
 
 	return fmt.Sprintf("validation failed with %d violations (first: %s - %s)",
 		len(e.violations),
-		e.violations[0].Rule,
+		e.violations[0].Rule.Code,
 		e.violations[0].Text)
 }
 
@@ -64,14 +63,52 @@ func (e *ValidationError) Count() int {
 }
 
 // HasRule checks if a specific business rule violation exists.
-// The rule parameter should be a business rule identifier like "BR-1", "BR-S-8", etc.
-func (e *ValidationError) HasRule(rule string) bool {
+// Accepts a Rule constant (e.g., BR1, BRS8, BRCO14).
+//
+// Example:
+//
+//	if valErr.HasRule(BR1) {
+//	    // Handle missing specification identifier
+//	}
+func (e *ValidationError) HasRule(rule Rule) bool {
 	for _, v := range e.violations {
-		if v.Rule == rule {
+		if v.Rule.Code == rule.Code {
 			return true
 		}
 	}
 	return false
+}
+
+// HasRuleCode checks if a specific business rule code violation exists.
+// The code parameter should be a business rule identifier string like "BR-1", "BR-S-8", etc.
+//
+// Example:
+//
+//	if valErr.HasRuleCode("BR-1") {
+//	    // Handle missing specification identifier
+//	}
+func (e *ValidationError) HasRuleCode(code string) bool {
+	for _, v := range e.violations {
+		if v.Rule.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
+// addViolation is a helper method that appends a business rule violation to the invoice.
+// It is used internally by validation methods to record rule violations in a type-safe way.
+//
+// Example:
+//
+//	inv.addViolation(BRCO14, fmt.Sprintf(
+//	    "Invoice total VAT amount %s does not match sum %s",
+//	    inv.TaxTotal.String(), calculatedTaxTotal.String()))
+func (inv *Invoice) addViolation(rule Rule, text string) {
+	inv.violations = append(inv.violations, SemanticError{
+		Rule: rule,
+		Text: text,
+	})
 }
 
 // Validate checks the invoice against EN 16931 business rules.
@@ -90,7 +127,7 @@ func (e *ValidationError) HasRule(rule string) bool {
 //	    var valErr *ValidationError
 //	    if errors.As(err, &valErr) {
 //	        for _, v := range valErr.Violations() {
-//	            fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+//	            fmt.Printf("Rule %s: %s\n", v.Rule.Code, v.Text)
 //	        }
 //	    }
 //	    return err

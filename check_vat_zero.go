@@ -45,7 +45,7 @@ func (inv *Invoice) checkVATZero() {
 			}
 		}
 		if !hasZInBreakdown {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-1", InvFields: []string{"BG-23", "BT-118"}, Text: "Invoice with Zero rated items must have Zero rated VAT breakdown"})
+			inv.addViolation(BRZ1, "Invoice with Zero rated items must have Zero rated VAT breakdown")
 		}
 	}
 
@@ -63,7 +63,7 @@ func (inv *Invoice) checkVATZero() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-2", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Zero rated line must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRZ2, "Invoice with Zero rated line must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -81,7 +81,7 @@ func (inv *Invoice) checkVATZero() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-3", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Zero rated allowance must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRZ3, "Invoice with Zero rated allowance must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -99,7 +99,7 @@ func (inv *Invoice) checkVATZero() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-4", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Zero rated charge must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRZ4, "Invoice with Zero rated charge must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -107,7 +107,7 @@ func (inv *Invoice) checkVATZero() {
 	// In invoice line with "Z", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "Z" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-5", InvFields: []string{"BG-25", "BT-152"}, Text: "Zero rated invoice line must have VAT rate of 0"})
+			inv.addViolation(BRZ5, "Zero rated invoice line must have VAT rate of 0")
 		}
 	}
 
@@ -115,7 +115,7 @@ func (inv *Invoice) checkVATZero() {
 	// In document level allowance with "Z", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "Z" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-6", InvFields: []string{"BG-20", "BT-96"}, Text: "Zero rated allowance must have VAT rate of 0"})
+			inv.addViolation(BRZ6, "Zero rated allowance must have VAT rate of 0")
 		}
 	}
 
@@ -123,7 +123,7 @@ func (inv *Invoice) checkVATZero() {
 	// In document level charge with "Z", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "Z" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-7", InvFields: []string{"BG-21", "BT-103"}, Text: "Zero rated charge must have VAT rate of 0"})
+			inv.addViolation(BRZ7, "Zero rated charge must have VAT rate of 0")
 		}
 	}
 
@@ -148,7 +148,7 @@ func (inv *Invoice) checkVATZero() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-8", InvFields: []string{"BG-23", "BT-116"}, Text: fmt.Sprintf("Zero rated taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String())})
+				inv.addViolation(BRZ8, fmt.Sprintf("Zero rated taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -157,7 +157,7 @@ func (inv *Invoice) checkVATZero() {
 	// VAT amount must be 0 for Zero rated
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "Z" && !tt.CalculatedAmount.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-9", InvFields: []string{"BG-23", "BT-117"}, Text: "Zero rated VAT amount must be 0"})
+			inv.addViolation(BRZ9, "Zero rated VAT amount must be 0")
 		}
 	}
 
@@ -165,7 +165,7 @@ func (inv *Invoice) checkVATZero() {
 	// Zero rated breakdown must not have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "Z" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-Z-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Zero rated VAT breakdown must not have exemption reason"})
+			inv.addViolation(BRZ10, "Zero rated VAT breakdown must not have exemption reason")
 		}
 	}
 }

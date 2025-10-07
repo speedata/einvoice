@@ -44,7 +44,7 @@ func (inv *Invoice) checkVATStandard() {
 			}
 		}
 		if !hasStandardInBreakdown {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-1", InvFields: []string{"BG-23", "BT-118"}, Text: "Invoice with Standard rated items must have Standard rated VAT breakdown"})
+			inv.addViolation(BRS1, "Invoice with Standard rated items must have Standard rated VAT breakdown")
 		}
 	}
 
@@ -62,7 +62,7 @@ func (inv *Invoice) checkVATStandard() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-2", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Standard rated line must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRS2, "Invoice with Standard rated line must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -80,7 +80,7 @@ func (inv *Invoice) checkVATStandard() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-3", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Standard rated allowance must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRS3, "Invoice with Standard rated allowance must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -98,7 +98,7 @@ func (inv *Invoice) checkVATStandard() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-4", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Standard rated charge must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRS4, "Invoice with Standard rated charge must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -106,7 +106,7 @@ func (inv *Invoice) checkVATStandard() {
 	// In invoice line with "Standard rated", VAT rate must be > 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "S" && !line.TaxRateApplicablePercent.IsPositive() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-5", InvFields: []string{"BG-25", "BT-152"}, Text: "Standard rated invoice line must have VAT rate greater than 0"})
+			inv.addViolation(BRS5, "Standard rated invoice line must have VAT rate greater than 0")
 		}
 	}
 
@@ -114,7 +114,7 @@ func (inv *Invoice) checkVATStandard() {
 	// In document level allowance with "Standard rated", VAT rate must be > 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" && !ac.CategoryTradeTaxRateApplicablePercent.IsPositive() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-6", InvFields: []string{"BG-20", "BT-96"}, Text: "Standard rated allowance must have VAT rate greater than 0"})
+			inv.addViolation(BRS6, "Standard rated allowance must have VAT rate greater than 0")
 		}
 	}
 
@@ -122,7 +122,7 @@ func (inv *Invoice) checkVATStandard() {
 	// In document level charge with "Standard rated", VAT rate must be > 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" && !ac.CategoryTradeTaxRateApplicablePercent.IsPositive() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-7", InvFields: []string{"BG-21", "BT-103"}, Text: "Standard rated charge must have VAT rate greater than 0"})
+			inv.addViolation(BRS7, "Standard rated charge must have VAT rate greater than 0")
 		}
 	}
 
@@ -149,7 +149,7 @@ func (inv *Invoice) checkVATStandard() {
 			// Round to 2 decimals for comparison
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-8", InvFields: []string{"BG-23", "BT-116"}, Text: fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String())})
+				inv.addViolation(BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -160,7 +160,7 @@ func (inv *Invoice) checkVATStandard() {
 		if tt.CategoryCode == "S" {
 			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-9", InvFields: []string{"BG-23", "BT-117"}, Text: fmt.Sprintf("Standard rated VAT amount must equal basis * rate (expected %s, got %s)", expectedVAT.String(), tt.CalculatedAmount.String())})
+				inv.addViolation(BRS9, fmt.Sprintf("Standard rated VAT amount must equal basis * rate (expected %s, got %s)", expectedVAT.String(), tt.CalculatedAmount.String()))
 			}
 		}
 	}
@@ -169,7 +169,7 @@ func (inv *Invoice) checkVATStandard() {
 	// Standard rated breakdown must not have exemption reason or code
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "S" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-S-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Standard rated VAT breakdown must not have exemption reason"})
+			inv.addViolation(BRS10, "Standard rated VAT breakdown must not have exemption reason")
 		}
 	}
 }

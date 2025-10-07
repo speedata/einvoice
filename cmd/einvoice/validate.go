@@ -20,9 +20,10 @@ type Result struct {
 
 // Violation represents a business rule violation
 type Violation struct {
-	Rule   string   `json:"rule"`
-	Fields []string `json:"fields,omitempty"`
-	Text   string   `json:"text"`
+	Rule        string   `json:"rule"`
+	Fields      []string `json:"fields,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Text        string   `json:"text"`
 }
 
 // InvoiceRef contains basic invoice metadata
@@ -36,7 +37,9 @@ func runValidate(args []string) int {
 	// Parse flags for the validate subcommand
 	validateFlags := flag.NewFlagSet("validate", flag.ExitOnError)
 	var format string
+	var verbose bool
 	validateFlags.StringVar(&format, "format", "text", "Output format: text, json")
+	validateFlags.BoolVar(&verbose, "verbose", false, "Show detailed rule descriptions and all fields")
 	validateFlags.Usage = validateUsage
 	_ = validateFlags.Parse(args)
 
@@ -56,7 +59,7 @@ func runValidate(args []string) int {
 	case "json":
 		outputJSON(result)
 	case "text":
-		outputText(result)
+		outputText(result, verbose)
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown format %q (use 'text' or 'json')\n", format)
 		return exitError
@@ -105,9 +108,10 @@ func validateInvoice(filename string) Result {
 		result.Violations = make([]Violation, len(semanticErrors))
 		for i, se := range semanticErrors {
 			result.Violations[i] = Violation{
-				Rule:   se.Rule,
-				Fields: se.InvFields,
-				Text:   se.Text,
+				Rule:        se.Rule.Code,
+				Fields:      se.Rule.Fields,
+				Description: se.Rule.Description,
+				Text:        se.Text,
 			}
 		}
 	} else {
@@ -117,7 +121,7 @@ func validateInvoice(filename string) Result {
 	return result
 }
 
-func outputText(result Result) {
+func outputText(result Result, verbose bool) {
 	if result.Error != "" {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", result.Error)
 		return
@@ -130,8 +134,36 @@ func outputText(result Result) {
 
 	fmt.Printf("✗ Invoice %s has %d violation(s):\n", result.Invoice.Number, len(result.Violations))
 	for _, violation := range result.Violations {
-		fmt.Printf("  - %s: %s\n", violation.Rule, violation.Text)
+		if verbose {
+			// Verbose mode: show full details
+			fmt.Printf("  - %s: %s\n", violation.Rule, violation.Text)
+			if violation.Description != "" {
+				fmt.Printf("    Specification: %s\n", violation.Description)
+			}
+			if len(violation.Fields) > 0 {
+				fmt.Printf("    Fields: %s\n", formatFields(violation.Fields))
+			}
+		} else {
+			// Normal mode: show primary field inline
+			primaryField := ""
+			if len(violation.Fields) > 0 {
+				primaryField = fmt.Sprintf(" (%s)", violation.Fields[0])
+			}
+			fmt.Printf("  - %s%s: %s\n", violation.Rule, primaryField, violation.Text)
+		}
 	}
+}
+
+// formatFields joins field identifiers with commas
+func formatFields(fields []string) string {
+	if len(fields) == 0 {
+		return ""
+	}
+	result := fields[0]
+	for i := 1; i < len(fields); i++ {
+		result += ", " + fields[i]
+	}
+	return result
 }
 
 func outputJSON(result Result) {
@@ -149,6 +181,7 @@ Validates an electronic invoice against EN 16931 business rules.
 
 Options:
   --format string   Output format: text, json (default "text")
+  --verbose         Show detailed rule descriptions and all fields
   --help            Show this help message
 
 Exit codes:
@@ -158,6 +191,7 @@ Exit codes:
 
 Examples:
   einvoice validate invoice.xml
+  einvoice validate --verbose invoice.xml
   einvoice validate --format json invoice.xml
 `)
 }

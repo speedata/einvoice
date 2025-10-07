@@ -181,7 +181,7 @@ func TestOutputText(t *testing.T) {
 			os.Stdout = wOut
 			os.Stderr = wErr
 
-			outputText(tt.result)
+			outputText(tt.result, false)
 
 			_ = wOut.Close()
 			_ = wErr.Close()

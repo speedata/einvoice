@@ -45,7 +45,7 @@ func (inv *Invoice) checkVATExempt() {
 			}
 		}
 		if !hasEInBreakdown {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-1", InvFields: []string{"BG-23", "BT-118"}, Text: "Invoice with Exempt from VAT items must have Exempt from VAT breakdown"})
+			inv.addViolation(BRE1, "Invoice with Exempt from VAT items must have Exempt from VAT breakdown")
 		}
 	}
 
@@ -63,7 +63,7 @@ func (inv *Invoice) checkVATExempt() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-2", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Exempt from VAT line must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRE2, "Invoice with Exempt from VAT line must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -81,7 +81,7 @@ func (inv *Invoice) checkVATExempt() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-3", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Exempt from VAT allowance must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRE3, "Invoice with Exempt from VAT allowance must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -99,7 +99,7 @@ func (inv *Invoice) checkVATExempt() {
 			inv.Seller.FCTaxRegistration != "" ||
 			(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
 		if !hasSellerTaxID {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-4", InvFields: []string{"BT-31", "BT-32", "BT-63"}, Text: "Invoice with Exempt from VAT charge must have seller VAT identifier or tax registration"})
+			inv.addViolation(BRE4, "Invoice with Exempt from VAT charge must have seller VAT identifier or tax registration")
 		}
 	}
 
@@ -107,7 +107,7 @@ func (inv *Invoice) checkVATExempt() {
 	// In invoice line with "E", VAT rate must be 0
 	for _, line := range inv.InvoiceLines {
 		if line.TaxCategoryCode == "E" && !line.TaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-5", InvFields: []string{"BG-25", "BT-152"}, Text: "Exempt from VAT invoice line must have VAT rate of 0"})
+			inv.addViolation(BRE5, "Exempt from VAT invoice line must have VAT rate of 0")
 		}
 	}
 
@@ -115,7 +115,7 @@ func (inv *Invoice) checkVATExempt() {
 	// In document level allowance with "E", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "E" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-6", InvFields: []string{"BG-20", "BT-96"}, Text: "Exempt from VAT allowance must have VAT rate of 0"})
+			inv.addViolation(BRE6, "Exempt from VAT allowance must have VAT rate of 0")
 		}
 	}
 
@@ -123,7 +123,7 @@ func (inv *Invoice) checkVATExempt() {
 	// In document level charge with "E", VAT rate must be 0
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
 		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "E" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-7", InvFields: []string{"BG-21", "BT-103"}, Text: "Exempt from VAT charge must have VAT rate of 0"})
+			inv.addViolation(BRE7, "Exempt from VAT charge must have VAT rate of 0")
 		}
 	}
 
@@ -148,7 +148,7 @@ func (inv *Invoice) checkVATExempt() {
 			}
 			calculatedBasis = calculatedBasis.Round(2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-8", InvFields: []string{"BG-23", "BT-116"}, Text: fmt.Sprintf("Exempt from VAT taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String())})
+				inv.addViolation(BRE8, fmt.Sprintf("Exempt from VAT taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
 		}
 	}
@@ -157,7 +157,7 @@ func (inv *Invoice) checkVATExempt() {
 	// VAT amount must be 0 for Exempt from VAT
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "E" && !tt.CalculatedAmount.IsZero() {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-9", InvFields: []string{"BG-23", "BT-117"}, Text: "Exempt from VAT amount must be 0"})
+			inv.addViolation(BRE9, "Exempt from VAT amount must be 0")
 		}
 	}
 
@@ -165,7 +165,7 @@ func (inv *Invoice) checkVATExempt() {
 	// Exempt from VAT breakdown must have exemption reason code or text
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "E" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
-			inv.violations = append(inv.violations, SemanticError{Rule: "BR-E-10", InvFields: []string{"BG-23", "BT-120", "BT-121"}, Text: "Exempt from VAT breakdown must have exemption reason"})
+			inv.addViolation(BRE10, "Exempt from VAT breakdown must have exemption reason")
 		}
 	}
 }
