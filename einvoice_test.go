@@ -1,57 +1,56 @@
-package einvoice_test
+package einvoice
 
 import (
 	"os"
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/speedata/einvoice"
 )
 
 func ExampleInvoice_Write() {
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 	fourteenDays := time.Hour * 24 * 14
-	inv := einvoice.Invoice{
+	inv := Invoice{
 		InvoiceNumber:       "1234",
 		InvoiceTypeCode:     380,
-		Profile:             einvoice.CProfileEN16931,
+		Profile:             CProfileEN16931,
 		InvoiceDate:         fixedDate,
 		OccurrenceDateTime:  fixedDate.Add(-fourteenDays),
 		InvoiceCurrencyCode: "EUR",
 		TaxCurrencyCode:     "EUR",
-		Notes: []einvoice.Note{{
+		Notes: []Note{{
 			Text: "Some text",
 		}},
-		Seller: einvoice.Party{
+		Seller: Party{
 			Name:              "Company name",
 			VATaxRegistration: "DE123456",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Line one",
 				Line2:        "Line two",
 				City:         "City",
 				PostcodeCode: "12345",
 				CountryID:    "DE",
 			},
-			DefinedTradeContact: []einvoice.DefinedTradeContact{{
+			DefinedTradeContact: []DefinedTradeContact{{
 				PersonName: "Jon Doe",
 				EMail:      "doe@example.com",
 			}},
 		},
-		Buyer: einvoice.Party{
+		Buyer: Party{
 			Name: "Buyer",
-			PostalAddress: &einvoice.PostalAddress{
+			PostalAddress: &PostalAddress{
 				Line1:        "Buyer line 1",
 				Line2:        "Buyer line 2",
 				City:         "Buyercity",
 				PostcodeCode: "33441",
 				CountryID:    "FR",
 			},
-			DefinedTradeContact: []einvoice.DefinedTradeContact{{
+			DefinedTradeContact: []DefinedTradeContact{{
 				PersonName: "Buyer Person",
 			}},
 			VATaxRegistration: "FR4441112",
 		},
-		PaymentMeans: []einvoice.PaymentMeans{
+		PaymentMeans: []PaymentMeans{
 			{
 				TypeCode:                                      30,
 				PayeePartyCreditorFinancialAccountIBAN:        "DE123455958381",
@@ -59,10 +58,10 @@ func ExampleInvoice_Write() {
 				PayeeSpecifiedCreditorFinancialInstitutionBIC: "BANKDEFXXX",
 			},
 		},
-		SpecifiedTradePaymentTerms: []einvoice.SpecifiedTradePaymentTerms{{
+		SpecifiedTradePaymentTerms: []SpecifiedTradePaymentTerms{{
 			DueDate: fixedDate.Add(fourteenDays),
 		}},
-		InvoiceLines: []einvoice.InvoiceLine{
+		InvoiceLines: []InvoiceLine{
 			{
 				LineID:                   "1",
 				ItemName:                 "Item name one",
