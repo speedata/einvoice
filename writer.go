@@ -231,7 +231,11 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		// profile minimum has no postal address for the buyer (BG-8)
 		if partyType == CSellerParty || is(CProfileBasic, inv) {
 			postalAddress := parent.CreateElement("ram:PostalTradeAddress")
-			postalAddress.CreateElement("ram:PostcodeCode").SetText(ppa.PostcodeCode)
+
+			// BT-38, BT-53: Postcode is optional - only create if non-empty (PEPPOL-EN16931-R008)
+			if ppa.PostcodeCode != "" {
+				postalAddress.CreateElement("ram:PostcodeCode").SetText(ppa.PostcodeCode)
+			}
 
 			if l1 := ppa.Line1; l1 != "" {
 				postalAddress.CreateElement("ram:LineOne").SetText(l1)
@@ -379,8 +383,10 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 				fCard := pmElt.CreateElement("ram:ApplicableTradeSettlementFinancialCard")
 				// BT-87
 				fCard.CreateElement("ram:ID").SetText(paymentMeans.ApplicableTradeSettlementFinancialCardID)
-				// BT-88
-				fCard.CreateElement("ram:CardholderName").SetText(paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName)
+				// BT-88: Cardholder name is optional - only create if non-empty (PEPPOL-EN16931-R008)
+				if paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName != "" {
+					fCard.CreateElement("ram:CardholderName").SetText(paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName)
+				}
 			}
 			if iban := paymentMeans.PayerPartyDebtorFinancialAccountIBAN; iban != "" {
 				// BT-91
@@ -425,7 +431,10 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", stac.ChargeIndicator))
 		stacElt.CreateElement("ram:BasisAmount").SetText(stac.BasisAmount.StringFixed(2))
 		stacElt.CreateElement("ram:ActualAmount").SetText(stac.ActualAmount.StringFixed(2))
-		stacElt.CreateElement("ram:Reason").SetText(stac.Reason)
+		// BT-97, BT-104: Reason is optional - only create if non-empty (PEPPOL-EN16931-R008)
+		if stac.Reason != "" {
+			stacElt.CreateElement("ram:Reason").SetText(stac.Reason)
+		}
 		ctt := stacElt.CreateElement("ram:CategoryTradeTax")
 		ctt.CreateElement("ram:TypeCode").SetText(stac.CategoryTradeTaxType)
 		ctt.CreateElement("ram:CategoryCode").SetText(stac.CategoryTradeTaxCategoryCode)
