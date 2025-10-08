@@ -875,3 +875,119 @@ func TestUpdateApplicableTradeTax_ValidationConsistency(t *testing.T) {
 			tt.BasisAmount.String(), calculatedBasis.String())
 	}
 }
+
+// TestUpdateApplicableTradeTax_RoundHalfUpVAT tests that VAT amounts are correctly
+// rounded using "round half up" (commercial rounding) instead of banker's rounding.
+// This test reproduces the issue from GitHub issue #51.
+//
+// Example: 182,631.82 EUR at 19% VAT rate
+// - Calculation: 182631.82 * 0.19 = 34,700.0458
+// - With banker's rounding: 34,700.04 (incorrect, rounds to even)
+// - With round half up: 34,700.05 (correct, rounds up when ≥ 5)
+func TestUpdateApplicableTradeTax_RoundHalfUpVAT(t *testing.T) {
+	tests := []struct {
+		name        string
+		basisAmount string
+		rate        float64
+		expectedVAT string
+	}{
+		{
+			name:        "Issue #51: 182631.82 at 19%",
+			basisAmount: "182631.82",
+			rate:        19.0,
+			expectedVAT: "34700.05", // Not 34700.04 (banker's rounding would give .04)
+		},
+		{
+			name:        "Round down case",
+			basisAmount: "100.00",
+			rate:        19.0,
+			expectedVAT: "19.00",
+		},
+		{
+			name:        "Round up at .005",
+			basisAmount: "10.00",
+			rate:        19.5,
+			expectedVAT: "1.95", // 10 * 0.195 = 1.95 exactly
+		},
+		{
+			name:        "Round up at .006",
+			basisAmount: "100.03",
+			rate:        19.0,
+			expectedVAT: "19.01", // 100.03 * 0.19 = 19.0057, rounds to 19.01
+		},
+		{
+			name:        "Round down at .004",
+			basisAmount: "100.02",
+			rate:        19.0,
+			expectedVAT: "19.00", // 100.02 * 0.19 = 19.0038, rounds to 19.00
+		},
+		{
+			name:        "Exactly at .005 boundary",
+			basisAmount: "52.63",
+			rate:        19.0,
+			expectedVAT: "10.00", // 52.63 * 0.19 = 9.9997 ≈ 10.00, rounds to 10.00
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			basis, _ := decimal.NewFromString(tt.basisAmount)
+			expectedVAT, _ := decimal.NewFromString(tt.expectedVAT)
+
+			inv := &Invoice{
+				InvoiceLines: []InvoiceLine{
+					{
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromFloat(tt.rate),
+						Total:                    basis,
+					},
+				},
+			}
+
+			inv.UpdateApplicableTradeTax(map[string]string{})
+
+			if len(inv.TradeTaxes) != 1 {
+				t.Fatalf("Expected 1 trade tax, got %d", len(inv.TradeTaxes))
+			}
+
+			actualVAT := inv.TradeTaxes[0].CalculatedAmount
+			if !actualVAT.Equal(expectedVAT) {
+				t.Errorf("VAT amount = %s, want %s (basis %s × rate %s%%)",
+					actualVAT.String(), expectedVAT.String(), tt.basisAmount, decimal.NewFromFloat(tt.rate).String())
+			}
+		})
+	}
+}
+
+// TestRoundHalfUp tests the roundHalfUp helper function directly
+func TestRoundHalfUp(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		places   int32
+		expected string
+	}{
+		{"Round up at .005", "34700.0458", 2, "34700.05"},
+		{"Round down at .004", "34700.0448", 2, "34700.04"},
+		{"Exactly .005", "1.005", 2, "1.01"},
+		{"Exactly .015", "1.015", 2, "1.02"},
+		{"Exactly .025", "1.025", 2, "1.03"},
+		{"Negative round up", "-34700.0458", 2, "-34700.05"},
+		{"Negative round down", "-34700.0448", 2, "-34700.04"},
+		{"Negative exactly .005", "-1.005", 2, "-1.01"},
+		{"Round to 1 place", "1.25", 1, "1.3"},
+		{"Round to 0 places", "1.5", 0, "2"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value, _ := decimal.NewFromString(tt.value)
+			expected, _ := decimal.NewFromString(tt.expected)
+			result := roundHalfUp(value, tt.places)
+			if !result.Equal(expected) {
+				t.Errorf("roundHalfUp(%s, %d) = %s, want %s",
+					tt.value, tt.places, result.String(), tt.expected)
+			}
+		})
+	}
+}

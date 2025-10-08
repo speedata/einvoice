@@ -89,7 +89,7 @@ func (inv *Invoice) checkVATIGIC() {
 	// VAT amount must equal basis * rate
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "L" {
-			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
+			expectedVAT := roundHalfUp(tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)), 2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
 				inv.addViolation(rules.BRAF6, fmt.Sprintf("IGIC VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
@@ -129,7 +129,7 @@ func (inv *Invoice) checkVATIGIC() {
 	// For each different VAT rate, verify VAT amount calculation
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "L" {
-			expectedVAT := tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)).Round(2)
+			expectedVAT := roundHalfUp(tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)), 2)
 			if !tt.CalculatedAmount.Equal(expectedVAT) {
 				inv.addViolation(rules.BRAF8, fmt.Sprintf("IGIC VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}

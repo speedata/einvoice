@@ -4,6 +4,19 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// roundHalfUp performs commercial rounding (round half up) to the specified number of decimal places.
+// This is required by EN 16931 for VAT calculations, as opposed to banker's rounding.
+// For example, 34700.0458 rounded to 2 places becomes 34700.05 (not 34700.04).
+func roundHalfUp(d decimal.Decimal, places int32) decimal.Decimal {
+	// Add 0.5 of the smallest unit and truncate
+	// For 2 decimal places, we add 0.005 and truncate
+	adjustment := decimal.New(5, -(places + 1))
+	if d.IsNegative() {
+		return d.Sub(adjustment).Truncate(places)
+	}
+	return d.Add(adjustment).Truncate(places)
+}
+
 // UpdateApplicableTradeTax removes the existing trade tax lines in the invoice
 // and re-creates new ones from the line items and document-level allowances/charges.
 // er is a map that contains exemption reasons for each category code.
@@ -76,8 +89,8 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 
 	for _, att := range applicableTradeTaxes {
 		// BR-DEC-19: VAT category taxable amount (BT-116) must have max 2 decimal places
-		att.BasisAmount = att.BasisAmount.Round(2)
-		att.CalculatedAmount = att.BasisAmount.Mul(att.Percent.Div(onehundred)).Round(2)
+		att.BasisAmount = roundHalfUp(att.BasisAmount, 2)
+		att.CalculatedAmount = roundHalfUp(att.BasisAmount.Mul(att.Percent.Div(onehundred)), 2)
 		if att.Percent.IsZero() {
 			att.ExemptionReason = exemptReason[att.CategoryCode]
 		}
