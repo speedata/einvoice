@@ -784,6 +784,40 @@ func (inv *Invoice) checkBR() {
 	inv.checkVATIGIC()
 	inv.checkVATIPSI()
 	inv.checkVATNotSubject()
+
+	// Check for document-level allowances without corresponding line items
+	// This would create zero basis amount in UpdateApplicableTradeTax()
+	inv.checkDocumentAllowancesHaveLineItems()
+}
+
+// checkDocumentAllowancesHaveLineItems validates that document-level allowances
+// have at least one invoice line with the same tax category.
+// Document-level allowances without corresponding line items would result in
+// zero VAT basis amount, which is semantically incorrect.
+func (inv *Invoice) checkDocumentAllowancesHaveLineItems() {
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		// Only check allowances (not charges)
+		if ac.ChargeIndicator {
+			continue
+		}
+
+		// Check if there's at least one line item with this category
+		hasLineItem := false
+		for _, line := range inv.InvoiceLines {
+			if line.TaxCategoryCode == ac.CategoryTradeTaxCategoryCode {
+				hasLineItem = true
+				break
+			}
+		}
+
+		if !hasLineItem {
+			inv.addViolation(rules.Check,
+				fmt.Sprintf("Document-level allowance for VAT category %s has no corresponding invoice lines. "+
+					"This creates a zero VAT basis amount. Add at least one invoice line with category %s, "+
+					"or remove the allowance.",
+					ac.CategoryTradeTaxCategoryCode, ac.CategoryTradeTaxCategoryCode))
+		}
+	}
 }
 
 // hasMaxDecimals checks if a decimal value has at most maxDecimals decimal places.

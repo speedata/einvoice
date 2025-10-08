@@ -26,4 +26,11 @@ var (
 		Fields:      []string{"BT-100"},
 		Description: `Document level charge base amount (BT-100) must not be negative.`,
 	}
+
+	// Check is a custom rule for general validation checks not covered by specific BR rules.
+	Check = Rule{
+		Code:        "CHECK",
+		Fields:      []string{},
+		Description: `General validation check for semantic correctness.`,
+	}
 )

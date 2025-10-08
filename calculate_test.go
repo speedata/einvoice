@@ -508,16 +508,17 @@ func TestUpdateApplicableTradeTax_AllowanceOnlyCategory(t *testing.T) {
 
 	tt := inv.TradeTaxes[0]
 
-	// Basis = -50 (allowance with no lines)
-	expectedBasis := decimal.NewFromFloat(-50.00)
-	if !tt.BasisAmount.Equal(expectedBasis) {
-		t.Errorf("BasisAmount = %s, want %s", tt.BasisAmount, expectedBasis)
+	// NEW BEHAVIOR (after bug fix): Basis = 0 (not negative)
+	// Previously this created a negative basis (-50), which violated BR-DEC-19.
+	// Allowances without line items now create zero basis instead.
+	// Validation will detect and warn about this scenario.
+	if !tt.BasisAmount.IsZero() {
+		t.Errorf("BasisAmount = %s, want 0 (allowance without line items should create zero basis, not negative)", tt.BasisAmount)
 	}
 
-	// Tax = 19% of -50 = -9.50
-	expectedTax := decimal.NewFromFloat(-9.50)
-	if !tt.CalculatedAmount.Equal(expectedTax) {
-		t.Errorf("CalculatedAmount = %s, want %s", tt.CalculatedAmount, expectedTax)
+	// Tax should also be zero (since basis is zero)
+	if !tt.CalculatedAmount.IsZero() {
+		t.Errorf("CalculatedAmount = %s, want 0", tt.CalculatedAmount)
 	}
 }
 

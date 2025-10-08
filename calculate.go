@@ -56,10 +56,19 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 		}
 
 		// If not found, create a new tax entry for this category
+		// Note: Document-level allowances without corresponding line items would create
+		// negative basis amounts, which is semantically incorrect. Only charges can
+		// create a standalone category.
 		if !found {
-			basisAmount := ac.ActualAmount
-			if !ac.ChargeIndicator {
-				basisAmount = basisAmount.Neg()
+			var basisAmount decimal.Decimal
+			if ac.ChargeIndicator {
+				// Charges can create a standalone category with positive basis
+				basisAmount = ac.ActualAmount
+			} else {
+				// Allowances without line items would create negative basis.
+				// Set to zero to avoid BR-DEC-19 violation (negative amounts).
+				// Callers should validate that allowances have corresponding line items.
+				basisAmount = decimal.Zero
 			}
 			tradeTax := &TradeTax{
 				CategoryCode: ac.CategoryTradeTaxCategoryCode,
