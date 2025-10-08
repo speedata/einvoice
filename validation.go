@@ -167,6 +167,7 @@ func (inv *Invoice) ValidatePEPPOL() error {
 	// Run EN 16931 validation checks
 	inv.checkBR()
 	inv.checkBRO()
+	inv.checkBRDEC()
 
 	// Run PEPPOL validation checks
 	inv.checkPEPPOL()
