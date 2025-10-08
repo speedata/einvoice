@@ -193,3 +193,92 @@ func TestValidatePEPPOL_ValidInvoice(t *testing.T) {
 	// This test just ensures ValidatePEPPOL() runs without panicking
 	_ = err
 }
+
+// TestValidatePEPPOL_DecimalPrecisionViolations tests that ValidatePEPPOL() now catches
+// decimal precision violations (BR-DEC rules) which it previously missed.
+// This test verifies the fix for issue H1 from the bug analysis.
+func TestValidatePEPPOL_DecimalPrecisionViolations(t *testing.T) {
+	inv := &Invoice{
+		Profile:                             CProfileEN16931,
+		InvoiceNumber:                       "INV-001",
+		InvoiceDate:                         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceTypeCode:                     380,
+		InvoiceCurrencyCode:                 "EUR",
+		BPSpecifiedDocumentContextParameter: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+		BuyerReference:                      "BR123",
+		Seller: Party{
+			Name: "Seller Inc",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+			VATaxRegistration:         "DE123456789",
+			URIUniversalCommunication: "seller@example.com",
+		},
+		Buyer: Party{
+			Name: "Buyer GmbH",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+			URIUniversalCommunication: "buyer@example.com",
+		},
+		// Invalid: 3 decimal places (should be max 2 per BR-DEC-19)
+		LineTotal:        decimal.RequireFromString("100.123"),
+		TaxBasisTotal:    decimal.RequireFromString("100.123"),
+		TaxTotal:         decimal.NewFromInt(19),
+		GrandTotal:       decimal.RequireFromString("119.123"),
+		DuePayableAmount: decimal.RequireFromString("119.123"),
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Product A",
+				BilledQuantity:           decimal.NewFromInt(1),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(100),
+				Total:                    decimal.RequireFromString("100.123"), // Invalid: 3 decimals (BR-DEC-23)
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CalculatedAmount: decimal.NewFromInt(19),
+				BasisAmount:      decimal.RequireFromString("100.123"), // Invalid: 3 decimals (BR-DEC-19)
+				Typ:              "VAT",
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+			},
+		},
+		SpecifiedTradePaymentTerms: []SpecifiedTradePaymentTerms{
+			{Description: "Net 30"},
+		},
+	}
+
+	err := inv.ValidatePEPPOL()
+	if err == nil {
+		t.Fatal("Expected validation error for decimal precision violations, got nil")
+	}
+
+	var valErr *ValidationError
+	if !errors.As(err, &valErr) {
+		t.Fatalf("Expected ValidationError, got %T", err)
+	}
+
+	// Should have multiple BR-DEC violations
+	violations := valErr.Violations()
+	if len(violations) == 0 {
+		t.Fatal("Expected BR-DEC violations, got none")
+	}
+
+	// Check that we have BR-DEC violations (this was previously missing from ValidatePEPPOL)
+	hasBRDEC := false
+	for _, v := range violations {
+		if v.Rule.Code == "BR-DEC-19" || v.Rule.Code == "BR-DEC-23" {
+			hasBRDEC = true
+			t.Logf("Found expected BR-DEC violation: %s - %s", v.Rule.Code, v.Text)
+		}
+	}
+
+	if !hasBRDEC {
+		t.Errorf("Expected BR-DEC violations in PEPPOL validation, but none found. Got violations: %v", violations)
+	}
+}
