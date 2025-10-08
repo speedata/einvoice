@@ -1,22 +1,11 @@
 package einvoice
 
 import (
-	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
+	"github.com/speedata/einvoice/rules"
 )
-
-func (inv *Invoice) checkOther() {
-	// Check that line total = billed quantity * net price
-	for _, line := range inv.InvoiceLines {
-		calcTotal := line.BilledQuantity.Mul(line.NetPrice)
-		lineTotal := line.Total
-		if !lineTotal.Equal(calcTotal) {
-			inv.addViolation(rules.Check, fmt.Sprintf("Line total %s does not match quantity %s * net price %s", lineTotal.String(), line.BilledQuantity.String(), calcTotal.String()))
-		}
-	}
-}
 
 func (inv *Invoice) checkBRO() {
 	var sum decimal.Decimal

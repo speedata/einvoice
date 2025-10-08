@@ -144,7 +144,6 @@ func (inv *Invoice) Validate() error {
 	inv.checkBR()
 	inv.checkBRO()
 	inv.checkBRDEC()
-	inv.checkOther()
 
 	// Return error if violations exist
 	if len(inv.violations) > 0 {
@@ -168,7 +167,6 @@ func (inv *Invoice) ValidatePEPPOL() error {
 	// Run EN 16931 validation checks
 	inv.checkBR()
 	inv.checkBRO()
-	inv.checkOther()
 
 	// Run PEPPOL validation checks
 	inv.checkPEPPOL()
