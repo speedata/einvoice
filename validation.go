@@ -153,3 +153,30 @@ func (inv *Invoice) Validate() error {
 
 	return nil
 }
+
+// ValidatePEPPOL validates the invoice against both EN 16931 and PEPPOL BIS Billing 3.0 rules.
+//
+// PEPPOL BIS Billing 3.0 extends EN 16931 with additional validation rules required
+// for the PEPPOL network. This method runs all EN 16931 checks plus PEPPOL-specific checks.
+//
+// Use this method when validating invoices intended for the PEPPOL network.
+// For standard EN 16931 validation only, use Validate().
+func (inv *Invoice) ValidatePEPPOL() error {
+	// Always clear previous violations to ensure idempotency
+	inv.violations = []SemanticError{}
+
+	// Run EN 16931 validation checks
+	inv.checkBR()
+	inv.checkBRO()
+	inv.checkOther()
+
+	// Run PEPPOL validation checks
+	inv.checkPEPPOL()
+
+	// Return error if violations exist
+	if len(inv.violations) > 0 {
+		return &ValidationError{violations: inv.violations}
+	}
+
+	return nil
+}
