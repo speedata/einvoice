@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATZero validates BR-Z-1 through BR-Z-10.
+// validateVATZero validates BR-Z-1 through BR-Z-10.
 //
 // These rules apply to invoices with Zero rated VAT (category code 'Z').
 // Zero rating means VAT is charged at 0% rate, different from exemption.
@@ -19,7 +19,7 @@ import (
 //   - VAT rate must be 0 (taxable but at 0% rate)
 //   - VAT amount must be 0
 //   - Must NOT have exemption reason (it's rated, not exempt)
-func (inv *Invoice) checkVATZero() {
+func (inv *Invoice) validateVATZero() {
 	// BR-Z-1 Umsatzsteuer mit Nullsatz (Zero rated)
 	// If invoice has line/allowance/charge with "Z", must have at least one "Z" in VAT breakdown
 	hasZeroRated := false

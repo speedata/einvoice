@@ -65,17 +65,17 @@ func (cp CodeProfileType) ToProfileName() string {
 	case CProfileUnknown:
 		return "Unknown"
 	case CProfileXRechnung:
-		return "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"
+		return SpecXRechnung30
 	case CProfileExtended:
-		return "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended"
+		return SpecFacturXExtended
 	case CProfileEN16931:
-		return "urn:cen.eu:en16931:2017"
+		return SpecEN16931
 	case CProfileBasic:
-		return "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic"
+		return SpecFacturXBasic
 	case CProfileBasicWL:
-		return "urn:factur-x.eu:1p0:basicwl"
+		return SpecFacturXBasicWL
 	case CProfileMinimum:
-		return "urn:factur-x.eu:1p0:minimum"
+		return SpecFacturXMinimum
 	default:
 		return "unknown"
 	}
@@ -305,7 +305,7 @@ type ReferencedDocument struct {
 
 // Invoice is the main element of the e-invoice.
 type Invoice struct {
-	Profile                                   CodeProfileType              // BT-24
+	GuidelineSpecifiedDocumentContextParameter string                       // BT-24 (Specification identifier URN)
 	DespatchAdviceReferencedDocument          string                       // BT-16
 	ReceivingAdviceReferencedDocument         string                       // BT-15
 	BuyerReference                            string                       // BT-10
@@ -353,4 +353,80 @@ type Invoice struct {
 	InvoiceReferencedDocument                 []ReferencedDocument         // BG-3
 	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
 	violations                                []SemanticError // Private field - use Validate() and check error instead
+}
+
+// Profile helper methods for Invoice
+// These methods check the GuidelineSpecifiedDocumentContextParameter (BT-24) URN
+// to determine the invoice profile level.
+
+// IsMinimum checks if the invoice uses the Minimum profile.
+// URN: urn:factur-x.eu:1p0:minimum or urn:zugferd.de:2p0:minimum
+func (inv *Invoice) IsMinimum() bool {
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXMinimum ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecZUGFeRDMinimum
+}
+
+// IsBasicWL checks if the invoice uses the Basic WL (Without Lines) profile.
+// URN: urn:factur-x.eu:1p0:basicwl
+func (inv *Invoice) IsBasicWL() bool {
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXBasicWL
+}
+
+// IsBasic checks if the invoice uses the Basic profile.
+// URN: urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic
+func (inv *Invoice) IsBasic() bool {
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXBasic ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecZUGFeRDBasic ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXBasicAlt
+}
+
+// IsEN16931 checks if the invoice uses the EN 16931 profile.
+// URN: urn:cen.eu:en16931:2017
+func (inv *Invoice) IsEN16931() bool {
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecEN16931
+}
+
+// IsExtended checks if the invoice uses the Extended profile.
+// URN: urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended
+func (inv *Invoice) IsExtended() bool {
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXExtended ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecZUGFeRDExtended
+}
+
+// IsXRechnung checks if the invoice uses the XRechnung profile.
+// URN: urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0
+func (inv *Invoice) IsXRechnung() bool {
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecXRechnung30
+}
+
+// ProfileLevel returns an integer representing the profile hierarchy level.
+// Higher numbers indicate more inclusive profiles.
+// This is used by the writer to determine which fields to include.
+//
+// Levels: 0=Unknown, 1=Minimum, 2=BasicWL, 3=Basic, 4=EN16931/PEPPOL/XRechnung, 5=Extended
+func (inv *Invoice) ProfileLevel() int {
+	if inv.IsExtended() {
+		return 5
+	}
+	if inv.IsXRechnung() || inv.isPEPPOL() || inv.IsEN16931() {
+		return 4
+	}
+	if inv.IsBasic() {
+		return 3
+	}
+	if inv.IsBasicWL() {
+		return 2
+	}
+	if inv.IsMinimum() {
+		return 1
+	}
+	return 0 // Unknown
+}
+
+// MeetsProfileLevel checks if the invoice meets or exceeds a minimum profile level.
+// This replaces the old Profile enum comparison (inv.Profile >= targetProfile).
+//
+// Example: inv.MeetsProfileLevel(3) returns true if profile is Basic, EN16931, Extended, or XRechnung
+func (inv *Invoice) MeetsProfileLevel(minLevel int) bool {
+	return inv.ProfileLevel() >= minLevel
 }

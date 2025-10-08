@@ -33,7 +33,7 @@ func TestValidateInvoice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := validateInvoice(tt.filename, "en16931")
+			result := validateInvoice(tt.filename)
 
 			if tt.wantError {
 				if result.Error == "" {
@@ -68,7 +68,7 @@ func TestValidateInvoice_MalformedXML(t *testing.T) {
 	}
 	_ = tmpfile.Close()
 
-	result := validateInvoice(tmpfile.Name(), "en16931")
+	result := validateInvoice(tmpfile.Name())
 
 	if result.Error == "" {
 		t.Error("validateInvoice() expected error for malformed XML, got none")
@@ -257,7 +257,7 @@ func TestIntegration_ValidFile(t *testing.T) {
 		t.Skip("Test file not found, skipping integration test")
 	}
 
-	result := validateInvoice(testFile, "en16931")
+	result := validateInvoice(testFile)
 
 	// Should not have a fatal error
 	if result.Error != "" {

@@ -13,7 +13,7 @@ import (
 func TestValidate_ManualInvoiceConstruction(t *testing.T) {
 	// Build an invalid invoice manually
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceNumber:       "",     // BR-2 violation: missing invoice number
 		InvoiceTypeCode:     380,    // OK
 		InvoiceDate:         time.Time{}, // BR-3 violation: zero date
@@ -79,7 +79,7 @@ func TestValidate_ManualInvoiceConstruction(t *testing.T) {
 // produces consistent results without accumulating violations.
 func TestValidate_Idempotency(t *testing.T) {
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceNumber:       "", // BR-2 violation
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -149,7 +149,7 @@ func TestValidate_Idempotency(t *testing.T) {
 // just ensures Validate() works without panicking, even if some minor violations remain.
 func TestValidate_MostlyValidInvoice(t *testing.T) {
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceNumber:       "INV-001",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),

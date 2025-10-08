@@ -115,8 +115,16 @@ func (inv *Invoice) addViolation(rule rules.Rule, text string) {
 	})
 }
 
-// Validate checks the invoice against EN 16931 business rules.
-// It clears any previous violations and performs a fresh validation.
+// Validate checks the invoice against applicable business rules with intelligent auto-detection.
+//
+// The method automatically detects which validation rules to apply based on:
+// - Specification identifier (BT-24) for PEPPOL BIS Billing 3.0 detection
+// - Seller country for country-specific rules (DK, IT, NL, NO, SE)
+//
+// All invoices are validated against EN 16931 core rules. Additional rules are applied
+// automatically when the invoice metadata indicates they are required.
+//
+// This method clears any previous violations and performs a fresh validation.
 // Returns a ValidationError if violations exist, nil if invoice is valid.
 //
 // This method should be called:
@@ -140,10 +148,23 @@ func (inv *Invoice) Validate() error {
 	// Always clear previous violations to ensure idempotency
 	inv.violations = []SemanticError{}
 
-	// Run all validation checks
-	inv.checkBR()
-	inv.checkBRO()
-	inv.checkBRDEC()
+	// Always run EN 16931 core validation
+	inv.validateCore()
+	inv.validateCalculations()
+	inv.validateDecimals()
+
+	// Auto-detect and run PEPPOL validation based on specification identifier
+	if inv.isPEPPOL() {
+		inv.validatePEPPOL()
+	}
+
+	// Auto-detect country-specific rules based on seller location
+	// TODO: Implement country-specific validation rules for:
+	//   - Denmark (isDanish)
+	//   - Italy (isItalian)
+	//   - Netherlands (isDutch)
+	//   - Norway (isNorwegian)
+	//   - Sweden (isSwedish)
 
 	// Return error if violations exist
 	if len(inv.violations) > 0 {
@@ -153,29 +174,56 @@ func (inv *Invoice) Validate() error {
 	return nil
 }
 
-// ValidatePEPPOL validates the invoice against both EN 16931 and PEPPOL BIS Billing 3.0 rules.
+// isPEPPOL checks if the invoice is a PEPPOL BIS Billing 3.0 invoice
+// based on the specification identifier (BT-24).
 //
-// PEPPOL BIS Billing 3.0 extends EN 16931 with additional validation rules required
-// for the PEPPOL network. This method runs all EN 16931 checks plus PEPPOL-specific checks.
+// PEPPOL-EN16931-R004 requires the specification identifier defined in
+// SpecPEPPOLBilling30 constant (peppol_constants.go).
+func (inv *Invoice) isPEPPOL() bool {
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecPEPPOLBilling30
+}
+
+// isDanish checks if the seller is located in Denmark (DK).
+// Used for auto-detection of Danish-specific validation rules.
 //
-// Use this method when validating invoices intended for the PEPPOL network.
-// For standard EN 16931 validation only, use Validate().
-func (inv *Invoice) ValidatePEPPOL() error {
-	// Always clear previous violations to ensure idempotency
-	inv.violations = []SemanticError{}
+//nolint:unused // Reserved for future Danish validation rules
+func (inv *Invoice) isDanish() bool {
+	return inv.Seller.PostalAddress != nil &&
+		inv.Seller.PostalAddress.CountryID == "DK"
+}
 
-	// Run EN 16931 validation checks
-	inv.checkBR()
-	inv.checkBRO()
-	inv.checkBRDEC()
+// isItalian checks if the seller is located in Italy (IT).
+// Used for auto-detection of Italian-specific validation rules.
+//
+//nolint:unused // Reserved for future Italian validation rules
+func (inv *Invoice) isItalian() bool {
+	return inv.Seller.PostalAddress != nil &&
+		inv.Seller.PostalAddress.CountryID == "IT"
+}
 
-	// Run PEPPOL validation checks
-	inv.checkPEPPOL()
+// isDutch checks if the seller is located in the Netherlands (NL).
+// Used for auto-detection of Dutch-specific validation rules.
+//
+//nolint:unused // Reserved for future Dutch validation rules
+func (inv *Invoice) isDutch() bool {
+	return inv.Seller.PostalAddress != nil &&
+		inv.Seller.PostalAddress.CountryID == "NL"
+}
 
-	// Return error if violations exist
-	if len(inv.violations) > 0 {
-		return &ValidationError{violations: inv.violations}
-	}
+// isNorwegian checks if the seller is located in Norway (NO).
+// Used for auto-detection of Norwegian-specific validation rules.
+//
+//nolint:unused // Reserved for future Norwegian validation rules
+func (inv *Invoice) isNorwegian() bool {
+	return inv.Seller.PostalAddress != nil &&
+		inv.Seller.PostalAddress.CountryID == "NO"
+}
 
-	return nil
+// isSwedish checks if the seller is located in Sweden (SE).
+// Used for auto-detection of Swedish-specific validation rules.
+//
+//nolint:unused // Reserved for future Swedish validation rules
+func (inv *Invoice) isSwedish() bool {
+	return inv.Seller.PostalAddress != nil &&
+		inv.Seller.PostalAddress.CountryID == "SE"
 }

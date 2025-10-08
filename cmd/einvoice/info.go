@@ -125,8 +125,8 @@ func getInvoiceInfo(filename string) InvoiceInfo {
 	details := &InvoiceDetails{
 		Number:          invoice.InvoiceNumber,
 		Type:            invoice.InvoiceTypeCode.String(),
-		Profile:         invoice.Profile.String(),
-		ProfileURN:      invoice.Profile.ToProfileName(),
+		Profile:         einvoice.GetProfileName(invoice.GuidelineSpecifiedDocumentContextParameter),
+		ProfileURN:      invoice.GuidelineSpecifiedDocumentContextParameter,
 		BusinessProcess: invoice.BPSpecifiedDocumentContextParameter,
 		Currency:        invoice.InvoiceCurrencyCode,
 		LineCount:       len(invoice.InvoiceLines),

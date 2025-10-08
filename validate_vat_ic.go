@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATIntracommunity validates BR-IC-1 through BR-IC-12.
+// validateVATIntracommunity validates BR-IC-1 through BR-IC-12.
 //
 // These rules apply to invoices with Intra-community supply VAT (category code 'K').
 // This category is for goods or services traded between EU member states.
@@ -21,7 +21,7 @@ import (
 //   - Must have exemption reason explaining the intra-community nature
 //   - Must have actual delivery date or invoicing period
 //   - Must have deliver to country code
-func (inv *Invoice) checkVATIntracommunity() {
+func (inv *Invoice) validateVATIntracommunity() {
 	// BR-IC-1 Innergemeinschaftliche Lieferung (Intra-community supply)
 	// Invoice with category K must have both seller and buyer VAT IDs
 	hasIntracommunitySupply := false
