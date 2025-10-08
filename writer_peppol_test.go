@@ -15,7 +15,7 @@ func TestWriter_NoEmptyElements(t *testing.T) {
 	// Create an invoice with empty optional fields
 	inv := &Invoice{
 		SchemaType:                                 CII,
-		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceNumber:                              "INV-001",
 		InvoiceTypeCode:                            380,
 		InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
@@ -145,7 +145,7 @@ func TestWriter_PostcodeOptional(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := &Invoice{
 				SchemaType:                                 CII,
-				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+				GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 				InvoiceNumber:                              "INV-001",
 				InvoiceTypeCode:                            380,
 				InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
@@ -217,7 +217,7 @@ func TestWriter_PostcodeOptional(t *testing.T) {
 func TestWriter_AllowanceReasonOptional(t *testing.T) {
 	inv := &Invoice{
 		SchemaType:                                 CII,
-		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceNumber:                              "INV-001",
 		InvoiceTypeCode:                            380,
 		InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),

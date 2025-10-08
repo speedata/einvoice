@@ -13,7 +13,7 @@ func ExampleInvoice_Write() {
 	inv := Invoice{
 		InvoiceNumber:                              "1234",
 		InvoiceTypeCode:                            380,
-		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:                                fixedDate,
 		OccurrenceDateTime:                         fixedDate.Add(-fourteenDays),
 		InvoiceCurrencyCode:                        "EUR",

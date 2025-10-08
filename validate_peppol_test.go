@@ -17,7 +17,7 @@ func TestValidatePEPPOL_BasicRequirements(t *testing.T) {
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
 		InvoiceCurrencyCode: "EUR",
-		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0", // Mark as PEPPOL invoice
+		GuidelineSpecifiedDocumentContextParameter: SpecPEPPOLBilling30, // Mark as PEPPOL invoice
 		BPSpecifiedDocumentContextParameter:        "", // Violates PEPPOL-EN16931-R001
 		BuyerReference:                             "",    // Violates PEPPOL-EN16931-R003
 		BuyerOrderReferencedDocument:               "",    // Violates PEPPOL-EN16931-R003
@@ -83,8 +83,8 @@ func TestValidatePEPPOL_MultipleNotes(t *testing.T) {
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
 		InvoiceCurrencyCode: "EUR",
-		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
-		BPSpecifiedDocumentContextParameter:        "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+		GuidelineSpecifiedDocumentContextParameter: SpecPEPPOLBilling30,
+		BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
 		BuyerReference:                             "BR123",
 		Notes: []Note{
 			{SubjectCode: "", Text: "Note 1"},
@@ -141,8 +141,8 @@ func TestValidatePEPPOL_ValidInvoice(t *testing.T) {
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
 		InvoiceCurrencyCode: "EUR",
-		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
-		BPSpecifiedDocumentContextParameter:        "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+		GuidelineSpecifiedDocumentContextParameter: SpecPEPPOLBilling30,
+		BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
 		BuyerReference:                             "BR123",
 		Seller: Party{
 			Name: "Test Seller",
@@ -203,8 +203,8 @@ func TestValidatePEPPOL_DecimalPrecisionViolations(t *testing.T) {
 		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		InvoiceTypeCode:     380,
 		InvoiceCurrencyCode: "EUR",
-		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
-		BPSpecifiedDocumentContextParameter:        "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+		GuidelineSpecifiedDocumentContextParameter: SpecPEPPOLBilling30,
+		BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
 		BuyerReference:                             "BR123",
 		Seller: Party{
 			Name: "Seller Inc",

@@ -65,17 +65,17 @@ func (cp CodeProfileType) ToProfileName() string {
 	case CProfileUnknown:
 		return "Unknown"
 	case CProfileXRechnung:
-		return "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"
+		return SpecXRechnung30
 	case CProfileExtended:
-		return "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended"
+		return SpecFacturXExtended
 	case CProfileEN16931:
-		return "urn:cen.eu:en16931:2017"
+		return SpecEN16931
 	case CProfileBasic:
-		return "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic"
+		return SpecFacturXBasic
 	case CProfileBasicWL:
-		return "urn:factur-x.eu:1p0:basicwl"
+		return SpecFacturXBasicWL
 	case CProfileMinimum:
-		return "urn:factur-x.eu:1p0:minimum"
+		return SpecFacturXMinimum
 	default:
 		return "unknown"
 	}
@@ -362,41 +362,41 @@ type Invoice struct {
 // IsMinimum checks if the invoice uses the Minimum profile.
 // URN: urn:factur-x.eu:1p0:minimum or urn:zugferd.de:2p0:minimum
 func (inv *Invoice) IsMinimum() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == "urn:factur-x.eu:1p0:minimum" ||
-		inv.GuidelineSpecifiedDocumentContextParameter == "urn:zugferd.de:2p0:minimum"
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXMinimum ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecZUGFeRDMinimum
 }
 
 // IsBasicWL checks if the invoice uses the Basic WL (Without Lines) profile.
 // URN: urn:factur-x.eu:1p0:basicwl
 func (inv *Invoice) IsBasicWL() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == "urn:factur-x.eu:1p0:basicwl"
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXBasicWL
 }
 
 // IsBasic checks if the invoice uses the Basic profile.
 // URN: urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic
 func (inv *Invoice) IsBasic() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic" ||
-		inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic" ||
-		inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017:compliant:factur-x.eu:1p0:basic"
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXBasic ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecZUGFeRDBasic ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXBasicAlt
 }
 
 // IsEN16931 checks if the invoice uses the EN 16931 profile.
 // URN: urn:cen.eu:en16931:2017
 func (inv *Invoice) IsEN16931() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017"
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecEN16931
 }
 
 // IsExtended checks if the invoice uses the Extended profile.
 // URN: urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended
 func (inv *Invoice) IsExtended() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended" ||
-		inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended"
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecFacturXExtended ||
+		inv.GuidelineSpecifiedDocumentContextParameter == SpecZUGFeRDExtended
 }
 
 // IsXRechnung checks if the invoice uses the XRechnung profile.
 // URN: urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0
 func (inv *Invoice) IsXRechnung() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecXRechnung30
 }
 
 // ProfileLevel returns an integer representing the profile hierarchy level.

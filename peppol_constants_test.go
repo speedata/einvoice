@@ -213,7 +213,7 @@ func TestUsesPEPPOLBusinessProcess(t *testing.T) {
 			name: "valid PEPPOL business process with Factur-X Extended",
 			invoice: &Invoice{
 				BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
-				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended",
+				GuidelineSpecifiedDocumentContextParameter: SpecFacturXExtended,
 			},
 			want: true,
 		},
@@ -221,7 +221,7 @@ func TestUsesPEPPOLBusinessProcess(t *testing.T) {
 			name: "valid PEPPOL business process with EN16931",
 			invoice: &Invoice{
 				BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
-				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+				GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 			},
 			want: true,
 		},
@@ -229,7 +229,7 @@ func TestUsesPEPPOLBusinessProcess(t *testing.T) {
 			name: "valid PEPPOL business process with XRechnung",
 			invoice: &Invoice{
 				BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
-				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0",
+				GuidelineSpecifiedDocumentContextParameter: SpecXRechnung30,
 			},
 			want: true,
 		},
@@ -237,7 +237,7 @@ func TestUsesPEPPOLBusinessProcess(t *testing.T) {
 			name: "missing business process",
 			invoice: &Invoice{
 				BPSpecifiedDocumentContextParameter:        "",
-				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+				GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 			},
 			want: false,
 		},
@@ -245,7 +245,7 @@ func TestUsesPEPPOLBusinessProcess(t *testing.T) {
 			name: "invalid business process format",
 			invoice: &Invoice{
 				BPSpecifiedDocumentContextParameter:        "invalid",
-				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+				GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 			},
 			want: false,
 		},
@@ -253,7 +253,7 @@ func TestUsesPEPPOLBusinessProcess(t *testing.T) {
 			name: "different valid PEPPOL process number",
 			invoice: &Invoice{
 				BPSpecifiedDocumentContextParameter:        "urn:fdc:peppol.eu:2017:poacc:billing:99:1.0",
-				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
+				GuidelineSpecifiedDocumentContextParameter: SpecFacturXBasic,
 			},
 			want: true,
 		},

@@ -177,10 +177,10 @@ func (inv *Invoice) Validate() error {
 // isPEPPOL checks if the invoice is a PEPPOL BIS Billing 3.0 invoice
 // based on the specification identifier (BT-24).
 //
-// PEPPOL-EN16931-R004 requires the specification identifier to be:
-// "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
+// PEPPOL-EN16931-R004 requires the specification identifier defined in
+// SpecPEPPOLBilling30 constant (peppol_constants.go).
 func (inv *Invoice) isPEPPOL() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
+	return inv.GuidelineSpecifiedDocumentContextParameter == SpecPEPPOLBilling30
 }
 
 // isDanish checks if the seller is located in Denmark (DK).
