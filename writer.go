@@ -107,7 +107,78 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	bq.SetText(invoiceLine.BilledQuantity.StringFixed(4))
 
 	slts := lineItem.CreateElement("ram:SpecifiedLineTradeSettlement")
-	// BG-27, BG-28
+
+	// BG-26: Invoice line period (BT-134, BT-135)
+	if !invoiceLine.BillingSpecifiedPeriodStart.IsZero() || !invoiceLine.BillingSpecifiedPeriodEnd.IsZero() {
+		bsp := slts.CreateElement("ram:BillingSpecifiedPeriod")
+		if !invoiceLine.BillingSpecifiedPeriodStart.IsZero() {
+			addTimeUDT(bsp.CreateElement("ram:StartDateTime"), invoiceLine.BillingSpecifiedPeriodStart)
+		}
+		if !invoiceLine.BillingSpecifiedPeriodEnd.IsZero() {
+			addTimeUDT(bsp.CreateElement("ram:EndDateTime"), invoiceLine.BillingSpecifiedPeriodEnd)
+		}
+	}
+
+	// BG-27: Invoice line allowances
+	for _, allowance := range invoiceLine.InvoiceLineAllowances {
+		acElt := slts.CreateElement("ram:SpecifiedTradeAllowanceCharge")
+		acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText("false")
+
+		if !allowance.BasisAmount.IsZero() {
+			acElt.CreateElement("ram:BasisAmount").SetText(allowance.BasisAmount.StringFixed(2))
+		}
+
+		acElt.CreateElement("ram:ActualAmount").SetText(allowance.ActualAmount.StringFixed(2))
+
+		if allowance.ReasonCode != 0 {
+			acElt.CreateElement("ram:ReasonCode").SetText(fmt.Sprintf("%d", allowance.ReasonCode))
+		}
+
+		if allowance.Reason != "" {
+			acElt.CreateElement("ram:Reason").SetText(allowance.Reason)
+		}
+
+		// Category trade tax for allowance
+		if allowance.CategoryTradeTaxCategoryCode != "" {
+			ctt := acElt.CreateElement("ram:CategoryTradeTax")
+			if allowance.CategoryTradeTaxType != "" {
+				ctt.CreateElement("ram:TypeCode").SetText(allowance.CategoryTradeTaxType)
+			}
+			ctt.CreateElement("ram:CategoryCode").SetText(allowance.CategoryTradeTaxCategoryCode)
+			ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(allowance.CategoryTradeTaxRateApplicablePercent))
+		}
+	}
+
+	// BG-28: Invoice line charges
+	for _, charge := range invoiceLine.InvoiceLineCharges {
+		acElt := slts.CreateElement("ram:SpecifiedTradeAllowanceCharge")
+		acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText("true")
+
+		if !charge.BasisAmount.IsZero() {
+			acElt.CreateElement("ram:BasisAmount").SetText(charge.BasisAmount.StringFixed(2))
+		}
+
+		acElt.CreateElement("ram:ActualAmount").SetText(charge.ActualAmount.StringFixed(2))
+
+		if charge.ReasonCode != 0 {
+			acElt.CreateElement("ram:ReasonCode").SetText(fmt.Sprintf("%d", charge.ReasonCode))
+		}
+
+		if charge.Reason != "" {
+			acElt.CreateElement("ram:Reason").SetText(charge.Reason)
+		}
+
+		// Category trade tax for charge
+		if charge.CategoryTradeTaxCategoryCode != "" {
+			ctt := acElt.CreateElement("ram:CategoryTradeTax")
+			if charge.CategoryTradeTaxType != "" {
+				ctt.CreateElement("ram:TypeCode").SetText(charge.CategoryTradeTaxType)
+			}
+			ctt.CreateElement("ram:CategoryCode").SetText(charge.CategoryTradeTaxCategoryCode)
+			ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(charge.CategoryTradeTaxRateApplicablePercent))
+		}
+	}
+
 	att := slts.CreateElement("ram:ApplicableTradeTax")
 	// BT-151 must be VAT
 	if invoiceLine.TaxTypeCode == "" {

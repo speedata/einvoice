@@ -597,3 +597,303 @@ func TestWrite_BillingPeriod_BothDates(t *testing.T) {
 		t.Error("EndDateTime should contain correct date value (20251231)")
 	}
 }
+
+// TestWrite_InvoiceLineAllowances tests that invoice line allowances (BG-27)
+// are written correctly (Bug #1)
+func TestWrite_InvoiceLineAllowances(t *testing.T) {
+	t.Parallel()
+
+	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
+
+	inv := Invoice{
+		InvoiceNumber:       "LINE-ALLOW-001",
+		InvoiceTypeCode:     380,
+		Profile:             CProfileEN16931,
+		InvoiceDate:         invoiceDate,
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name:              "Seller Company",
+			VATaxRegistration: "DE123456",
+			PostalAddress: &PostalAddress{
+				Line1:        "Seller Street 1",
+				City:         "Berlin",
+				PostcodeCode: "10115",
+				CountryID:    "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer Company",
+			PostalAddress: &PostalAddress{
+				Line1:        "Buyer Street 1",
+				City:         "Paris",
+				PostcodeCode: "75001",
+				CountryID:    "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(90),
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+				Total:                    decimal.NewFromInt(90),
+				TaxTypeCode:              "VAT",
+				TaxCategoryCode:          "S",
+				// BG-27: Invoice line allowances
+				InvoiceLineAllowances: []AllowanceCharge{
+					{
+						ChargeIndicator:                       false,
+						BasisAmount:                           decimal.NewFromInt(100),
+						ActualAmount:                          decimal.NewFromInt(10),
+						Reason:                                "Volume discount",
+						CategoryTradeTaxType:                  "VAT",
+						CategoryTradeTaxCategoryCode:          "S",
+						CategoryTradeTaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(nil)
+	inv.UpdateTotals()
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write() failed: %v", err)
+	}
+
+	xmlOutput := buf.String()
+
+	// BUG: Invoice line allowances should be written as SpecifiedTradeAllowanceCharge
+	// under SpecifiedLineTradeSettlement
+	if !strings.Contains(xmlOutput, "<ram:SpecifiedLineTradeSettlement>") {
+		t.Error("SpecifiedLineTradeSettlement should be present")
+	}
+
+	// Should contain SpecifiedTradeAllowanceCharge within SpecifiedLineTradeSettlement
+	settlementStart := strings.Index(xmlOutput, "<ram:SpecifiedLineTradeSettlement>")
+	settlementEnd := strings.Index(xmlOutput, "</ram:SpecifiedLineTradeSettlement>")
+
+	if settlementStart == -1 || settlementEnd == -1 {
+		t.Fatal("Could not find SpecifiedLineTradeSettlement section")
+	}
+
+	settlementSection := xmlOutput[settlementStart:settlementEnd]
+
+	if !strings.Contains(settlementSection, "<ram:SpecifiedTradeAllowanceCharge>") {
+		t.Error("SpecifiedTradeAllowanceCharge should be present in SpecifiedLineTradeSettlement for invoice line allowances (BG-27)")
+	}
+
+	// Should have ChargeIndicator = false for allowance
+	if !strings.Contains(settlementSection, "<ram:ChargeIndicator>") {
+		t.Error("ChargeIndicator should be present in line allowance")
+	}
+	if !strings.Contains(settlementSection, "false") {
+		t.Error("ChargeIndicator should be false for allowance")
+	}
+
+	// Should have ActualAmount
+	if !strings.Contains(settlementSection, "<ram:ActualAmount>10") {
+		t.Error("ActualAmount should be 10 for the allowance")
+	}
+
+	// Should have Reason
+	if !strings.Contains(settlementSection, "Volume discount") {
+		t.Error("Allowance reason should be present")
+	}
+}
+
+// TestWrite_InvoiceLineCharges tests that invoice line charges (BG-28)
+// are written correctly (Bug #1)
+func TestWrite_InvoiceLineCharges(t *testing.T) {
+	t.Parallel()
+
+	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
+
+	inv := Invoice{
+		InvoiceNumber:       "LINE-CHARGE-001",
+		InvoiceTypeCode:     380,
+		Profile:             CProfileEN16931,
+		InvoiceDate:         invoiceDate,
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name:              "Seller Company",
+			VATaxRegistration: "DE123456",
+			PostalAddress: &PostalAddress{
+				Line1:        "Seller Street 1",
+				City:         "Berlin",
+				PostcodeCode: "10115",
+				CountryID:    "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer Company",
+			PostalAddress: &PostalAddress{
+				Line1:        "Buyer Street 1",
+				City:         "Paris",
+				PostcodeCode: "75001",
+				CountryID:    "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(105),
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+				Total:                    decimal.NewFromInt(105),
+				TaxTypeCode:              "VAT",
+				TaxCategoryCode:          "S",
+				// BG-28: Invoice line charges
+				InvoiceLineCharges: []AllowanceCharge{
+					{
+						ChargeIndicator:                       true,
+						ActualAmount:                          decimal.NewFromInt(5),
+						Reason:                                "Handling fee",
+						CategoryTradeTaxType:                  "VAT",
+						CategoryTradeTaxCategoryCode:          "S",
+						CategoryTradeTaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(nil)
+	inv.UpdateTotals()
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write() failed: %v", err)
+	}
+
+	xmlOutput := buf.String()
+
+	// Extract SpecifiedLineTradeSettlement section
+	settlementStart := strings.Index(xmlOutput, "<ram:SpecifiedLineTradeSettlement>")
+	settlementEnd := strings.Index(xmlOutput, "</ram:SpecifiedLineTradeSettlement>")
+
+	if settlementStart == -1 || settlementEnd == -1 {
+		t.Fatal("Could not find SpecifiedLineTradeSettlement section")
+	}
+
+	settlementSection := xmlOutput[settlementStart:settlementEnd]
+
+	if !strings.Contains(settlementSection, "<ram:SpecifiedTradeAllowanceCharge>") {
+		t.Error("SpecifiedTradeAllowanceCharge should be present in SpecifiedLineTradeSettlement for invoice line charges (BG-28)")
+	}
+
+	// Should have ChargeIndicator = true for charge
+	if !strings.Contains(settlementSection, "true") {
+		t.Error("ChargeIndicator should be true for charge")
+	}
+
+	// Should have ActualAmount
+	if !strings.Contains(settlementSection, "<ram:ActualAmount>5") {
+		t.Error("ActualAmount should be 5 for the charge")
+	}
+
+	// Should have Reason
+	if !strings.Contains(settlementSection, "Handling fee") {
+		t.Error("Charge reason should be present")
+	}
+}
+
+// TestWrite_InvoiceLineBillingPeriod tests that invoice line billing period
+// is written correctly (Bug #2)
+func TestWrite_InvoiceLineBillingPeriod(t *testing.T) {
+	t.Parallel()
+
+	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
+	linePeriodStart, _ := time.Parse("02.01.2006", "01.11.2025")
+	linePeriodEnd, _ := time.Parse("02.01.2006", "30.11.2025")
+
+	inv := Invoice{
+		InvoiceNumber:       "LINE-PERIOD-001",
+		InvoiceTypeCode:     380,
+		Profile:             CProfileEN16931,
+		InvoiceDate:         invoiceDate,
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name:              "Seller Company",
+			VATaxRegistration: "DE123456",
+			PostalAddress: &PostalAddress{
+				Line1:        "Seller Street 1",
+				City:         "Berlin",
+				PostcodeCode: "10115",
+				CountryID:    "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer Company",
+			PostalAddress: &PostalAddress{
+				Line1:        "Buyer Street 1",
+				City:         "Paris",
+				PostcodeCode: "75001",
+				CountryID:    "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                      "1",
+				ItemName:                    "Monthly Service",
+				BilledQuantity:              decimal.NewFromInt(1),
+				BilledQuantityUnit:          "C62",
+				NetPrice:                    decimal.NewFromInt(100),
+				TaxRateApplicablePercent:    decimal.NewFromInt(19),
+				Total:                       decimal.NewFromInt(100),
+				TaxTypeCode:                 "VAT",
+				TaxCategoryCode:             "S",
+				// BT-134, BT-135: Invoice line billing period
+				BillingSpecifiedPeriodStart: linePeriodStart,
+				BillingSpecifiedPeriodEnd:   linePeriodEnd,
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(nil)
+	inv.UpdateTotals()
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write() failed: %v", err)
+	}
+
+	xmlOutput := buf.String()
+
+	// BUG: Invoice line billing period should be written
+	// Extract SpecifiedLineTradeSettlement section
+	settlementStart := strings.Index(xmlOutput, "<ram:SpecifiedLineTradeSettlement>")
+	settlementEnd := strings.Index(xmlOutput, "</ram:SpecifiedLineTradeSettlement>")
+
+	if settlementStart == -1 || settlementEnd == -1 {
+		t.Fatal("Could not find SpecifiedLineTradeSettlement section")
+	}
+
+	settlementSection := xmlOutput[settlementStart:settlementEnd]
+
+	if !strings.Contains(settlementSection, "<ram:BillingSpecifiedPeriod>") {
+		t.Error("BillingSpecifiedPeriod should be present in invoice line (BG-26)")
+	}
+
+	// Should have both StartDateTime and EndDateTime
+	if !strings.Contains(settlementSection, "<ram:StartDateTime>") {
+		t.Error("StartDateTime should be present in line billing period")
+	}
+	if !strings.Contains(settlementSection, "<ram:EndDateTime>") {
+		t.Error("EndDateTime should be present in line billing period")
+	}
+
+	// Verify dates are correct
+	if !strings.Contains(settlementSection, "20251101") {
+		t.Error("StartDateTime should contain 20251101")
+	}
+	if !strings.Contains(settlementSection, "20251130") {
+		t.Error("EndDateTime should contain 20251130")
+	}
+}
