@@ -20,6 +20,32 @@ func (inv *Invoice) checkOther() {
 
 func (inv *Invoice) checkBRO() {
 	var sum decimal.Decimal
+
+	// BR-CO-9 VAT identifier country prefix validation
+	// VAT identifiers shall have ISO 3166-1 alpha-2 country prefix (e.g., DE, FR, GB). Greece may use 'EL' or 'GR'.
+	validateVATIDPrefix := func(vatID string, fieldName string) {
+		if vatID == "" {
+			return // Empty VAT IDs are handled by other rules
+		}
+		if len(vatID) < 2 {
+			inv.addViolation(rules.BRCO9, fmt.Sprintf("%s must have at least 2-character country prefix", fieldName))
+			return
+		}
+		// Extract first 2 characters as potential country code
+		prefix := vatID[:2]
+		// Check if it's uppercase letters (basic validation for country code format)
+		if prefix[0] < 'A' || prefix[0] > 'Z' || prefix[1] < 'A' || prefix[1] > 'Z' {
+			inv.addViolation(rules.BRCO9, fmt.Sprintf("%s must start with 2-letter ISO 3166-1 alpha-2 country code (got: %s)", fieldName, prefix))
+		}
+		// Note: Full validation against all valid ISO codes would require maintaining a complete list
+	}
+
+	validateVATIDPrefix(inv.Seller.VATaxRegistration, "Seller VAT identifier (BT-31)")
+	validateVATIDPrefix(inv.Buyer.VATaxRegistration, "Buyer VAT identifier (BT-48)")
+	if inv.SellerTaxRepresentativeTradeParty != nil {
+		validateVATIDPrefix(inv.SellerTaxRepresentativeTradeParty.VATaxRegistration, "Seller tax representative VAT identifier (BT-63)")
+	}
+
 	// BR-CO-3 Rechnung
 	// Umsatzsteuerdatum "Value added tax point date" (BT-7) und Code für das Umsatzsteuerdatum "Value added tax point date code" (BT-8)
 	// schließen sich gegenseitig aus.
@@ -165,6 +191,96 @@ func (inv *Invoice) checkBRO() {
 
 		if !hasPaymentDueDate && !hasPaymentTerms {
 			inv.addViolation(rules.BRCO25, "If amount due for payment is positive, either payment due date or payment terms must be present")
+		}
+	}
+
+	// BR-CO-26 Verkäufer
+	// In order for the buyer to automatically identify a supplier, at least one of the following shall be present:
+	// - Seller identifier (BT-29)
+	// - Seller legal registration identifier (BT-30)
+	// - Seller VAT identifier (BT-31)
+	hasSellerID := len(inv.Seller.ID) > 0 || len(inv.Seller.GlobalID) > 0
+	hasLegalReg := inv.Seller.SpecifiedLegalOrganization != nil && inv.Seller.SpecifiedLegalOrganization.ID != ""
+	hasVATID := inv.Seller.VATaxRegistration != ""
+	if !hasSellerID && !hasLegalReg && !hasVATID {
+		inv.addViolation(rules.BRCO26, "At least one seller identifier must be present: Seller ID (BT-29), Legal registration (BT-30), or VAT ID (BT-31)")
+	}
+
+	// BR-CO-27 Zahlungsanweisungen
+	// Either the IBAN or a Proprietary ID (BT-84) shall be used for payment account identifier.
+	// Note: BT-84 can be either IBAN or Proprietary ID; this rule ensures at least one is specified
+	// when payment account information is provided.
+	for _, pm := range inv.PaymentMeans {
+		if pm.PayeePartyCreditorFinancialAccountIBAN == "" && pm.PayeePartyCreditorFinancialAccountProprietaryID == "" {
+			// Only validate if TypeCode indicates a payment method that requires account info
+			// TypeCodes 30, 58 = credit transfer, which need account identifiers (already validated by BR-61)
+			if pm.TypeCode == 30 || pm.TypeCode == 58 {
+				inv.addViolation(rules.BRCO27, "Payment account identifier (BT-84) must be provided as either IBAN or Proprietary ID")
+			}
+		}
+	}
+
+	// BR-CO-5 Document level allowance reason consistency
+	// Document level allowance reason code (BT-98) and Document level allowance reason (BT-97)
+	// shall indicate the same type of allowance.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if !ac.ChargeIndicator { // This is an allowance
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO5, "Document level allowance reason code (BT-98) is provided but reason text (BT-97) is missing")
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO5, "Document level allowance reason text (BT-97) is provided but reason code (BT-98) is missing")
+			}
+		}
+	}
+
+	// BR-CO-6 Document level charge reason consistency
+	// Document level charge reason code (BT-105) and Document level charge reason (BT-104)
+	// shall indicate the same type of charge.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if ac.ChargeIndicator { // This is a charge
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO6, "Document level charge reason code (BT-105) is provided but reason text (BT-104) is missing")
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO6, "Document level charge reason text (BT-104) is provided but reason code (BT-105) is missing")
+			}
+		}
+	}
+
+	// BR-CO-7 Invoice line allowance reason consistency
+	// Invoice line allowance reason code (BT-140) and Invoice line allowance reason (BT-139)
+	// shall indicate the same type of allowance reason.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for i, line := range inv.InvoiceLines {
+		for _, ac := range line.InvoiceLineAllowances {
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO7, fmt.Sprintf("Line %d: allowance reason code (BT-140) is provided but reason text (BT-139) is missing", i+1))
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO7, fmt.Sprintf("Line %d: allowance reason text (BT-139) is provided but reason code (BT-140) is missing", i+1))
+			}
+		}
+	}
+
+	// BR-CO-8 Invoice line charge reason consistency
+	// Invoice line charge reason code (BT-145) and Invoice line charge reason (BT-144)
+	// shall indicate the same type of charge reason.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for i, line := range inv.InvoiceLines {
+		for _, ac := range line.InvoiceLineCharges {
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO8, fmt.Sprintf("Line %d: charge reason code (BT-145) is provided but reason text (BT-144) is missing", i+1))
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO8, fmt.Sprintf("Line %d: charge reason text (BT-144) is provided but reason code (BT-145) is missing", i+1))
+			}
 		}
 	}
 
@@ -361,6 +477,12 @@ func (inv *Invoice) checkBR() {
 	}
 
 	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		// BR-66 Specified Trade Allowance Charge
+		// Each Specified Trade Allowance Charge shall contain a Charge Indicator.
+		// Note: In Go, the boolean ChargeIndicator field always has a value (true or false),
+		// so this rule is implicitly satisfied. This validation is kept for documentation
+		// and to align with the EN 16931 specification.
+
 		// Add to applicableTradeTaxes for BR-45 validation
 		key := ac.CategoryTradeTaxCategoryCode + "_" + ac.CategoryTradeTaxRateApplicablePercent.String()
 		amount := ac.ActualAmount
@@ -615,6 +737,62 @@ func (inv *Invoice) checkBR() {
 		}
 	}
 
+	// BR-B-1 Split payment (Italian domestic invoices)
+	// An Invoice where the VAT category code is "Split payment" (B) shall be a domestic Italian invoice.
+	// This means both seller and buyer must be located in Italy (IT).
+	hasSplitPayment := false
+	for _, line := range inv.InvoiceLines {
+		if line.TaxCategoryCode == "B" {
+			hasSplitPayment = true
+			break
+		}
+	}
+	if !hasSplitPayment {
+		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+			if ac.CategoryTradeTaxCategoryCode == "B" {
+				hasSplitPayment = true
+				break
+			}
+		}
+	}
+	if hasSplitPayment {
+		// Check seller country
+		sellerCountry := ""
+		if inv.Seller.PostalAddress != nil {
+			sellerCountry = inv.Seller.PostalAddress.CountryID
+		}
+		// Check buyer country
+		buyerCountry := ""
+		if inv.Buyer.PostalAddress != nil {
+			buyerCountry = inv.Buyer.PostalAddress.CountryID
+		}
+
+		if sellerCountry != "IT" || buyerCountry != "IT" {
+			inv.addViolation(rules.BRB1, "Split payment VAT category (B) requires both seller and buyer to be in Italy (IT)")
+		}
+	}
+
+	// BR-B-2 Split payment and Standard rated exclusion
+	// An Invoice with Split payment (B) shall not contain Standard rated (S) VAT category.
+	hasStandardRated := false
+	for _, line := range inv.InvoiceLines {
+		if line.TaxCategoryCode == "S" {
+			hasStandardRated = true
+			break
+		}
+	}
+	if !hasStandardRated {
+		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+			if ac.CategoryTradeTaxCategoryCode == "S" {
+				hasStandardRated = true
+				break
+			}
+		}
+	}
+	if hasSplitPayment && hasStandardRated {
+		inv.addViolation(rules.BRB2, "Invoice with Split payment VAT category (B) must not contain Standard rated (S) category")
+	}
+
 	// VAT category validations - delegated to specialized methods
 	inv.checkVATStandard()
 	inv.checkVATReverse()
@@ -625,4 +803,94 @@ func (inv *Invoice) checkBR() {
 	inv.checkVATIGIC()
 	inv.checkVATIPSI()
 	inv.checkVATNotSubject()
+}
+
+// hasMaxDecimals checks if a decimal value has at most maxDecimals decimal places.
+// Returns true if the value has maxDecimals or fewer decimal places.
+func hasMaxDecimals(value decimal.Decimal, maxDecimals int) bool {
+	// The exponent is the negative of the number of decimal places
+	// e.g., 123.45 has exponent -2, 123.456 has exponent -3
+	return value.Exponent() >= -int32(maxDecimals)
+}
+
+func (inv *Invoice) checkBRDEC() {
+	// Helper function to validate decimal precision
+	checkDecimalPrecision := func(value decimal.Decimal, fieldName string, btCode string, rule rules.Rule) {
+		if !value.IsZero() && !hasMaxDecimals(value, 2) {
+			inv.addViolation(rule, fmt.Sprintf("%s (%s) has more than 2 decimal places: %s", fieldName, btCode, value.String()))
+		}
+	}
+
+	// BR-DEC-01: Document level allowance amount (BT-92)
+	// BR-DEC-02: Document level allowance base amount (BT-93)
+	// BR-DEC-05: Document level charge amount (BT-99)
+	// BR-DEC-06: Document level charge base amount (BT-100)
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if !ac.ChargeIndicator {
+			// Allowance
+			checkDecimalPrecision(ac.ActualAmount, "Document level allowance amount", "BT-92", rules.BRDEC1)
+			checkDecimalPrecision(ac.BasisAmount, "Document level allowance base amount", "BT-93", rules.BRDEC2)
+		} else {
+			// Charge
+			checkDecimalPrecision(ac.ActualAmount, "Document level charge amount", "BT-99", rules.BRDEC5)
+			checkDecimalPrecision(ac.BasisAmount, "Document level charge base amount", "BT-100", rules.BRDEC6)
+		}
+	}
+
+	// BR-DEC-09: Sum of Invoice line net amount (BT-106)
+	checkDecimalPrecision(inv.LineTotal, "Sum of Invoice line net amount", "BT-106", rules.BRDEC9)
+
+	// BR-DEC-10: Sum of allowances on document level (BT-107)
+	checkDecimalPrecision(inv.AllowanceTotal, "Sum of allowances on document level", "BT-107", rules.BRDEC10)
+
+	// BR-DEC-11: Sum of charges on document level (BT-108)
+	checkDecimalPrecision(inv.ChargeTotal, "Sum of charges on document level", "BT-108", rules.BRDEC11)
+
+	// BR-DEC-12: Invoice total amount without VAT (BT-109)
+	checkDecimalPrecision(inv.TaxBasisTotal, "Invoice total amount without VAT", "BT-109", rules.BRDEC12)
+
+	// BR-DEC-13: Invoice total VAT amount (BT-110)
+	checkDecimalPrecision(inv.TaxTotal, "Invoice total VAT amount", "BT-110", rules.BRDEC13)
+
+	// BR-DEC-14: Invoice total amount with VAT (BT-112)
+	checkDecimalPrecision(inv.GrandTotal, "Invoice total amount with VAT", "BT-112", rules.BRDEC14)
+
+	// BR-DEC-15: Invoice total VAT amount in accounting currency (BT-111)
+	checkDecimalPrecision(inv.TaxTotalVAT, "Invoice total VAT amount in accounting currency", "BT-111", rules.BRDEC15)
+
+	// BR-DEC-16: Paid amount (BT-113)
+	checkDecimalPrecision(inv.TotalPrepaid, "Paid amount", "BT-113", rules.BRDEC16)
+
+	// BR-DEC-17: Rounding amount (BT-114)
+	checkDecimalPrecision(inv.RoundingAmount, "Rounding amount", "BT-114", rules.BRDEC17)
+
+	// BR-DEC-18: Amount due for payment (BT-115)
+	checkDecimalPrecision(inv.DuePayableAmount, "Amount due for payment", "BT-115", rules.BRDEC18)
+
+	// BR-DEC-19: VAT category taxable amount (BT-116)
+	// BR-DEC-20: VAT category tax amount (BT-117)
+	for _, tt := range inv.TradeTaxes {
+		checkDecimalPrecision(tt.BasisAmount, "VAT category taxable amount", "BT-116", rules.BRDEC19)
+		checkDecimalPrecision(tt.CalculatedAmount, "VAT category tax amount", "BT-117", rules.BRDEC20)
+	}
+
+	// BR-DEC-23: Invoice line net amount (BT-131)
+	// BR-DEC-24: Invoice line allowance amount (BT-136)
+	// BR-DEC-25: Invoice line allowance base amount (BT-137)
+	// BR-DEC-27: Invoice line charge amount (BT-141)
+	// BR-DEC-28: Invoice line charge base amount (BT-142)
+	for i, line := range inv.InvoiceLines {
+		linePrefix := fmt.Sprintf("Line %d: ", i+1)
+		checkDecimalPrecision(line.Total, linePrefix+"Invoice line net amount", "BT-131", rules.BRDEC23)
+
+		for _, allowance := range line.InvoiceLineAllowances {
+			checkDecimalPrecision(allowance.ActualAmount, linePrefix+"Invoice line allowance amount", "BT-136", rules.BRDEC24)
+			checkDecimalPrecision(allowance.BasisAmount, linePrefix+"Invoice line allowance base amount", "BT-137", rules.BRDEC25)
+		}
+
+		for _, charge := range line.InvoiceLineCharges {
+			checkDecimalPrecision(charge.ActualAmount, linePrefix+"Invoice line charge amount", "BT-141", rules.BRDEC27)
+			checkDecimalPrecision(charge.BasisAmount, linePrefix+"Invoice line charge base amount", "BT-142", rules.BRDEC28)
+		}
+	}
 }

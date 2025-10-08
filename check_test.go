@@ -27,7 +27,7 @@ func TestBR11_BuyerCountryCodeField(t *testing.T) {
 			},
 		},
 		Buyer: Party{
-			Name: "Buyer",
+			Name:          "Buyer",
 			PostalAddress: &PostalAddress{
 				// Missing CountryID
 			},
@@ -957,15 +957,15 @@ func TestCheckBRO_MultipleViolations(t *testing.T) {
 			{Total: decimal.NewFromFloat(100.00)},
 			{Total: decimal.NewFromFloat(200.00)},
 		},
-		LineTotal:        decimal.NewFromFloat(250.00),  // Wrong: should be 300 (BR-CO-10)
+		LineTotal:        decimal.NewFromFloat(250.00), // Wrong: should be 300 (BR-CO-10)
 		AllowanceTotal:   decimal.NewFromFloat(50.00),
 		ChargeTotal:      decimal.NewFromFloat(10.00),
-		TaxBasisTotal:    decimal.NewFromFloat(250.00),  // Wrong: should be 210 (BR-CO-13)
+		TaxBasisTotal:    decimal.NewFromFloat(250.00), // Wrong: should be 210 (BR-CO-13)
 		TaxTotal:         decimal.NewFromFloat(47.50),
-		GrandTotal:       decimal.NewFromFloat(300.00),  // Wrong: should be 257.50 (BR-CO-15)
+		GrandTotal:       decimal.NewFromFloat(300.00), // Wrong: should be 257.50 (BR-CO-15)
 		TotalPrepaid:     decimal.NewFromFloat(50.00),
 		RoundingAmount:   decimal.NewFromFloat(0.50),
-		DuePayableAmount: decimal.NewFromFloat(250.00),  // Wrong: should be 250.50 (BR-CO-16)
+		DuePayableAmount: decimal.NewFromFloat(250.00), // Wrong: should be 250.50 (BR-CO-16)
 	}
 
 	inv.checkBRO()
@@ -1010,7 +1010,7 @@ func TestBR45_CompositeKey_DifferentCategories(t *testing.T) {
 	inv := &Invoice{
 		InvoiceLines: []InvoiceLine{
 			{
-				TaxCategoryCode:          "S",  // Standard rate
+				TaxCategoryCode:          "S", // Standard rate
 				TaxRateApplicablePercent: decimal.NewFromFloat(19),
 				Total:                    decimal.NewFromFloat(1000.00),
 			},
@@ -1845,9 +1845,9 @@ func TestBR64_ItemStandardIdentifierRequiresScheme(t *testing.T) {
 		},
 		InvoiceLines: []InvoiceLine{
 			{
-				LineID:         "1",
-				ItemName:       "Item",
-				GlobalID:       "1234567890",
+				LineID:   "1",
+				ItemName: "Item",
+				GlobalID: "1234567890",
 				// Missing GlobalIDType
 				BilledQuantity:  decimal.NewFromInt(1),
 				NetPrice:        decimal.NewFromInt(100),
@@ -2030,8 +2030,8 @@ func TestBRS3_MissingSellerVATForStandardAllowance(t *testing.T) {
 	inv := Invoice{
 		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
 			{
-				ChargeIndicator:               false, // Allowance
-				CategoryTradeTaxCategoryCode:  "S",
+				ChargeIndicator:              false, // Allowance
+				CategoryTradeTaxCategoryCode: "S",
 			},
 		},
 		Seller: Party{
@@ -2064,8 +2064,8 @@ func TestBRS4_MissingSellerVATForStandardCharge(t *testing.T) {
 	inv := Invoice{
 		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
 			{
-				ChargeIndicator:               true, // Charge
-				CategoryTradeTaxCategoryCode:  "S",
+				ChargeIndicator:              true, // Charge
+				CategoryTradeTaxCategoryCode: "S",
 			},
 		},
 		Seller: Party{
@@ -5117,20 +5117,20 @@ func TestBR24_MissingLineNetAmount(t *testing.T) {
 		},
 		InvoiceLines: []InvoiceLine{
 			{
-				LineID:            "1",
-				ItemName:          "Test Item",
-				BilledQuantity:    decimal.NewFromFloat(1.0),
-				BilledQuantityUnit: "C62",
-				NetPrice:          decimal.NewFromFloat(100.0),
-				Total:             decimal.Zero, // Missing line net amount (BT-131)
-				TaxCategoryCode:   "S",
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromFloat(1.0),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromFloat(100.0),
+				Total:                    decimal.Zero, // Missing line net amount (BT-131)
+				TaxCategoryCode:          "S",
 				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
 			},
 		},
-		LineTotal:       decimal.NewFromFloat(100.0),
-		TaxBasisTotal:   decimal.NewFromFloat(100.0),
-		TaxTotal:        decimal.NewFromFloat(19.0),
-		GrandTotal:      decimal.NewFromFloat(119.0),
+		LineTotal:        decimal.NewFromFloat(100.0),
+		TaxBasisTotal:    decimal.NewFromFloat(100.0),
+		TaxTotal:         decimal.NewFromFloat(19.0),
+		GrandTotal:       decimal.NewFromFloat(119.0),
 		DuePayableAmount: decimal.NewFromFloat(119.0),
 	}
 
@@ -5179,20 +5179,20 @@ func TestBR26_MissingNetPrice(t *testing.T) {
 		},
 		InvoiceLines: []InvoiceLine{
 			{
-				LineID:            "1",
-				ItemName:          "Test Item",
-				BilledQuantity:    decimal.NewFromFloat(1.0),
-				BilledQuantityUnit: "C62",
-				NetPrice:          decimal.Zero, // Missing net price (BT-146)
-				Total:             decimal.NewFromFloat(100.0),
-				TaxCategoryCode:   "S",
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromFloat(1.0),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.Zero, // Missing net price (BT-146)
+				Total:                    decimal.NewFromFloat(100.0),
+				TaxCategoryCode:          "S",
 				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
 			},
 		},
-		LineTotal:       decimal.NewFromFloat(100.0),
-		TaxBasisTotal:   decimal.NewFromFloat(100.0),
-		TaxTotal:        decimal.NewFromFloat(19.0),
-		GrandTotal:      decimal.NewFromFloat(119.0),
+		LineTotal:        decimal.NewFromFloat(100.0),
+		TaxBasisTotal:    decimal.NewFromFloat(100.0),
+		TaxTotal:         decimal.NewFromFloat(19.0),
+		GrandTotal:       decimal.NewFromFloat(119.0),
 		DuePayableAmount: decimal.NewFromFloat(119.0),
 	}
 
@@ -5245,13 +5245,13 @@ func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
 		},
 		InvoiceLines: []InvoiceLine{
 			{
-				LineID:            "1",
-				ItemName:          "Test Item",
-				BilledQuantity:    decimal.NewFromFloat(1.0),
-				BilledQuantityUnit: "C62",
-				NetPrice:          decimal.NewFromFloat(100.0),
-				Total:             decimal.NewFromFloat(100.0),
-				TaxCategoryCode:   "S",
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromFloat(1.0),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromFloat(100.0),
+				Total:                    decimal.NewFromFloat(100.0),
+				TaxCategoryCode:          "S",
 				TaxRateApplicablePercent: decimal.NewFromFloat(19.0),
 			},
 		},
@@ -5264,10 +5264,10 @@ func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
 				Percent:          decimal.NewFromFloat(19.0),
 			},
 		},
-		LineTotal:       decimal.NewFromFloat(100.0),
-		TaxBasisTotal:   decimal.NewFromFloat(100.0),
-		TaxTotal:        decimal.Zero, // Should be 19
-		GrandTotal:      decimal.NewFromFloat(100.0),
+		LineTotal:        decimal.NewFromFloat(100.0),
+		TaxBasisTotal:    decimal.NewFromFloat(100.0),
+		TaxTotal:         decimal.Zero, // Should be 19
+		GrandTotal:       decimal.NewFromFloat(100.0),
 		DuePayableAmount: decimal.NewFromFloat(100.0),
 	}
 
@@ -5326,13 +5326,13 @@ func TestBR48_MissingVATRatePercent(t *testing.T) {
 		},
 		InvoiceLines: []InvoiceLine{
 			{
-				LineID:            "1",
-				ItemName:          "Test Item",
-				BilledQuantity:    decimal.NewFromFloat(1.0),
-				BilledQuantityUnit: "C62",
-				NetPrice:          decimal.NewFromFloat(100.0),
-				Total:             decimal.NewFromFloat(100.0),
-				TaxCategoryCode:   "S",
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromFloat(1.0),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromFloat(100.0),
+				Total:                    decimal.NewFromFloat(100.0),
+				TaxCategoryCode:          "S",
 				TaxRateApplicablePercent: decimal.Zero, // Invalid for standard rate
 			},
 		},
@@ -5345,10 +5345,10 @@ func TestBR48_MissingVATRatePercent(t *testing.T) {
 				Percent:          decimal.Zero, // Invalid for standard rate (should be > 0)
 			},
 		},
-		LineTotal:       decimal.NewFromFloat(100.0),
-		TaxBasisTotal:   decimal.NewFromFloat(100.0),
-		TaxTotal:        decimal.Zero,
-		GrandTotal:      decimal.NewFromFloat(100.0),
+		LineTotal:        decimal.NewFromFloat(100.0),
+		TaxBasisTotal:    decimal.NewFromFloat(100.0),
+		TaxTotal:         decimal.Zero,
+		GrandTotal:       decimal.NewFromFloat(100.0),
 		DuePayableAmount: decimal.NewFromFloat(100.0),
 	}
 
@@ -5699,5 +5699,1300 @@ func TestBR20_ErrorMessage(t *testing.T) {
 				t.Errorf("BR-20 error message = %q, want 'Tax representative postal address missing country code'", v.Text)
 			}
 		}
+	}
+}
+
+// TestBRCO9_ValidVATIDPrefix tests that valid VAT IDs with proper country prefixes pass
+func TestBRCO9_ValidVATIDPrefix(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BRCO9-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name:              "Test Seller",
+			VATaxRegistration: "DE123456789", // Valid: starts with DE
+			PostalAddress:     &PostalAddress{CountryID: "DE"},
+		},
+		Buyer: Party{
+			Name:              "Test Buyer",
+			VATaxRegistration: "FR987654321", // Valid: starts with FR
+			PostalAddress:     &PostalAddress{CountryID: "FR"},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				NetPrice:                 decimal.NewFromInt(100),
+				Total:                    decimal.NewFromInt(100),
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	err := inv.Validate()
+	if err != nil {
+		valErr := err.(*ValidationError)
+		if valErr.HasRuleCode("BR-CO-09") {
+			t.Errorf("Should not have BR-CO-09 violation for valid VAT IDs: %v", valErr.Violations())
+		}
+	}
+}
+
+// TestBRCO9_InvalidVATIDPrefix tests that VAT IDs without proper country prefixes are rejected
+func TestBRCO9_InvalidVATIDPrefix(t *testing.T) {
+	tests := []struct {
+		name      string
+		sellerVAT string
+		buyerVAT  string
+		wantError bool
+	}{
+		{
+			name:      "Seller VAT starts with lowercase",
+			sellerVAT: "de123456789",
+			buyerVAT:  "FR987654321",
+			wantError: true,
+		},
+		{
+			name:      "Seller VAT starts with digit",
+			sellerVAT: "12DE123456789",
+			buyerVAT:  "FR987654321",
+			wantError: true,
+		},
+		{
+			name:      "Seller VAT too short",
+			sellerVAT: "D",
+			buyerVAT:  "FR987654321",
+			wantError: true,
+		},
+		{
+			name:      "Buyer VAT invalid prefix",
+			sellerVAT: "DE123456789",
+			buyerVAT:  "F1987654321",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRCO9",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				TaxBasisTotal:       decimal.NewFromInt(100),
+				GrandTotal:          decimal.NewFromInt(119),
+				DuePayableAmount:    decimal.NewFromInt(119),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: tt.sellerVAT,
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:              "Test Buyer",
+					VATaxRegistration: tt.buyerVAT,
+					PostalAddress:     &PostalAddress{CountryID: "FR"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(100),
+						CalculatedAmount: decimal.NewFromInt(19),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			if err == nil && tt.wantError {
+				t.Fatal("Expected BR-CO-09 violation")
+			}
+
+			if err != nil {
+				valErr := err.(*ValidationError)
+				if !valErr.HasRuleCode("BR-CO-09") && tt.wantError {
+					t.Errorf("Expected BR-CO-09 violation, got: %v", valErr.Violations())
+				}
+			}
+		})
+	}
+}
+
+// TestBRCO9_TaxRepresentativeVATID tests VAT ID validation for tax representative
+func TestBRCO9_TaxRepresentativeVATID(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BRCO9-002",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		TaxBasisTotal:       decimal.NewFromInt(100),
+		GrandTotal:          decimal.NewFromInt(119),
+		DuePayableAmount:    decimal.NewFromInt(119),
+		Seller: Party{
+			Name:          "Test Seller",
+			PostalAddress: &PostalAddress{CountryID: "DE"},
+		},
+		SellerTaxRepresentativeTradeParty: &Party{
+			Name:              "Tax Rep",
+			VATaxRegistration: "123Invalid", // Invalid prefix
+			PostalAddress:     &PostalAddress{CountryID: "FR"},
+		},
+		Buyer: Party{
+			Name:          "Test Buyer",
+			PostalAddress: &PostalAddress{CountryID: "FR"},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				NetPrice:                 decimal.NewFromInt(100),
+				Total:                    decimal.NewFromInt(100),
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	err := inv.Validate()
+	if err == nil {
+		t.Fatal("Expected BR-CO-09 violation for tax representative")
+	}
+
+	valErr := err.(*ValidationError)
+	if !valErr.HasRuleCode("BR-CO-09") {
+		t.Errorf("Expected BR-CO-09 violation, got: %v", valErr.Violations())
+	}
+}
+
+// TestBRCO26_ValidSellerID tests that having any seller identifier passes
+func TestBRCO26_ValidSellerID(t *testing.T) {
+	tests := []struct {
+		name        string
+		hasID       bool
+		hasGlobalID bool
+		hasLegalReg bool
+		hasVATID    bool
+		shouldPass  bool
+	}{
+		{"With Seller ID", true, false, false, false, true},
+		{"With Global ID", false, true, false, false, true},
+		{"With Legal Reg", false, false, true, false, true},
+		{"With VAT ID", false, false, false, true, true},
+		{"With multiple IDs", true, true, true, true, true},
+		{"With no IDs", false, false, false, false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRCO26",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				TaxBasisTotal:       decimal.NewFromInt(100),
+				GrandTotal:          decimal.NewFromInt(119),
+				DuePayableAmount:    decimal.NewFromInt(119),
+				Seller: Party{
+					Name:          "Test Seller",
+					PostalAddress: &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(100),
+						CalculatedAmount: decimal.NewFromInt(19),
+					},
+				},
+			}
+
+			if tt.hasID {
+				inv.Seller.ID = []string{"SELLER123"}
+			}
+			if tt.hasGlobalID {
+				inv.Seller.GlobalID = []GlobalID{{ID: "GLN:123456"}}
+			}
+			if tt.hasLegalReg {
+				inv.Seller.SpecifiedLegalOrganization = &SpecifiedLegalOrganization{ID: "REG123"}
+			}
+			if tt.hasVATID {
+				inv.Seller.VATaxRegistration = "DE123456789"
+			}
+
+			err := inv.Validate()
+			hasBRCO26 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRCO26 = valErr.HasRuleCode("BR-CO-26")
+			}
+
+			if tt.shouldPass && hasBRCO26 {
+				t.Errorf("Should not have BR-CO-26 violation")
+			}
+			if !tt.shouldPass && !hasBRCO26 {
+				t.Errorf("Should have BR-CO-26 violation")
+			}
+		})
+	}
+}
+
+// TestBRCO27_PaymentAccountIdentifier tests payment account validation
+func TestBRCO27_PaymentAccountIdentifier(t *testing.T) {
+	tests := []struct {
+		name       string
+		typeCode   int
+		hasIBAN    bool
+		hasProprID bool
+		shouldFail bool
+	}{
+		{"Credit transfer with IBAN", 30, true, false, false},
+		{"Credit transfer with Proprietary ID", 30, false, true, false},
+		{"Credit transfer with both", 30, true, true, false},
+		{"Credit transfer without account", 30, false, false, true},
+		{"SEPA credit transfer with IBAN", 58, true, false, false},
+		{"SEPA credit transfer without account", 58, false, false, true},
+		{"Other payment type without account", 48, false, false, false}, // Should not trigger
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRCO27",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				TaxBasisTotal:       decimal.NewFromInt(100),
+				GrandTotal:          decimal.NewFromInt(119),
+				DuePayableAmount:    decimal.NewFromInt(119),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				PaymentMeans: []PaymentMeans{
+					{
+						TypeCode: tt.typeCode,
+					},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(100),
+						CalculatedAmount: decimal.NewFromInt(19),
+					},
+				},
+			}
+
+			if tt.hasIBAN {
+				inv.PaymentMeans[0].PayeePartyCreditorFinancialAccountIBAN = "DE89370400440532013000"
+			}
+			if tt.hasProprID {
+				inv.PaymentMeans[0].PayeePartyCreditorFinancialAccountProprietaryID = "ACCT123"
+			}
+
+			err := inv.Validate()
+			hasBRCO27 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRCO27 = valErr.HasRuleCode("BR-CO-27")
+			}
+
+			if tt.shouldFail && !hasBRCO27 {
+				t.Errorf("Should have BR-CO-27 violation")
+			}
+			if !tt.shouldFail && hasBRCO27 {
+				t.Errorf("Should not have BR-CO-27 violation")
+			}
+		})
+	}
+}
+
+// TestBRCO5_AllowanceReasonConsistency tests document level allowance reason consistency
+func TestBRCO5_AllowanceReasonConsistency(t *testing.T) {
+	tests := []struct {
+		name        string
+		reasonCode  int
+		reason      string
+		shouldFail  bool
+		description string
+	}{
+		{"Both present", 95, "Discount", false, "Should pass when both are present"},
+		{"Only code", 95, "", true, "Should fail when only code is present"},
+		{"Only text", 0, "Discount", true, "Should fail when only text is present"},
+		{"Neither present", 0, "", false, "Should pass when neither is present"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRCO5",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				AllowanceTotal:      decimal.NewFromInt(10),
+				TaxBasisTotal:       decimal.NewFromInt(90),
+				GrandTotal:          decimal.NewFromInt(107),
+				DuePayableAmount:    decimal.NewFromInt(107),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+					{
+						ChargeIndicator:                       false, // Allowance
+						ActualAmount:                          decimal.NewFromInt(10),
+						ReasonCode:                            tt.reasonCode,
+						Reason:                                tt.reason,
+						CategoryTradeTaxCategoryCode:          "S",
+						CategoryTradeTaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(90),
+						CalculatedAmount: decimal.NewFromInt(17),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			hasBRCO5 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRCO5 = valErr.HasRuleCode("BR-CO-05")
+			}
+
+			if tt.shouldFail && !hasBRCO5 {
+				t.Errorf("%s: Should have BR-CO-05 violation", tt.description)
+			}
+			if !tt.shouldFail && hasBRCO5 {
+				t.Errorf("%s: Should not have BR-CO-05 violation", tt.description)
+			}
+		})
+	}
+}
+
+// TestBRCO6_ChargeReasonConsistency tests document level charge reason consistency
+func TestBRCO6_ChargeReasonConsistency(t *testing.T) {
+	tests := []struct {
+		name       string
+		reasonCode int
+		reason     string
+		shouldFail bool
+	}{
+		{"Both present", 83, "Handling", false},
+		{"Only code", 83, "", true},
+		{"Only text", 0, "Handling", true},
+		{"Neither present", 0, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRCO6",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				ChargeTotal:         decimal.NewFromInt(10),
+				TaxBasisTotal:       decimal.NewFromInt(110),
+				GrandTotal:          decimal.NewFromInt(131),
+				DuePayableAmount:    decimal.NewFromInt(131),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+					{
+						ChargeIndicator:                       true, // Charge
+						ActualAmount:                          decimal.NewFromInt(10),
+						ReasonCode:                            tt.reasonCode,
+						Reason:                                tt.reason,
+						CategoryTradeTaxCategoryCode:          "S",
+						CategoryTradeTaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(110),
+						CalculatedAmount: decimal.NewFromInt(21),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			hasBRCO6 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRCO6 = valErr.HasRuleCode("BR-CO-06")
+			}
+
+			if tt.shouldFail && !hasBRCO6 {
+				t.Errorf("Should have BR-CO-06 violation")
+			}
+			if !tt.shouldFail && hasBRCO6 {
+				t.Errorf("Should not have BR-CO-06 violation")
+			}
+		})
+	}
+}
+
+// TestBRCO7_LineAllowanceReasonConsistency tests invoice line allowance reason consistency
+func TestBRCO7_LineAllowanceReasonConsistency(t *testing.T) {
+	tests := []struct {
+		name       string
+		reasonCode int
+		reason     string
+		shouldFail bool
+	}{
+		{"Both present", 95, "Line discount", false},
+		{"Only code", 95, "", true},
+		{"Only text", 0, "Line discount", true},
+		{"Neither present", 0, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRCO7",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(90),
+				TaxBasisTotal:       decimal.NewFromInt(90),
+				GrandTotal:          decimal.NewFromInt(107),
+				DuePayableAmount:    decimal.NewFromInt(107),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:         "1",
+						ItemName:       "Test Item",
+						BilledQuantity: decimal.NewFromInt(1),
+						NetPrice:       decimal.NewFromInt(90),
+						Total:          decimal.NewFromInt(90),
+						InvoiceLineAllowances: []AllowanceCharge{
+							{
+								ActualAmount: decimal.NewFromInt(10),
+								ReasonCode:   tt.reasonCode,
+								Reason:       tt.reason,
+							},
+						},
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(90),
+						CalculatedAmount: decimal.NewFromInt(17),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			hasBRCO7 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRCO7 = valErr.HasRuleCode("BR-CO-07")
+			}
+
+			if tt.shouldFail && !hasBRCO7 {
+				t.Errorf("Should have BR-CO-07 violation")
+			}
+			if !tt.shouldFail && hasBRCO7 {
+				t.Errorf("Should not have BR-CO-07 violation")
+			}
+		})
+	}
+}
+
+// TestBRCO8_LineChargeReasonConsistency tests invoice line charge reason consistency
+func TestBRCO8_LineChargeReasonConsistency(t *testing.T) {
+	tests := []struct {
+		name       string
+		reasonCode int
+		reason     string
+		shouldFail bool
+	}{
+		{"Both present", 83, "Line charge", false},
+		{"Only code", 83, "", true},
+		{"Only text", 0, "Line charge", true},
+		{"Neither present", 0, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRCO8",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(110),
+				TaxBasisTotal:       decimal.NewFromInt(110),
+				GrandTotal:          decimal.NewFromInt(131),
+				DuePayableAmount:    decimal.NewFromInt(131),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:         "1",
+						ItemName:       "Test Item",
+						BilledQuantity: decimal.NewFromInt(1),
+						NetPrice:       decimal.NewFromInt(110),
+						Total:          decimal.NewFromInt(110),
+						InvoiceLineCharges: []AllowanceCharge{
+							{
+								ActualAmount: decimal.NewFromInt(10),
+								ReasonCode:   tt.reasonCode,
+								Reason:       tt.reason,
+							},
+						},
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(110),
+						CalculatedAmount: decimal.NewFromInt(21),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			hasBRCO8 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRCO8 = valErr.HasRuleCode("BR-CO-08")
+			}
+
+			if tt.shouldFail && !hasBRCO8 {
+				t.Errorf("Should have BR-CO-08 violation")
+			}
+			if !tt.shouldFail && hasBRCO8 {
+				t.Errorf("Should not have BR-CO-08 violation")
+			}
+		})
+	}
+}
+
+// TestBRDEC_DocumentLevelAmounts tests decimal precision for document level allowance and charge amounts
+func TestBRDEC_DocumentLevelAmounts(t *testing.T) {
+	tests := []struct {
+		name       string
+		amount     string
+		ruleCode   string
+		shouldFail bool
+	}{
+		{"Valid 2 decimals", "10.50", "", false},
+		{"Valid 1 decimal", "10.5", "", false},
+		{"Valid no decimals", "10", "", false},
+		{"Invalid 3 decimals allowance", "10.123", "BR-DEC-01", true},
+		{"Invalid 4 decimals allowance", "10.1234", "BR-DEC-01", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			amount, _ := decimal.NewFromString(tt.amount)
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRDEC",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				AllowanceTotal:      amount,
+				TaxBasisTotal:       decimal.NewFromInt(100).Sub(amount),
+				GrandTotal:          decimal.NewFromInt(100),
+				DuePayableAmount:    decimal.NewFromInt(100),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+					{
+						ChargeIndicator:                       false,
+						ActualAmount:                          amount,
+						CategoryTradeTaxCategoryCode:          "S",
+						CategoryTradeTaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(100).Sub(amount),
+						CalculatedAmount: decimal.NewFromInt(19),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			hasBRDEC := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				if tt.ruleCode != "" {
+					hasBRDEC = valErr.HasRuleCode(tt.ruleCode)
+				}
+			}
+
+			if tt.shouldFail && !hasBRDEC {
+				t.Errorf("Should have %s violation for %s decimals", tt.ruleCode, tt.amount)
+			}
+			if !tt.shouldFail && hasBRDEC {
+				t.Errorf("Should not have BR-DEC violation for %s decimals", tt.amount)
+			}
+		})
+	}
+}
+
+// TestBRDEC_InvoiceTotals tests decimal precision for invoice totals
+func TestBRDEC_InvoiceTotals(t *testing.T) {
+	tests := []struct {
+		name          string
+		lineTotal     string
+		taxBasisTotal string
+		taxTotal      string
+		grandTotal    string
+		shouldFail    bool
+		failingRule   string
+	}{
+		{
+			name:          "All valid 2 decimals",
+			lineTotal:     "100.50",
+			taxBasisTotal: "100.50",
+			taxTotal:      "19.10",
+			grandTotal:    "119.60",
+			shouldFail:    false,
+		},
+		{
+			name:          "LineTotal with 3 decimals",
+			lineTotal:     "100.505",
+			taxBasisTotal: "100.50",
+			taxTotal:      "19.10",
+			grandTotal:    "119.60",
+			shouldFail:    true,
+			failingRule:   "BR-DEC-09",
+		},
+		{
+			name:          "TaxTotal with 3 decimals",
+			lineTotal:     "100.50",
+			taxBasisTotal: "100.50",
+			taxTotal:      "19.105",
+			grandTotal:    "119.60",
+			shouldFail:    true,
+			failingRule:   "BR-DEC-13",
+		},
+		{
+			name:          "GrandTotal with 4 decimals",
+			lineTotal:     "100.50",
+			taxBasisTotal: "100.50",
+			taxTotal:      "19.10",
+			grandTotal:    "119.6055",
+			shouldFail:    true,
+			failingRule:   "BR-DEC-14",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lineTotal, _ := decimal.NewFromString(tt.lineTotal)
+			taxBasisTotal, _ := decimal.NewFromString(tt.taxBasisTotal)
+			taxTotal, _ := decimal.NewFromString(tt.taxTotal)
+			grandTotal, _ := decimal.NewFromString(tt.grandTotal)
+
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRDEC-TOTALS",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           lineTotal,
+				TaxBasisTotal:       taxBasisTotal,
+				TaxTotal:            taxTotal,
+				GrandTotal:          grandTotal,
+				DuePayableAmount:    grandTotal,
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 lineTotal,
+						Total:                    lineTotal,
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      taxBasisTotal,
+						CalculatedAmount: taxTotal,
+					},
+				},
+			}
+
+			err := inv.Validate()
+			if tt.shouldFail {
+				if err == nil {
+					t.Fatal("Expected BR-DEC violation")
+				}
+				valErr := err.(*ValidationError)
+				if !valErr.HasRuleCode(tt.failingRule) {
+					t.Errorf("Expected %s violation, got: %v", tt.failingRule, valErr.Violations())
+				}
+			} else if err != nil {
+				valErr := err.(*ValidationError)
+				for _, v := range valErr.Violations() {
+					if strings.HasPrefix(v.Rule.Code, "BR-DEC") {
+						t.Errorf("Should not have BR-DEC violation: %v", v)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestBRDEC_VATBreakdown tests decimal precision for VAT breakdown amounts
+func TestBRDEC_VATBreakdown(t *testing.T) {
+	tests := []struct {
+		name             string
+		basisAmount      string
+		calculatedAmount string
+		shouldFail       bool
+		failingRule      string
+	}{
+		{"Valid amounts", "100.50", "19.10", false, ""},
+		{"Basis with 3 decimals", "100.505", "19.10", true, "BR-DEC-19"},
+		{"Calculated with 3 decimals", "100.50", "19.105", true, "BR-DEC-20"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			basisAmount, _ := decimal.NewFromString(tt.basisAmount)
+			calculatedAmount, _ := decimal.NewFromString(tt.calculatedAmount)
+
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRDEC-VAT",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           basisAmount,
+				TaxBasisTotal:       basisAmount,
+				TaxTotal:            calculatedAmount,
+				GrandTotal:          basisAmount.Add(calculatedAmount),
+				DuePayableAmount:    basisAmount.Add(calculatedAmount),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 basisAmount,
+						Total:                    basisAmount,
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      basisAmount,
+						CalculatedAmount: calculatedAmount,
+					},
+				},
+			}
+
+			err := inv.Validate()
+			if tt.shouldFail {
+				if err == nil {
+					t.Fatal("Expected BR-DEC violation")
+				}
+				valErr := err.(*ValidationError)
+				if !valErr.HasRuleCode(tt.failingRule) {
+					t.Errorf("Expected %s violation", tt.failingRule)
+				}
+			}
+		})
+	}
+}
+
+// TestBRDEC_InvoiceLineAmounts tests decimal precision for invoice line amounts
+func TestBRDEC_InvoiceLineAmounts(t *testing.T) {
+	tests := []struct {
+		name        string
+		lineTotal   string
+		shouldFail  bool
+		failingRule string
+	}{
+		{"Valid 2 decimals", "100.50", false, ""},
+		{"Valid 1 decimal", "100.5", false, ""},
+		{"Invalid 3 decimals", "100.505", true, "BR-DEC-23"},
+		{"Invalid 5 decimals", "100.50505", true, "BR-DEC-23"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lineTotal, _ := decimal.NewFromString(tt.lineTotal)
+
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRDEC-LINE",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           lineTotal,
+				TaxBasisTotal:       lineTotal,
+				TaxTotal:            decimal.NewFromInt(19),
+				GrandTotal:          lineTotal.Add(decimal.NewFromInt(19)),
+				DuePayableAmount:    lineTotal.Add(decimal.NewFromInt(19)),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "DE123456789",
+					PostalAddress:     &PostalAddress{CountryID: "DE"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "FR"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 lineTotal,
+						Total:                    lineTotal,
+						TaxCategoryCode:          "S",
+						TaxRateApplicablePercent: decimal.NewFromInt(19),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      lineTotal,
+						CalculatedAmount: decimal.NewFromInt(19),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			if tt.shouldFail {
+				if err == nil {
+					t.Fatal("Expected BR-DEC violation")
+				}
+				valErr := err.(*ValidationError)
+				if !valErr.HasRuleCode(tt.failingRule) {
+					t.Errorf("Expected %s violation", tt.failingRule)
+				}
+			}
+		})
+	}
+}
+
+// TestBRB1_SplitPaymentRequiresItaly tests that split payment requires both parties in Italy
+func TestBRB1_SplitPaymentRequiresItaly(t *testing.T) {
+	tests := []struct {
+		name          string
+		sellerCountry string
+		buyerCountry  string
+		shouldFail    bool
+	}{
+		{"Both in Italy", "IT", "IT", false},
+		{"Seller not in Italy", "DE", "IT", true},
+		{"Buyer not in Italy", "IT", "FR", true},
+		{"Neither in Italy", "DE", "FR", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRB1",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				TaxBasisTotal:       decimal.NewFromInt(100),
+				GrandTotal:          decimal.NewFromInt(122),
+				DuePayableAmount:    decimal.NewFromInt(122),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: tt.sellerCountry + "123456789",
+					PostalAddress:     &PostalAddress{CountryID: tt.sellerCountry},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: tt.buyerCountry},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "B", // Split payment
+						TaxRateApplicablePercent: decimal.NewFromInt(22),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "B",
+						Percent:          decimal.NewFromInt(22),
+						BasisAmount:      decimal.NewFromInt(100),
+						CalculatedAmount: decimal.NewFromInt(22),
+					},
+				},
+			}
+
+			err := inv.Validate()
+			hasBRB1 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRB1 = valErr.HasRuleCode("BR-B-01")
+			}
+
+			if tt.shouldFail && !hasBRB1 {
+				t.Errorf("Should have BR-B-01 violation for seller=%s, buyer=%s", tt.sellerCountry, tt.buyerCountry)
+			}
+			if !tt.shouldFail && hasBRB1 {
+				t.Errorf("Should not have BR-B-01 violation for seller=%s, buyer=%s", tt.sellerCountry, tt.buyerCountry)
+			}
+		})
+	}
+}
+
+// TestBRB1_SplitPaymentInAllowanceCharge tests split payment detection in document level charges
+func TestBRB1_SplitPaymentInAllowanceCharge(t *testing.T) {
+	inv := Invoice{
+		Profile:             CProfileBasic,
+		InvoiceNumber:       "TEST-BRB1-AC",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		LineTotal:           decimal.NewFromInt(100),
+		ChargeTotal:         decimal.NewFromInt(10),
+		TaxBasisTotal:       decimal.NewFromInt(110),
+		GrandTotal:          decimal.NewFromInt(134),
+		DuePayableAmount:    decimal.NewFromInt(134),
+		Seller: Party{
+			Name:              "Test Seller",
+			VATaxRegistration: "DE123456789",
+			PostalAddress:     &PostalAddress{CountryID: "DE"}, // Not Italy
+		},
+		Buyer: Party{
+			Name:          "Test Buyer",
+			PostalAddress: &PostalAddress{CountryID: "FR"}, // Not Italy
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       true,
+				ActualAmount:                          decimal.NewFromInt(10),
+				CategoryTradeTaxCategoryCode:          "B", // Split payment
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromInt(22),
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				NetPrice:                 decimal.NewFromInt(100),
+				Total:                    decimal.NewFromInt(100),
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.NewFromInt(19),
+			},
+			{
+				CategoryCode:     "B",
+				Percent:          decimal.NewFromInt(22),
+				BasisAmount:      decimal.NewFromInt(10),
+				CalculatedAmount: decimal.NewFromInt(2),
+			},
+		},
+	}
+
+	err := inv.Validate()
+	if err == nil {
+		t.Fatal("Expected BR-B-01 violation")
+	}
+
+	valErr := err.(*ValidationError)
+	if !valErr.HasRuleCode("BR-B-01") {
+		t.Errorf("Expected BR-B-01 violation")
+	}
+}
+
+// TestBRB2_SplitPaymentExcludesStandardRated tests that split payment and standard rated are mutually exclusive
+func TestBRB2_SplitPaymentExcludesStandardRated(t *testing.T) {
+	tests := []struct {
+		name              string
+		hasStandardLine   bool
+		hasStandardCharge bool
+		shouldFail        bool
+	}{
+		{"Only split payment", false, false, false},
+		{"Split payment with standard line", true, false, true},
+		{"Split payment with standard charge", false, true, true},
+		{"Split payment with both", true, true, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				Profile:             CProfileBasic,
+				InvoiceNumber:       "TEST-BRB2",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				TaxBasisTotal:       decimal.NewFromInt(100),
+				GrandTotal:          decimal.NewFromInt(122),
+				DuePayableAmount:    decimal.NewFromInt(122),
+				Seller: Party{
+					Name:              "Test Seller",
+					VATaxRegistration: "IT123456789",
+					PostalAddress:     &PostalAddress{CountryID: "IT"},
+				},
+				Buyer: Party{
+					Name:          "Test Buyer",
+					PostalAddress: &PostalAddress{CountryID: "IT"},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:                   "1",
+						ItemName:                 "Test Item",
+						BilledQuantity:           decimal.NewFromInt(1),
+						NetPrice:                 decimal.NewFromInt(100),
+						Total:                    decimal.NewFromInt(100),
+						TaxCategoryCode:          "B", // Split payment
+						TaxRateApplicablePercent: decimal.NewFromInt(22),
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "B",
+						Percent:          decimal.NewFromInt(22),
+						BasisAmount:      decimal.NewFromInt(100),
+						CalculatedAmount: decimal.NewFromInt(22),
+					},
+				},
+			}
+
+			if tt.hasStandardLine {
+				inv.InvoiceLines = append(inv.InvoiceLines, InvoiceLine{
+					LineID:                   "2",
+					ItemName:                 "Standard Item",
+					BilledQuantity:           decimal.NewFromInt(1),
+					NetPrice:                 decimal.NewFromInt(50),
+					Total:                    decimal.NewFromInt(50),
+					TaxCategoryCode:          "S", // Standard rated
+					TaxRateApplicablePercent: decimal.NewFromInt(22),
+				})
+			}
+
+			if tt.hasStandardCharge {
+				inv.SpecifiedTradeAllowanceCharge = []AllowanceCharge{
+					{
+						ChargeIndicator:                       true,
+						ActualAmount:                          decimal.NewFromInt(10),
+						CategoryTradeTaxCategoryCode:          "S", // Standard rated
+						CategoryTradeTaxRateApplicablePercent: decimal.NewFromInt(22),
+					},
+				}
+			}
+
+			err := inv.Validate()
+			hasBRB2 := false
+			if err != nil {
+				valErr := err.(*ValidationError)
+				hasBRB2 = valErr.HasRuleCode("BR-B-02")
+			}
+
+			if tt.shouldFail && !hasBRB2 {
+				t.Errorf("Should have BR-B-02 violation")
+			}
+			if !tt.shouldFail && hasBRB2 {
+				t.Errorf("Should not have BR-B-02 violation")
+			}
+		})
 	}
 }
