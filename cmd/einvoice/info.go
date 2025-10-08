@@ -19,18 +19,20 @@ type InvoiceInfo struct {
 
 // InvoiceDetails contains detailed invoice information
 type InvoiceDetails struct {
-	Number         string          `json:"number"`
-	Date           string          `json:"date"`
-	Type           string          `json:"type"`
-	Profile        string          `json:"profile"`
-	Currency       string          `json:"currency"`
-	Seller         *PartyInfo      `json:"seller"`
-	Buyer          *PartyInfo      `json:"buyer"`
-	Lines          []LineInfo      `json:"lines,omitempty"`
-	LineCount      int             `json:"line_count"`
-	Totals         *TotalsInfo     `json:"totals"`
-	PaymentTerms   []string        `json:"payment_terms,omitempty"`
-	Notes          []string        `json:"notes,omitempty"`
+	Number          string          `json:"number"`
+	Date            string          `json:"date"`
+	Type            string          `json:"type"`
+	Profile         string          `json:"profile"`
+	ProfileURN      string          `json:"profile_urn,omitempty"`
+	BusinessProcess string          `json:"business_process,omitempty"`
+	Currency        string          `json:"currency"`
+	Seller          *PartyInfo      `json:"seller"`
+	Buyer           *PartyInfo      `json:"buyer"`
+	Lines           []LineInfo      `json:"lines,omitempty"`
+	LineCount       int             `json:"line_count"`
+	Totals          *TotalsInfo     `json:"totals"`
+	PaymentTerms    []string        `json:"payment_terms,omitempty"`
+	Notes           []string        `json:"notes,omitempty"`
 }
 
 // PartyInfo contains party details
@@ -132,11 +134,13 @@ func getInvoiceInfo(filename string, validate bool) InvoiceInfo {
 
 	// Extract invoice details
 	details := &InvoiceDetails{
-		Number:   invoice.InvoiceNumber,
-		Type:     invoice.InvoiceTypeCode.String(),
-		Profile:  invoice.Profile.String(),
-		Currency: invoice.InvoiceCurrencyCode,
-		LineCount: len(invoice.InvoiceLines),
+		Number:          invoice.InvoiceNumber,
+		Type:            invoice.InvoiceTypeCode.String(),
+		Profile:         invoice.Profile.String(),
+		ProfileURN:      invoice.Profile.ToProfileName(),
+		BusinessProcess: invoice.BPSpecifiedDocumentContextParameter,
+		Currency:        invoice.InvoiceCurrencyCode,
+		LineCount:       len(invoice.InvoiceLines),
 	}
 
 	// Format date
@@ -297,6 +301,9 @@ func outputInfoText(info InvoiceInfo) {
 	fmt.Printf("Date:            %s\n", inv.Date)
 	fmt.Printf("Type:            %s\n", inv.Type)
 	fmt.Printf("Profile:         %s\n", inv.Profile)
+	if inv.BusinessProcess != "" {
+		fmt.Printf("Business Process: %s\n", inv.BusinessProcess)
+	}
 	fmt.Printf("Currency:        %s\n", inv.Currency)
 	fmt.Printf("\n")
 
