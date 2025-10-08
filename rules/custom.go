@@ -4,13 +4,6 @@ package rules
 // but used in the validation logic. These are manually maintained.
 
 var (
-	// Check validates that invoice line net amount equals quantity × net price
-	Check = Rule{
-		Code:        "Check",
-		Fields:      []string{"BT-131", "BT-129", "BT-146", "BT-149"},
-		Description: `Invoice line net amount (BT-131) = invoiced quantity (BT-129) × item net price (BT-146) / item price base quantity (BT-149)`,
-	}
-
 	// BR34-40: These rules are not in the EN 16931 schematron but validate
 	// that allowance and charge amounts are non-negative.
 	BR34 = Rule{
