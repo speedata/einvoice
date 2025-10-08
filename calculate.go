@@ -75,6 +75,8 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 	onehundred := decimal.NewFromInt(100)
 
 	for _, att := range applicableTradeTaxes {
+		// BR-DEC-19: VAT category taxable amount (BT-116) must have max 2 decimal places
+		att.BasisAmount = att.BasisAmount.Round(2)
 		att.CalculatedAmount = att.BasisAmount.Mul(att.Percent.Div(onehundred)).Round(2)
 		if att.Percent.IsZero() {
 			att.ExemptionReason = exemptReason[att.CategoryCode]

@@ -361,13 +361,19 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(stac.CategoryTradeTaxRateApplicablePercent))
 	}
 
-	// BG-14
-	if !inv.BillingSpecifiedPeriodStart.IsZero() {
+	// BG-14: Billing period
+	// BR-CO-19: Either start date OR end date OR both must be filled
+	if !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero() {
 		bsp := elt.CreateElement("ram:BillingSpecifiedPeriod")
-		dt := bsp.CreateElement("ram:StartDateTime")
-		addTimeUDT(dt, inv.BillingSpecifiedPeriodStart)
-		dt = bsp.CreateElement("ram:EndDateTime")
-		addTimeUDT(dt, inv.BillingSpecifiedPeriodEnd)
+		// Only write non-zero dates to avoid invalid XML dates like "00010101"
+		if !inv.BillingSpecifiedPeriodStart.IsZero() {
+			dt := bsp.CreateElement("ram:StartDateTime")
+			addTimeUDT(dt, inv.BillingSpecifiedPeriodStart)
+		}
+		if !inv.BillingSpecifiedPeriodEnd.IsZero() {
+			dt := bsp.CreateElement("ram:EndDateTime")
+			addTimeUDT(dt, inv.BillingSpecifiedPeriodEnd)
+		}
 	}
 	// BT-20
 	for _, paymentTerm := range inv.SpecifiedTradePaymentTerms {
