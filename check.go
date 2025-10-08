@@ -269,9 +269,9 @@ func (inv *Invoice) checkBRO() {
 
 func (inv *Invoice) checkBR() {
 	// BR-1
-	// Eine Rechnung (INVOICE) muss eine Spezifikationskennung "Specification identification“ (BT-24) enthalten.
-	if inv.Profile == CProfileUnknown {
-		inv.addViolation(rules.BR1, "Could not determine the profile in GuidelineSpecifiedDocumentContextParameter")
+	// Eine Rechnung (INVOICE) muss eine Spezifikationskennung "Specification identification" (BT-24) enthalten.
+	if inv.GuidelineSpecifiedDocumentContextParameter == "" {
+		inv.addViolation(rules.BR1, "GuidelineSpecifiedDocumentContextParameter (BT-24) is empty")
 	}
 	// 	BR-2 Rechnung
 	// Eine Rechnung (INVOICE) muss eine Rechnungsnummer "Invoice number“ (BT-1) enthalten.
@@ -314,14 +314,14 @@ func (inv *Invoice) checkBR() {
 			inv.addViolation(rules.BR9, "Seller country code empty")
 		}
 	}
-	if inv.Profile > CProfileMinimum {
+	if inv.ProfileLevel() > levelMinimum {
 		// BR-10 Käufer
-		// Eine Rechnung (INVOICE) muss die postalische Anschrift des Erwerbers "BUYER POSTAL ADDRESS“ (BG-8) enthalten.
+		// Eine Rechnung (INVOICE) muss die postalische Anschrift des Erwerbers "BUYER POSTAL ADDRESS" (BG-8) enthalten.
 		if inv.Buyer.PostalAddress == nil {
 			inv.addViolation(rules.BR10, "Buyer has no postal address")
 		} else {
 			// BR-11 Käufer
-			// Eine postalische Anschrift des Erwerbers "BUYER POSTAL ADDRESS“ (BG-8) muss einen Erwerber-Ländercode "Buyer country code“ (BT-55)
+			// Eine postalische Anschrift des Erwerbers "BUYER POSTAL ADDRESS" (BG-8) muss einen Erwerber-Ländercode "Buyer country code" (BT-55)
 			// enthalten.
 			if inv.Buyer.PostalAddress.CountryID == "" {
 				inv.addViolation(rules.BR11, "Buyer country code empty")
@@ -349,8 +349,8 @@ func (inv *Invoice) checkBR() {
 		inv.addViolation(rules.BR15, "DuePayableAmount is zero")
 	}
 	// BR-16 Rechnung
-	// Eine Rechnung (INVOICE) muss mindestens eine Rechnungsposition "INVOICE LINE“ (BG-25) enthalten.
-	if is(CProfileBasic, inv) {
+	// Eine Rechnung (INVOICE) muss mindestens eine Rechnungsposition "INVOICE LINE" (BG-25) enthalten.
+	if is(levelBasic, inv) {
 		if len(inv.InvoiceLines) == 0 {
 			inv.addViolation(rules.BR16, "Invoice lines must be at least 1")
 		}

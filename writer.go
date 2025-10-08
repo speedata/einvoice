@@ -14,9 +14,20 @@ import (
 var percentageRE = regexp.MustCompile(`^(.*?)\.?0+$`)
 var ErrWrite = errors.New("creating the XML failed")
 
-// is returns true if the profile in the invoice is at least cp.
-func is(cp CodeProfileType, inv *Invoice) bool {
-	return inv.Profile >= cp
+// Profile level constants for writer
+// These match the ProfileLevel() return values in model.go
+const (
+	levelMinimum  = 1
+	levelBasicWL  = 2
+	levelBasic    = 3
+	levelEN16931  = 4 // Also covers PEPPOL and XRechnung
+	levelExtended = 5
+)
+
+// is returns true if the invoice profile meets or exceeds the minimum profile level.
+// This replaces the old enum-based comparison.
+func is(minLevel int, inv *Invoice) bool {
+	return inv.ProfileLevel() >= minLevel
 }
 
 // formatPercent removes trailing zeros and the decimal point, if possible.
@@ -56,14 +67,14 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		gid.SetText(invoiceLine.GlobalID)
 	}
 	// BT-155 is optional in EN
-	if is(CProfileEN16931, inv) {
+	if is(levelEN16931, inv) {
 		if artno := invoiceLine.ArticleNumber; artno != "" {
 			stp.CreateElement("ram:SellerAssignedID").SetText(artno)
 		}
 	}
 
 	// BT-156 optional in EN
-	if is(CProfileEN16931, inv) {
+	if is(levelEN16931, inv) {
 		if artno := invoiceLine.ArticleNumberBuyer; artno != "" {
 			stp.CreateElement("ram:BuyerAssignedID").SetText(invoiceLine.ArticleNumberBuyer)
 		}
@@ -229,7 +240,7 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 
 	if ppa := party.PostalAddress; ppa != nil {
 		// profile minimum has no postal address for the buyer (BG-8)
-		if partyType == CSellerParty || is(CProfileBasic, inv) {
+		if partyType == CSellerParty || is(levelBasic, inv) {
 			postalAddress := parent.CreateElement("ram:PostalTradeAddress")
 
 			// BT-38, BT-53: Postcode is optional - only create if non-empty (PEPPOL-EN16931-R008)
@@ -310,7 +321,7 @@ func writeCIIramApplicableHeaderTradeDelivery(inv *Invoice, parent *etree.Elemen
 		writeCIIParty(inv, *inv.ShipTo, elt.CreateElement("ram:ShipToTradeParty"), CShipToParty)
 	}
 
-	if is(CProfileBasic, inv) && !inv.OccurrenceDateTime.IsZero() {
+	if is(levelBasic, inv) && !inv.OccurrenceDateTime.IsZero() {
 		// BT-72
 		odt := elt.CreateElement("ram:ActualDeliverySupplyChainEvent").CreateElement("ram:OccurrenceDateTime")
 		addTimeUDT(odt, inv.OccurrenceDateTime)
@@ -321,7 +332,7 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 	elt := parent.CreateElement("ram:SpecifiedTradeSettlementHeaderMonetarySummation")
 	elt.CreateElement("ram:LineTotalAmount").SetText(inv.LineTotal.StringFixed(2))
 
-	if is(CProfileBasicWL, inv) {
+	if is(levelBasicWL, inv) {
 		elt.CreateElement("ram:ChargeTotalAmount").SetText(inv.ChargeTotal.StringFixed(2))
 		elt.CreateElement("ram:AllowanceTotalAmount").SetText(inv.AllowanceTotal.StringFixed(2))
 	}
@@ -343,13 +354,13 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 		ttaVAT.CreateAttr("currencyID", inv.TaxCurrencyCode)
 		ttaVAT.SetText(inv.TaxTotalVAT.StringFixed(2))
 	}
-	if is(CProfileEN16931, inv) && !inv.RoundingAmount.IsZero() {
+	if is(levelEN16931, inv) && !inv.RoundingAmount.IsZero() {
 		elt.CreateElement("ram:RoundingAmount").CreateText(inv.RoundingAmount.StringFixed(2))
 	}
 
 	elt.CreateElement("ram:GrandTotalAmount").CreateText(inv.GrandTotal.StringFixed(2))
 
-	if is(CProfileBasicWL, inv) {
+	if is(levelBasicWL, inv) {
 		elt.CreateElement("ram:TotalPrepaidAmount").CreateText(inv.TotalPrepaid.StringFixed(2))
 	}
 
@@ -368,7 +379,7 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		writeCIIParty(inv, *pt, elt.CreateElement("ram:PayeeTradeParty"), CPayeeParty)
 	}
 
-	if is(CProfileBasicWL, inv) {
+	if is(levelBasicWL, inv) {
 		for _, paymentMeans := range inv.PaymentMeans {
 			pmElt := elt.CreateElement("ram:SpecifiedTradeSettlementPaymentMeans")
 
@@ -490,12 +501,13 @@ func writeCIIrsmSupplyChainTradeTransaction(inv *Invoice, parent *etree.Element)
 func writeCIIrsmExchangedDocumentContext(inv *Invoice, root *etree.Element) {
 	documentContext := root.CreateElement("rsm:ExchangedDocumentContext")
 	// BusinessProcessSpecifiedDocumentContextParameter BT-23 is mandatory in extended
-	if inv.BPSpecifiedDocumentContextParameter != "" || is(CProfileExtended, inv) {
+	if inv.BPSpecifiedDocumentContextParameter != "" || is(levelExtended, inv) {
 		documentContext.CreateElement("ram:BusinessProcessSpecifiedDocumentContextParameter").CreateElement("ram:ID").CreateText(inv.BPSpecifiedDocumentContextParameter)
 	}
 
+	// GuidelineSpecifiedDocumentContextParameter BT-24 is mandatory
 	guidelineContextParameter := documentContext.CreateElement("ram:GuidelineSpecifiedDocumentContextParameter")
-	guidelineContextParameter.CreateElement("ram:ID").CreateText(inv.Profile.ToProfileName())
+	guidelineContextParameter.CreateElement("ram:ID").CreateText(inv.GuidelineSpecifiedDocumentContextParameter)
 }
 
 func writeCIIrsmExchangedDocument(inv *Invoice, root *etree.Element) {

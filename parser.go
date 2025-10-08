@@ -466,23 +466,11 @@ func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, inv *Invoice) 
 }
 
 func parseCIIExchangedDocumentContext(ctx *cxpath.Context, inv *Invoice) error {
+	// Store the raw URN value (BT-24 - Specification identifier)
 	nc := ctx.Eval("ram:GuidelineSpecifiedDocumentContextParameter").Eval("ram:ID")
-	switch nc.String() {
-	case "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0":
-		inv.Profile = CProfileXRechnung
-	case "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended", "urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended":
-		inv.Profile = CProfileExtended
-	case "urn:cen.eu:en16931:2017":
-		inv.Profile = CProfileEN16931
-	case "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
-		"urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic",
-		"urn:cen.eu:en16931:2017:compliant:factur-x.eu:1p0:basic":
-		inv.Profile = CProfileBasic
-	case "urn:factur-x.eu:1p0:basicwl":
-		inv.Profile = CProfileBasicWL
-	case "urn:factur-x.eu:1p0:minimum", "urn:zugferd.de:2p0:minimum":
-		inv.Profile = CProfileMinimum
-	}
+	inv.GuidelineSpecifiedDocumentContextParameter = nc.String()
+
+	// Store the business process identifier (BT-23)
 	inv.BPSpecifiedDocumentContextParameter = ctx.Eval("ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID").String()
 
 	return nil

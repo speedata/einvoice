@@ -38,10 +38,8 @@ func runValidate(args []string) int {
 	validateFlags := flag.NewFlagSet("validate", flag.ExitOnError)
 	var format string
 	var verbose bool
-	var profile string
 	validateFlags.StringVar(&format, "format", "text", "Output format: text, json")
 	validateFlags.BoolVar(&verbose, "verbose", false, "Show detailed rule descriptions and all fields")
-	validateFlags.StringVar(&profile, "profile", "en16931", "Validation profile: en16931, peppol")
 	validateFlags.Usage = validateUsage
 	_ = validateFlags.Parse(args)
 
@@ -53,14 +51,8 @@ func runValidate(args []string) int {
 
 	filename := validateFlags.Arg(0)
 
-	// Validate profile flag
-	if profile != "en16931" && profile != "peppol" {
-		fmt.Fprintf(os.Stderr, "Error: unknown profile %q (use 'en16931' or 'peppol')\n", profile)
-		return exitError
-	}
-
 	// Validate the invoice
-	result := validateInvoice(filename, profile)
+	result := validateInvoice(filename)
 
 	// Output results
 	switch format {
@@ -83,7 +75,7 @@ func runValidate(args []string) int {
 	return exitOK
 }
 
-func validateInvoice(filename string, profile string) Result {
+func validateInvoice(filename string) Result {
 	result := Result{
 		File: filename,
 	}
@@ -102,14 +94,11 @@ func validateInvoice(filename string, profile string) Result {
 		Total:  invoice.GrandTotal.String(),
 	}
 
-	// Validate the invoice according to the specified profile
-	var validationErr error
-	switch profile {
-	case "peppol":
-		validationErr = invoice.ValidatePEPPOL()
-	default: // "en16931" or any other value defaults to EN 16931
-		validationErr = invoice.Validate()
-	}
+	// Validate the invoice
+	// Validate() automatically detects which rules to apply based on:
+	// - Specification identifier (BT-24) for PEPPOL detection
+	// - Seller country for country-specific rules
+	validationErr := invoice.Validate()
 
 	if validationErr == nil {
 		result.Valid = true
@@ -194,15 +183,17 @@ func validateUsage() {
 
 Validates an electronic invoice against business rules.
 
+The validator automatically detects which rules to apply based on:
+  - Specification identifier (BT-24) for PEPPOL BIS Billing 3.0
+  - Seller country for country-specific rules (DK, IT, NL, NO, SE)
+
+All invoices are validated against EN 16931 core rules. Additional validation
+rules (PEPPOL, country-specific) are applied automatically when detected.
+
 Options:
   --format string   Output format: text, json (default "text")
-  --profile string  Validation profile: en16931, peppol (default "en16931")
   --verbose         Show detailed rule descriptions and all fields
   --help            Show this help message
-
-Profiles:
-  en16931  Validate against EN 16931 business rules only
-  peppol   Validate against EN 16931 + PEPPOL BIS Billing 3.0 rules
 
 Exit codes:
   0  Invoice is valid
@@ -212,7 +203,6 @@ Exit codes:
 Examples:
   einvoice validate invoice.xml
   einvoice validate --verbose invoice.xml
-  einvoice validate --profile peppol invoice.xml
-  einvoice validate --format json --profile peppol invoice.xml
+  einvoice validate --format json invoice.xml
 `)
 }

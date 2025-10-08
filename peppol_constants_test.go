@@ -212,48 +212,48 @@ func TestUsesPEPPOLBusinessProcess(t *testing.T) {
 		{
 			name: "valid PEPPOL business process with Factur-X Extended",
 			invoice: &Invoice{
-				BPSpecifiedDocumentContextParameter: BPPEPPOLBilling01,
-				Profile:                             CProfileExtended,
+				BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended",
 			},
 			want: true,
 		},
 		{
 			name: "valid PEPPOL business process with EN16931",
 			invoice: &Invoice{
-				BPSpecifiedDocumentContextParameter: BPPEPPOLBilling01,
-				Profile:                             CProfileEN16931,
+				BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 			},
 			want: true,
 		},
 		{
 			name: "valid PEPPOL business process with XRechnung",
 			invoice: &Invoice{
-				BPSpecifiedDocumentContextParameter: BPPEPPOLBilling01,
-				Profile:                             CProfileXRechnung,
+				BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0",
 			},
 			want: true,
 		},
 		{
 			name: "missing business process",
 			invoice: &Invoice{
-				BPSpecifiedDocumentContextParameter: "",
-				Profile:                             CProfileEN16931,
+				BPSpecifiedDocumentContextParameter:        "",
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 			},
 			want: false,
 		},
 		{
 			name: "invalid business process format",
 			invoice: &Invoice{
-				BPSpecifiedDocumentContextParameter: "invalid",
-				Profile:                             CProfileEN16931,
+				BPSpecifiedDocumentContextParameter:        "invalid",
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 			},
 			want: false,
 		},
 		{
 			name: "different valid PEPPOL process number",
 			invoice: &Invoice{
-				BPSpecifiedDocumentContextParameter: "urn:fdc:peppol.eu:2017:poacc:billing:99:1.0",
-				Profile:                             CProfileBasic,
+				BPSpecifiedDocumentContextParameter:        "urn:fdc:peppol.eu:2017:poacc:billing:99:1.0",
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 			},
 			want: true,
 		},

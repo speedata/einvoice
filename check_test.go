@@ -11,7 +11,7 @@ import (
 // TestBR11_BuyerCountryCodeField tests that BR-11 references the correct field BT-55
 func TestBR11_BuyerCountryCodeField(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-001",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -77,7 +77,7 @@ func TestBR11_BuyerCountryCodeField(t *testing.T) {
 // TestBR37_ChargeRuleNumber tests that charge tax category validation uses BR-37, not BR-32
 func TestBR37_ChargeRuleNumber(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-002",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -150,7 +150,7 @@ func TestBR37_ChargeRuleNumber(t *testing.T) {
 // TestBRCO3_TaxPointDateMutuallyExclusive tests BR-CO-3: TaxPointDate and DueDateTypeCode are mutually exclusive
 func TestBRCO3_TaxPointDateMutuallyExclusive(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-003",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -211,7 +211,7 @@ func TestBRCO3_TaxPointDateMutuallyExclusive(t *testing.T) {
 // TestBRCO4_InvoiceLineMustHaveVATCategory tests BR-CO-4: Each invoice line must have a VAT category code
 func TestBRCO4_InvoiceLineMustHaveVATCategory(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-004",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -270,7 +270,7 @@ func TestBRCO4_InvoiceLineMustHaveVATCategory(t *testing.T) {
 // TestBRCO17_VATCalculation tests BR-CO-17: VAT amount must equal basis × rate ÷ 100
 func TestBRCO17_VATCalculation(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-005",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -329,7 +329,7 @@ func TestBRCO17_VATCalculation(t *testing.T) {
 // TestBRCO18_AtLeastOneVATBreakdown tests BR-CO-18: Invoice should contain at least one VAT breakdown
 func TestBRCO18_AtLeastOneVATBreakdown(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-006",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -390,7 +390,7 @@ func TestBRCO19_InvoicingPeriodRequiresDate(t *testing.T) {
 
 	// Test case: This should NOT trigger BR-CO-19 because no period is used
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-007",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -448,7 +448,7 @@ func TestBRCO20_InvoiceLinePeriodRequiresDate(t *testing.T) {
 	// but both dates are zero. The current implementation won't trigger in practice.
 
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-008",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -503,7 +503,7 @@ func TestBRCO20_InvoiceLinePeriodRequiresDate(t *testing.T) {
 // TestBRCO25_PositiveAmountRequiresPaymentInfo tests BR-CO-25: Positive payment amount requires due date or terms
 func TestBRCO25_PositiveAmountRequiresPaymentInfo(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-009",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -563,7 +563,7 @@ func TestBRCO25_PositiveAmountRequiresPaymentInfo(t *testing.T) {
 // TestBRCO25_WithPaymentTerms tests that BR-CO-25 does not trigger when payment terms are present
 func TestBRCO25_WithPaymentTerms(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-010",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -622,7 +622,7 @@ func TestBRCO25_WithPaymentTerms(t *testing.T) {
 // TestBRCO25_WithDueDate tests that BR-CO-25 does not trigger when due date is present
 func TestBRCO25_WithDueDate(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-011",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1184,7 +1184,7 @@ func TestBR45_CompositeKey_MultipleCategories(t *testing.T) {
 // TestBR28_NegativeGrossPrice tests that BR-28 detects negative gross prices
 func TestBR28_NegativeGrossPrice(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR28",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1251,7 +1251,7 @@ func TestBR28_NegativeGrossPrice(t *testing.T) {
 // TestBR52_SupportingDocumentMustHaveReference tests BR-52
 func TestBR52_SupportingDocumentMustHaveReference(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR52",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1316,7 +1316,7 @@ func TestBR52_SupportingDocumentMustHaveReference(t *testing.T) {
 // TestBR53_TaxAccountingCurrencyRequiresTotalVAT tests BR-53
 func TestBR53_TaxAccountingCurrencyRequiresTotalVAT(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR53",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1376,7 +1376,7 @@ func TestBR53_TaxAccountingCurrencyRequiresTotalVAT(t *testing.T) {
 // TestBR54_ItemAttributeMustHaveNameAndValue tests BR-54
 func TestBR54_ItemAttributeMustHaveNameAndValue(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR54",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1441,7 +1441,7 @@ func TestBR54_ItemAttributeMustHaveNameAndValue(t *testing.T) {
 // TestBR55_PrecedingInvoiceReferenceMustHaveNumber tests BR-55
 func TestBR55_PrecedingInvoiceReferenceMustHaveNumber(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR55",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1506,7 +1506,7 @@ func TestBR55_PrecedingInvoiceReferenceMustHaveNumber(t *testing.T) {
 // TestBR56_TaxRepresentativeMustHaveVATID tests BR-56
 func TestBR56_TaxRepresentativeMustHaveVATID(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR56",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1569,7 +1569,7 @@ func TestBR56_TaxRepresentativeMustHaveVATID(t *testing.T) {
 // TestBR57_DeliverToAddressMustHaveCountryCode tests BR-57
 func TestBR57_DeliverToAddressMustHaveCountryCode(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR57",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1635,7 +1635,7 @@ func TestBR57_DeliverToAddressMustHaveCountryCode(t *testing.T) {
 // TestBR61_CreditTransferRequiresAccountIdentifier tests BR-61
 func TestBR61_CreditTransferRequiresAccountIdentifier(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR61",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1700,7 +1700,7 @@ func TestBR61_CreditTransferRequiresAccountIdentifier(t *testing.T) {
 // TestBR62_SellerElectronicAddressRequiresScheme tests BR-62
 func TestBR62_SellerElectronicAddressRequiresScheme(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR62",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1761,7 +1761,7 @@ func TestBR62_SellerElectronicAddressRequiresScheme(t *testing.T) {
 // TestBR63_BuyerElectronicAddressRequiresScheme tests BR-63
 func TestBR63_BuyerElectronicAddressRequiresScheme(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR63",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1822,7 +1822,7 @@ func TestBR63_BuyerElectronicAddressRequiresScheme(t *testing.T) {
 // TestBR64_ItemStandardIdentifierRequiresScheme tests BR-64
 func TestBR64_ItemStandardIdentifierRequiresScheme(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR64",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -1883,7 +1883,7 @@ func TestBR64_ItemStandardIdentifierRequiresScheme(t *testing.T) {
 // TestBR65_ItemClassificationRequiresScheme tests BR-65
 func TestBR65_ItemClassificationRequiresScheme(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BR65",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -5338,7 +5338,7 @@ func TestBR40_NegativeChargeBaseAmount(t *testing.T) {
 
 func TestBR24_MissingLineNetAmount(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-001",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -5400,7 +5400,7 @@ func TestBR24_MissingLineNetAmount(t *testing.T) {
 
 func TestBR26_MissingNetPrice(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-001",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -5465,7 +5465,7 @@ func TestBR46_MissingVATCalculatedAmount(t *testing.T) {
 	// are caught by category-specific rules (BR-CO-17, BR-S-9), not BR-46.
 	// BR-46 was incorrectly failing on zero values, but zero is valid for exempt categories.
 	inv := Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-001",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -5546,7 +5546,7 @@ func TestBR48_MissingVATRatePercent(t *testing.T) {
 	// are caught by category-specific rules (BR-S-5), not BR-48.
 	// BR-48 was incorrectly failing on zero values, but zero is valid and required for exempt categories.
 	inv := Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-001",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -5619,7 +5619,7 @@ func TestBR48_MissingVATRatePercent(t *testing.T) {
 // for exempt categories (fix for critical bug)
 func TestBR46_AllowsZeroCalculatedAmount(t *testing.T) {
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-001",
 		InvoiceDate:         time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		InvoiceTypeCode:     380,
@@ -5675,7 +5675,7 @@ func TestBR46_AllowsZeroCalculatedAmount(t *testing.T) {
 // for exempt categories (fix for critical bug)
 func TestBR48_AllowsZeroPercent(t *testing.T) {
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-002",
 		InvoiceDate:         time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		InvoiceTypeCode:     380,
@@ -5733,7 +5733,7 @@ func TestBR48_AllowsZeroPercent(t *testing.T) {
 // TestBRCO11_ValidatesAllowanceTotal verifies that allowance totals are validated
 func TestBRCO11_ValidatesAllowanceTotal(t *testing.T) {
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-003",
 		InvoiceDate:         time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		InvoiceTypeCode:     380,
@@ -5807,7 +5807,7 @@ func TestBRCO11_ValidatesAllowanceTotal(t *testing.T) {
 // TestBRCO12_ValidatesChargeTotal verifies that charge totals are validated
 func TestBRCO12_ValidatesChargeTotal(t *testing.T) {
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-004",
 		InvoiceDate:         time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		InvoiceTypeCode:     380,
@@ -5875,7 +5875,7 @@ func TestBRCO12_ValidatesChargeTotal(t *testing.T) {
 // TestBR20_ErrorMessage verifies the corrected error message
 func TestBR20_ErrorMessage(t *testing.T) {
 	inv := &Invoice{
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceNumber:       "TEST-005",
 		InvoiceDate:         time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		InvoiceTypeCode:     380,
@@ -5945,7 +5945,7 @@ func TestBR20_ErrorMessage(t *testing.T) {
 // TestBRCO9_ValidVATIDPrefix tests that valid VAT IDs with proper country prefixes pass
 func TestBRCO9_ValidVATIDPrefix(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BRCO9-001",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -6031,7 +6031,7 @@ func TestBRCO9_InvalidVATIDPrefix(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRCO9",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6089,7 +6089,7 @@ func TestBRCO9_InvalidVATIDPrefix(t *testing.T) {
 // TestBRCO9_TaxRepresentativeVATID tests VAT ID validation for tax representative
 func TestBRCO9_TaxRepresentativeVATID(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BRCO9-002",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -6164,7 +6164,7 @@ func TestBRCO26_ValidSellerID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRCO26",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6253,7 +6253,7 @@ func TestBRCO27_PaymentAccountIdentifier(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRCO27",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6339,7 +6339,7 @@ func TestBRCO5_AllowanceReasonConsistency(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRCO5",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6423,7 +6423,7 @@ func TestBRCO6_ChargeReasonConsistency(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRCO6",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6507,7 +6507,7 @@ func TestBRCO7_LineAllowanceReasonConsistency(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRCO7",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6587,7 +6587,7 @@ func TestBRCO8_LineChargeReasonConsistency(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRCO8",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6669,7 +6669,7 @@ func TestBRDEC_DocumentLevelAmounts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			amount, _ := decimal.NewFromString(tt.amount)
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRDEC",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6792,7 +6792,7 @@ func TestBRDEC_InvoiceTotals(t *testing.T) {
 			grandTotal, _ := decimal.NewFromString(tt.grandTotal)
 
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRDEC-TOTALS",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6873,7 +6873,7 @@ func TestBRDEC_VATBreakdown(t *testing.T) {
 			calculatedAmount, _ := decimal.NewFromString(tt.calculatedAmount)
 
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRDEC-VAT",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -6946,7 +6946,7 @@ func TestBRDEC_InvoiceLineAmounts(t *testing.T) {
 			lineTotal, _ := decimal.NewFromString(tt.lineTotal)
 
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRDEC-LINE",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -7017,7 +7017,7 @@ func TestBRB1_SplitPaymentRequiresItaly(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRB1",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),
@@ -7076,7 +7076,7 @@ func TestBRB1_SplitPaymentRequiresItaly(t *testing.T) {
 // TestBRB1_SplitPaymentInAllowanceCharge tests split payment detection in document level charges
 func TestBRB1_SplitPaymentInAllowanceCharge(t *testing.T) {
 	inv := Invoice{
-		Profile:             CProfileBasic,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 		InvoiceNumber:       "TEST-BRB1-AC",
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
@@ -7158,7 +7158,7 @@ func TestBRB2_SplitPaymentExcludesStandardRated(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := Invoice{
-				Profile:             CProfileBasic,
+				GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic",
 				InvoiceNumber:       "TEST-BRB2",
 				InvoiceTypeCode:     380,
 				InvoiceDate:         time.Now(),

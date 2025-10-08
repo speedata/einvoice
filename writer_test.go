@@ -19,7 +19,7 @@ func TestWrite_PayeeTradeParty(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "TEST-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
@@ -125,7 +125,7 @@ func TestWrite_MultiCurrencyTaxTotal(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "MULTI-CURR-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "USD", // BT-5: Invoice in USD
 		TaxCurrencyCode:     "EUR", // BT-6: Tax accounting in EUR
@@ -212,7 +212,7 @@ func TestWrite_SingleCurrencyTaxTotal(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "SINGLE-CURR-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR", // BT-5
 		TaxCurrencyCode:     "EUR", // BT-6: Same as invoice currency
@@ -282,7 +282,7 @@ func TestWrite_NoTaxCurrencyCode(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "NO-TAX-CURR-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR",
 		// TaxCurrencyCode not set (empty string)
@@ -350,7 +350,7 @@ func TestWrite_BillingPeriod_OnlyEndDate(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "PERIOD-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
 		// BG-14: Billing period with ONLY end date (no start date)
@@ -438,7 +438,7 @@ func TestWrite_BillingPeriod_OnlyStartDate(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "PERIOD-002",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
 		// BG-14: Billing period with ONLY start date (no end date)
@@ -526,7 +526,7 @@ func TestWrite_BillingPeriod_BothDates(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "PERIOD-003",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
 		// BG-14: Billing period with both dates
@@ -608,7 +608,7 @@ func TestWrite_InvoiceLineAllowances(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "LINE-ALLOW-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
@@ -716,7 +716,7 @@ func TestWrite_InvoiceLineCharges(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "LINE-CHARGE-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
@@ -816,7 +816,7 @@ func TestWrite_InvoiceLineBillingPeriod(t *testing.T) {
 	inv := Invoice{
 		InvoiceNumber:       "LINE-PERIOD-001",
 		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
 		Seller: Party{

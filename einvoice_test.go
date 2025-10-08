@@ -11,13 +11,13 @@ func ExampleInvoice_Write() {
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 	fourteenDays := time.Hour * 24 * 14
 	inv := Invoice{
-		InvoiceNumber:       "1234",
-		InvoiceTypeCode:     380,
-		Profile:             CProfileEN16931,
-		InvoiceDate:         fixedDate,
-		OccurrenceDateTime:  fixedDate.Add(-fourteenDays),
-		InvoiceCurrencyCode: "EUR",
-		TaxCurrencyCode:     "EUR",
+		InvoiceNumber:                              "1234",
+		InvoiceTypeCode:                            380,
+		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
+		InvoiceDate:                                fixedDate,
+		OccurrenceDateTime:                         fixedDate.Add(-fourteenDays),
+		InvoiceCurrencyCode:                        "EUR",
+		TaxCurrencyCode:                            "EUR",
 		Notes: []Note{{
 			Text: "Some text",
 		}},
