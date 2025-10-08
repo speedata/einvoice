@@ -206,8 +206,8 @@ Profiles:
 
 Exit codes:
   0  Invoice is valid
-  1  Invoice has validation violations
-  2  Error occurred (file not found, parse error, etc.)
+  1  Error occurred (file not found, parse error, etc.)
+  2  Invoice has validation violations
 
 Examples:
   einvoice validate invoice.xml

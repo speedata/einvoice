@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	exitOK         = 0 // Invoice is valid
-	exitViolations = 1 // Invoice has validation violations
-	exitError      = 2 // Error occurred (file not found, parse error, etc.)
+	exitOK         = 0 // Success
+	exitError      = 1 // Error occurred (file not found, parse error, etc.)
+	exitViolations = 2 // Invoice has validation violations (validate command only)
 )
 
 func main() {

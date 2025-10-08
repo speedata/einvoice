@@ -387,7 +387,7 @@ Options:
 
 Exit codes:
   0  Success
-  2  Error occurred (file not found, parse error, etc.)
+  1  Error occurred (file not found, parse error, etc.)
 
 Examples:
   einvoice info invoice.xml
