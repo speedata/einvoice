@@ -71,6 +71,31 @@ func dothings() error {
 }
 ```
 
+### Intelligent Validation with Auto-Detection
+
+The `Validate()` method automatically detects and applies the appropriate validation rules:
+
+- **EN 16931 Core Rules**: Always validated for all invoices
+- **PEPPOL BIS Billing 3.0**: Auto-detected based on specification identifier (BT-24)
+- **Country-Specific Rules**: Auto-detected based on seller country (future: DK, IT, NL, NO, SE)
+
+Example of a PEPPOL invoice being automatically validated:
+
+```go
+inv := &einvoice.Invoice{
+	GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
+	BPSpecifiedDocumentContextParameter: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+	// ... other fields
+}
+
+// Automatically validates both EN 16931 AND PEPPOL rules
+if err := inv.Validate(); err != nil {
+	// Handle validation errors
+}
+```
+
+No need to call separate validation methods - `Validate()` handles everything automatically!
+
 There is a [dedicated example](https://pkg.go.dev/github.com/speedata/einvoice#example-Invoice.Write) in [the documentation](https://pkg.go.dev/github.com/speedata/einvoice).
 
 ## Command Line Tool
@@ -116,19 +141,13 @@ fi
 ## Current status
 
 * Reading and writing of EN 16931 ZUGFeRD XML files is possible
-* Comprehensive validation of business rules when reading ZUGFeRD files:
-  - BR-1 to BR-65 (all core business rules)
-  - BR-CO-3 to BR-CO-26 (calculation rules)
-  - BR-S-1 to BR-S-10 (Standard rate VAT)
-  - BR-AE-1 to BR-AE-10 (Reverse charge)
-  - BR-E-1 to BR-E-10 (Exempt from VAT)
-  - BR-Z-1 to BR-Z-10 (Zero rated VAT)
-  - BR-G-1 to BR-G-10 (Export outside EU)
-  - BR-IC-1 to BR-IC-12 (Intra-community supply)
-  - BR-IG-1 to BR-IG-10 (IGIC - Canary Islands)
-  - BR-IP-1 to BR-IP-10 (IPSI - Ceuta/Melilla)
-  - BR-O-1 to BR-O-14 (Not subject to VAT)
-* XML output for minimum and EN16931 ZUGFeRD profile
+* Intelligent validation with auto-detection:
+  - **EN 16931 Core Rules**: BR-1 to BR-65, BR-CO-*, BR-DEC-*
+  - **VAT Category Rules**: BR-S-*, BR-AE-*, BR-E-*, BR-Z-*, BR-G-*, BR-IC-*, BR-IG-*, BR-IP-*, BR-O-*
+  - **PEPPOL BIS Billing 3.0**: Auto-detected and validated (PEPPOL-EN16931-R*)
+  - Single `Validate()` method handles all rule sets automatically
+* XML output for all ZUGFeRD profiles (Minimum, BasicWL, Basic, EN16931, Extended, XRechnung)
+* Profile detection based on specification identifier URN (BT-24)
 
 ## Limitations
 
