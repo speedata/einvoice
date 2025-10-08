@@ -125,8 +125,8 @@ func getInvoiceInfo(filename string) InvoiceInfo {
 	details := &InvoiceDetails{
 		Number:          invoice.InvoiceNumber,
 		Type:            invoice.InvoiceTypeCode.String(),
-		Profile:         invoice.Profile.String(),
-		ProfileURN:      invoice.Profile.ToProfileName(),
+		Profile:         getProfileName(invoice),
+		ProfileURN:      invoice.GuidelineSpecifiedDocumentContextParameter,
 		BusinessProcess: invoice.BPSpecifiedDocumentContextParameter,
 		Currency:        invoice.InvoiceCurrencyCode,
 		LineCount:       len(invoice.InvoiceLines),
@@ -373,6 +373,30 @@ func outputInfoJSON(info InvoiceInfo) {
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(info); err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+	}
+}
+
+// getProfileName returns a human-readable profile name from the invoice's profile URN
+func getProfileName(invoice *einvoice.Invoice) string {
+	switch {
+	case invoice.IsMinimum():
+		return "Minimum"
+	case invoice.IsBasicWL():
+		return "Basic WL"
+	case invoice.IsBasic():
+		return "Basic"
+	case invoice.IsEN16931():
+		return "EN 16931"
+	case invoice.IsExtended():
+		return "Extended"
+	case invoice.IsXRechnung():
+		return "XRechnung"
+	default:
+		// If no known profile matches, return the URN itself
+		if invoice.GuidelineSpecifiedDocumentContextParameter != "" {
+			return invoice.GuidelineSpecifiedDocumentContextParameter
+		}
+		return "Unknown"
 	}
 }
 
