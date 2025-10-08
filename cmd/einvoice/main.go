@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	exitOK         = 0 // Invoice is valid
-	exitViolations = 1 // Invoice has validation violations
-	exitError      = 2 // Error occurred (file not found, parse error, etc.)
+	exitOK         = 0 // Success
+	exitError      = 1 // Error occurred (file not found, parse error, etc.)
+	exitViolations = 2 // Invoice has validation violations (validate command only)
 )
 
 func main() {
@@ -29,6 +29,8 @@ func run() int {
 	switch subcommand {
 	case "validate":
 		return runValidate(os.Args[2:])
+	case "info":
+		return runInfo(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n", subcommand)
 		usage()
@@ -40,6 +42,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, `Usage: einvoice <command> [options]
 
 Commands:
+  info        Display detailed information about an electronic invoice
   validate    Validate an electronic invoice against EN 16931 business rules
 
 Use "einvoice <command> --help" for more information about a command.
