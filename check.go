@@ -130,7 +130,7 @@ func (inv *Invoice) checkBRO() {
 	// Der Inhalt des Elementes "VAT category tax amount" (BT-117) entspricht dem Inhalt des Elementes "VAT category taxable amount" (BT-116),
 	// multipliziert mit dem Inhalt des Elementes "VAT category rate" (BT-119) geteilt durch 100, gerundet auf zwei Dezimalstellen.
 	for _, tax := range inv.TradeTaxes {
-		expected := tax.BasisAmount.Mul(tax.Percent).Div(decimal.NewFromInt(100)).Round(2)
+		expected := roundHalfUp(tax.BasisAmount.Mul(tax.Percent).Div(decimal.NewFromInt(100)), 2)
 		if !tax.CalculatedAmount.Equal(expected) {
 			inv.addViolation(rules.BRCO17, fmt.Sprintf("VAT category tax amount %s does not match expected %s (basis %s × rate %s ÷ 100)", tax.CalculatedAmount.String(), expected.String(), tax.BasisAmount.String(), tax.Percent.String()))
 		}
