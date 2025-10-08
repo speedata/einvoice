@@ -3966,6 +3966,38 @@ func TestBRIC6_TaxableAmountMismatch(t *testing.T) {
 	}
 }
 
+func TestBRIC6_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for rounding bug: line totals that sum to a value
+	// requiring rounding (e.g., 50.004 + 49.997 = 100.001 rounds to 100.00)
+	// should not trigger false violations when properly rounded
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "K",
+				Total:           decimal.NewFromFloat(50.004),
+			},
+			{
+				TaxCategoryCode: "K",
+				Total:           decimal.NewFromFloat(49.997),
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"K": "Intracommunity supply"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-IC-06") {
+			t.Error("BR-IC-06 false positive: rounding precision not handled correctly")
+		}
+	}
+}
+
 func TestBRIC7_NonZeroVATAmount(t *testing.T) {
 	t.Parallel()
 
@@ -4025,6 +4057,38 @@ func TestBRIC8_TaxableAmountByRateMismatch(t *testing.T) {
 
 	if !found {
 		t.Error("Expected BR-IC-8 violation for taxable amount by rate mismatch in Intra-community supply")
+	}
+}
+
+func TestBRIC8_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for per-rate rounding bug
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "K",
+				TaxRateApplicablePercent: decimal.NewFromFloat(0.0),
+				Total:                    decimal.NewFromFloat(33.334),
+			},
+			{
+				TaxCategoryCode:          "K",
+				TaxRateApplicablePercent: decimal.NewFromFloat(0.0),
+				Total:                    decimal.NewFromFloat(66.667),
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+		Buyer:  Party{VATaxRegistration: "DE456"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"K": "Intracommunity supply"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-IC-08") {
+			t.Error("BR-IC-08 false positive: rounding precision not handled correctly")
+		}
 	}
 }
 
@@ -4239,6 +4303,35 @@ func TestBRIG5_TaxableAmountMismatch(t *testing.T) {
 	}
 }
 
+func TestBRIG5_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for rounding bug in IGIC category
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "L",
+				Total:           decimal.NewFromFloat(75.334),
+			},
+			{
+				TaxCategoryCode: "L",
+				Total:           decimal.NewFromFloat(24.667),
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"L": "IGIC"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-AF-05") {
+			t.Error("BR-AF-05 false positive: rounding precision not handled correctly")
+		}
+	}
+}
+
 func TestBRIG6_VATAmountMismatch(t *testing.T) {
 	t.Parallel()
 
@@ -4300,6 +4393,37 @@ func TestBRIG7_TaxableAmountByRateMismatch(t *testing.T) {
 
 	if !found {
 		t.Error("Expected BR-AF-7 violation for taxable amount by rate mismatch in IGIC")
+	}
+}
+
+func TestBRIG7_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for per-rate rounding bug in IGIC category
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "L",
+				TaxRateApplicablePercent: decimal.NewFromFloat(7.0),
+				Total:                    decimal.NewFromFloat(33.334),
+			},
+			{
+				TaxCategoryCode:          "L",
+				TaxRateApplicablePercent: decimal.NewFromFloat(7.0),
+				Total:                    decimal.NewFromFloat(66.667),
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"L": "IGIC"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-AF-07") {
+			t.Error("BR-AF-07 false positive: rounding precision not handled correctly")
+		}
 	}
 }
 
@@ -4495,6 +4619,35 @@ func TestBRIP5_TaxableAmountMismatch(t *testing.T) {
 	}
 }
 
+func TestBRIP5_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for rounding bug in IPSI category
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "M",
+				Total:           decimal.NewFromFloat(88.889),
+			},
+			{
+				TaxCategoryCode: "M",
+				Total:           decimal.NewFromFloat(11.112),
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"M": "IPSI"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-AG-05") {
+			t.Error("BR-AG-05 false positive: rounding precision not handled correctly")
+		}
+	}
+}
+
 func TestBRIP6_VATAmountMismatch(t *testing.T) {
 	t.Parallel()
 
@@ -4556,6 +4709,37 @@ func TestBRIP7_TaxableAmountByRateMismatch(t *testing.T) {
 
 	if !found {
 		t.Error("Expected BR-AG-7 violation for taxable amount by rate mismatch in IPSI")
+	}
+}
+
+func TestBRIP7_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for per-rate rounding bug in IPSI category
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "M",
+				TaxRateApplicablePercent: decimal.NewFromFloat(10.0),
+				Total:                    decimal.NewFromFloat(44.445),
+			},
+			{
+				TaxCategoryCode:          "M",
+				TaxRateApplicablePercent: decimal.NewFromFloat(10.0),
+				Total:                    decimal.NewFromFloat(55.556),
+			},
+		},
+		Seller: Party{VATaxRegistration: "ES123"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"M": "IPSI"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-AG-07") {
+			t.Error("BR-AG-07 false positive: rounding precision not handled correctly")
+		}
 	}
 }
 
@@ -4870,6 +5054,62 @@ func TestBRO9_TaxableAmountMismatch(t *testing.T) {
 
 	if !found {
 		t.Error("Expected BR-O-9 violation for taxable amount mismatch in Not subject to VAT")
+	}
+}
+
+func TestBRO9_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for rounding bug in Not subject to VAT category
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode: "O",
+				Total:           decimal.NewFromFloat(123.456),
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"O": "Not subject to VAT"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-O-09") {
+			t.Error("BR-O-09 false positive: rounding precision not handled correctly")
+		}
+	}
+}
+
+func TestBRO10_TaxableAmountRoundingPrecision(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for per-rate rounding bug in Not subject to VAT category
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "O",
+				TaxRateApplicablePercent: decimal.NewFromFloat(0.0),
+				Total:                    decimal.NewFromFloat(25.003),
+			},
+			{
+				TaxCategoryCode:          "O",
+				TaxRateApplicablePercent: decimal.NewFromFloat(0.0),
+				Total:                    decimal.NewFromFloat(74.998),
+			},
+		},
+		Seller: Party{VATaxRegistration: "DE123"},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{"O": "Not subject to VAT"})
+
+	err := inv.Validate()
+	if err != nil {
+		valErr, ok := err.(*ValidationError)
+		if ok && valErr.HasRuleCode("BR-O-10") {
+			t.Error("BR-O-10 false positive: rounding precision not handled correctly")
+		}
 	}
 }
 
