@@ -40,7 +40,18 @@ go get github.com/speedata/einvoice
 - `InvoiceLine`: Individual line items on the invoice
 - `TradeTax`: VAT breakdown per category (BG-23)
 - `AllowanceCharge`: Discounts/charges at document or line level
-- Profile types: `CProfileMinimum`, `CProfileBasicWL`, `CProfileBasic`, `CProfileEN16931`, `CProfileExtended`, `CProfileXRechnung`
+
+**Profile Detection:**
+Profiles are detected automatically via `GuidelineSpecifiedDocumentContextParameter` (BT-24) URN string:
+- `urn:factur-x.eu:1p0:minimum` → Minimum profile
+- `urn:factur-x.eu:1p0:basicwl` → Basic WL profile
+- `urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic` → Basic profile
+- `urn:cen.eu:en16931:2017` → EN 16931 profile
+- `urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended` → Extended profile
+- `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0` → XRechnung profile
+- `urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0` → PEPPOL BIS Billing 3.0
+
+Helper methods: `IsMinimum()`, `IsBasicWL()`, `IsBasic()`, `IsEN16931()`, `IsExtended()`, `IsXRechnung()`, `ProfileLevel()` (returns int 0-5)
 
 **Parsing (`parser.go`)**
 - `ParseXMLFile(filename)`: Reads ZUGFeRD/Factur-X XML files
@@ -57,29 +68,43 @@ go get github.com/speedata/einvoice
   - BR-CO-16: DuePayableAmount = GrandTotal - TotalPrepaid + RoundingAmount (BT-115)
 
 **Validation (Organized by domain)**
-The validation logic is split across multiple focused files for maintainability:
+The validation logic is split across multiple focused files for maintainability. All validation files and functions follow the `validate_*.go` and `validate*()` naming pattern:
 
-- `check.go`: Main orchestrator containing core business rules (BR-1 to BR-65) and public `Validate()` method
-- `validation.go`: ValidationError type with methods for accessing violations
-- `check_vat_standard.go`: Standard rated VAT validations (BR-S-1 to BR-S-10)
-- `check_vat_reverse.go`: Reverse charge VAT validations (BR-AE-1 to BR-AE-10)
-- `check_vat_exempt.go`: Exempt from VAT validations (BR-E-1 to BR-E-10)
-- `check_vat_zero.go`: Zero rated VAT validations (BR-Z-1 to BR-Z-10)
-- `check_vat_export.go`: Export outside EU validations (BR-G-1 to BR-G-10)
-- `check_vat_intracommunity.go`: Intra-community supply validations (BR-IC-1 to BR-IC-12)
-- `check_vat_igic.go`: IGIC (Canary Islands) validations (BR-IG-1 to BR-IG-10)
-- `check_vat_ipsi.go`: IPSI (Ceuta/Melilla) validations (BR-IP-1 to BR-IP-10)
-- `check_vat_notsubject.go`: Not subject to VAT validations (BR-O-1 to BR-O-14)
+- `validation.go`: ValidationError type, `Validate()` method with intelligent auto-detection
+- `validate_core.go`: Core business rules (BR-*, BR-CO-*, BR-DEC-*)
+  - `validateCore()`: BR-1 through BR-65
+  - `validateCalculations()`: BR-CO-* calculation rules
+  - `validateDecimals()`: BR-DEC-* decimal precision rules
+- `validate_vat_standard.go`: Standard rated VAT validations (BR-S-1 to BR-S-10)
+- `validate_vat_reverse.go`: Reverse charge VAT validations (BR-AE-1 to BR-AE-10)
+- `validate_vat_exempt.go`: Exempt from VAT validations (BR-E-1 to BR-E-10)
+- `validate_vat_zero.go`: Zero rated VAT validations (BR-Z-1 to BR-Z-10)
+- `validate_vat_export.go`: Export outside EU validations (BR-G-1 to BR-G-10)
+- `validate_vat_ic.go`: Intra-community supply validations (BR-IC-1 to BR-IC-12)
+- `validate_vat_igic.go`: IGIC (Canary Islands) validations (BR-IG-1 to BR-IG-10)
+- `validate_vat_ipsi.go`: IPSI (Ceuta/Melilla) validations (BR-IP-1 to BR-IP-10)
+- `validate_vat_notsubject.go`: Not subject to VAT validations (BR-O-1 to BR-O-14)
+- `validate_peppol.go`: PEPPOL BIS Billing 3.0 validations (PEPPOL-EN16931-R*)
 
-Each validation file contains a single method (e.g., `checkVATStandard()`) with comprehensive documentation explaining:
+Each validation file contains a single method (e.g., `validateVATStandard()`) with comprehensive documentation explaining:
 - The tax category purpose and requirements
 - All business rules implemented in that file
 - Field references (BT-/BG-) per EN 16931 specification
 
 **Validation API:**
-- Public: `Invoice.Validate() error` - validates and returns `ValidationError` if violations exist
-- Private: `Invoice.violations` field - use `Validate()` or deprecated `Violations()` accessor
+- Public: `Invoice.Validate() error` - Intelligent validation with auto-detection
+  - Always validates EN 16931 core rules
+  - Auto-detects PEPPOL based on specification identifier (BT-24)
+  - Auto-detects country rules based on seller location (future: DK, IT, NL, NO, SE)
+  - Returns `ValidationError` if violations exist, nil if valid
+- Private: `Invoice.violations` field - use `Validate()` accessor
 - Automatically runs during parsing; call explicitly when building invoices programmatically
+
+**Auto-Detection:**
+The `Validate()` method uses intelligent auto-detection:
+- `isPEPPOL()`: Detects PEPPOL BIS Billing 3.0 from URN
+- Country helpers: `isDanish()`, `isItalian()`, `isDutch()`, `isNorwegian()`, `isSwedish()`
+- Eliminates need for separate validation methods like the deprecated `ValidatePEPPOL()`
 
 **Business Rules (`rules/` package)**
 - 203 rules auto-generated from EN 16931 schematron (v1.3.14.1)
@@ -98,13 +123,19 @@ Rule naming: `BR-01` → `rules.BR1`, `BR-S-08` → `rules.BRS8`, `BR-CO-14` →
 **Writing (`writer.go`)**
 - `Invoice.Write(io.Writer)`: Outputs ZUGFeRD/Factur-X XML
 - Uses `github.com/beevik/etree` for XML generation
-- Profile-aware: outputs fields based on `Invoice.Profile` level
+- Profile-aware: outputs fields based on `ProfileLevel()` method
+- Level constants: `levelMinimum`=1, `levelBasicWL`=2, `levelBasic`=3, `levelEN16931`=4, `levelExtended`=5
 - Helper functions: `formatPercent()`, `addTimeUDT()`, `addTimeQDT()`
 
 ### Key Design Patterns
 
 **Profile Hierarchy**
-Profiles are ordered by inclusiveness: Extended > EN16931 > Basic > BasicWL > Minimum. The `is()` function checks if an invoice profile meets a minimum level. Higher profiles include all fields from lower profiles.
+Profiles are ordered by inclusiveness: Extended (5) > EN16931/PEPPOL/XRechnung (4) > Basic (3) > BasicWL (2) > Minimum (1).
+- `ProfileLevel()` returns int 0-5 based on URN
+- `MeetsProfileLevel(minLevel int)` replaces old enum comparisons
+- `is(minLevel int, inv)` writer helper checks profile level
+- Higher profiles include all fields from lower profiles
+- Single source of truth: `GuidelineSpecifiedDocumentContextParameter` URN string
 
 **Business Rule Validation**
 - Rules are named per EN 16931 spec: BR-1, BR-CO-10, BR-S-8, etc.
