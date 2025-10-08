@@ -24,7 +24,6 @@ import "github.com/speedata/einvoice/rules"
 // advanced validations are not yet implemented.
 //
 // TODO: Implement additional PEPPOL rules:
-//   - PEPPOL-EN16931-R004: Specification identifier format validation
 //   - PEPPOL-EN16931-R005: VAT accounting currency code validation
 //   - PEPPOL-EN16931-R006: Only one invoiced object on document level
 //   - Country-specific rules (DK-R-*, IT-R-*, NL-R-*, NO-R-*, SE-R-*)
@@ -36,6 +35,13 @@ func (inv *Invoice) checkPEPPOL() {
 	// PEPPOL-EN16931-R001: Business process MUST be provided (BT-23)
 	if inv.BPSpecifiedDocumentContextParameter == "" {
 		inv.addViolation(rules.PEPPOLEN16931R1, "Business process MUST be provided")
+	}
+
+	// PEPPOL-EN16931-R007: Business process format validation
+	if inv.BPSpecifiedDocumentContextParameter != "" {
+		if err := ValidateBusinessProcessID(inv.BPSpecifiedDocumentContextParameter); err != nil {
+			inv.addViolation(rules.PEPPOLEN16931R7, err.Error())
+		}
 	}
 
 	// PEPPOL-EN16931-R002: No more than one note is allowed on document level
