@@ -337,3 +337,263 @@ func TestWrite_NoTaxCurrencyCode(t *testing.T) {
 		t.Errorf("Expected 1 TaxTotalAmount element when TaxCurrencyCode not set, got %d", taxTotalCount)
 	}
 }
+
+// TestWrite_BillingPeriod_OnlyEndDate tests that document-level billing period
+// is written correctly when only end date is provided (Bug #3)
+// BR-CO-19 states: "either start date OR end date OR both must be filled"
+func TestWrite_BillingPeriod_OnlyEndDate(t *testing.T) {
+	t.Parallel()
+
+	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
+	periodEnd, _ := time.Parse("02.01.2006", "31.12.2025")
+
+	inv := Invoice{
+		InvoiceNumber:       "PERIOD-001",
+		InvoiceTypeCode:     380,
+		Profile:             CProfileEN16931,
+		InvoiceDate:         invoiceDate,
+		InvoiceCurrencyCode: "EUR",
+		// BG-14: Billing period with ONLY end date (no start date)
+		BillingSpecifiedPeriodStart: time.Time{}, // Zero value
+		BillingSpecifiedPeriodEnd:   periodEnd,
+		Seller: Party{
+			Name:              "Seller Company",
+			VATaxRegistration: "DE123456",
+			PostalAddress: &PostalAddress{
+				Line1:        "Seller Street 1",
+				City:         "Berlin",
+				PostcodeCode: "10115",
+				CountryID:    "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer Company",
+			PostalAddress: &PostalAddress{
+				Line1:        "Buyer Street 1",
+				City:         "Paris",
+				PostcodeCode: "75001",
+				CountryID:    "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(100),
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+				Total:                    decimal.NewFromInt(100),
+				TaxTypeCode:              "VAT",
+				TaxCategoryCode:          "S",
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(nil)
+	inv.UpdateTotals()
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write() failed: %v", err)
+	}
+
+	xmlOutput := buf.String()
+
+	// BUG: The billing period should be written even with only end date
+	// The current code only writes if start date is non-zero
+	if !strings.Contains(xmlOutput, "<ram:BillingSpecifiedPeriod>") {
+		t.Error("BillingSpecifiedPeriod element should be written when end date is provided (BR-CO-19)")
+	}
+
+	// Should have EndDateTime element
+	if !strings.Contains(xmlOutput, "<ram:EndDateTime>") {
+		t.Error("EndDateTime should be present in BillingSpecifiedPeriod")
+	}
+
+	// Should NOT write "00010101" for zero start date
+	if strings.Contains(xmlOutput, "00010101") {
+		t.Error("Should not write zero date value (00010101) for missing start date")
+	}
+
+	// Should NOT have StartDateTime element when start date is zero
+	periodStartIdx := strings.Index(xmlOutput, "<ram:BillingSpecifiedPeriod>")
+	periodEndIdx := strings.Index(xmlOutput, "</ram:BillingSpecifiedPeriod>")
+	if periodStartIdx != -1 && periodEndIdx != -1 {
+		periodSection := xmlOutput[periodStartIdx:periodEndIdx]
+		if strings.Contains(periodSection, "<ram:StartDateTime>") {
+			t.Error("StartDateTime should NOT be written when start date is zero")
+		}
+	}
+}
+
+// TestWrite_BillingPeriod_OnlyStartDate tests that document-level billing period
+// is written correctly when only start date is provided (Bug #3)
+func TestWrite_BillingPeriod_OnlyStartDate(t *testing.T) {
+	t.Parallel()
+
+	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
+	periodStart, _ := time.Parse("02.01.2006", "01.12.2025")
+
+	inv := Invoice{
+		InvoiceNumber:       "PERIOD-002",
+		InvoiceTypeCode:     380,
+		Profile:             CProfileEN16931,
+		InvoiceDate:         invoiceDate,
+		InvoiceCurrencyCode: "EUR",
+		// BG-14: Billing period with ONLY start date (no end date)
+		BillingSpecifiedPeriodStart: periodStart,
+		BillingSpecifiedPeriodEnd:   time.Time{}, // Zero value
+		Seller: Party{
+			Name:              "Seller Company",
+			VATaxRegistration: "DE123456",
+			PostalAddress: &PostalAddress{
+				Line1:        "Seller Street 1",
+				City:         "Berlin",
+				PostcodeCode: "10115",
+				CountryID:    "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer Company",
+			PostalAddress: &PostalAddress{
+				Line1:        "Buyer Street 1",
+				City:         "Paris",
+				PostcodeCode: "75001",
+				CountryID:    "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(100),
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+				Total:                    decimal.NewFromInt(100),
+				TaxTypeCode:              "VAT",
+				TaxCategoryCode:          "S",
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(nil)
+	inv.UpdateTotals()
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write() failed: %v", err)
+	}
+
+	xmlOutput := buf.String()
+
+	// Should have BillingSpecifiedPeriod element
+	if !strings.Contains(xmlOutput, "<ram:BillingSpecifiedPeriod>") {
+		t.Error("BillingSpecifiedPeriod element should be written when start date is provided")
+	}
+
+	// Should have StartDateTime element
+	if !strings.Contains(xmlOutput, "<ram:StartDateTime>") {
+		t.Error("StartDateTime should be present in BillingSpecifiedPeriod")
+	}
+
+	// Should NOT write "00010101" for zero end date
+	if strings.Contains(xmlOutput, "00010101") {
+		t.Error("Should not write zero date value (00010101) for missing end date")
+	}
+
+	// Should NOT have EndDateTime element when end date is zero
+	periodStartIdx := strings.Index(xmlOutput, "<ram:BillingSpecifiedPeriod>")
+	periodEndIdx := strings.Index(xmlOutput, "</ram:BillingSpecifiedPeriod>")
+	if periodStartIdx != -1 && periodEndIdx != -1 {
+		periodSection := xmlOutput[periodStartIdx:periodEndIdx]
+		if strings.Contains(periodSection, "<ram:EndDateTime>") {
+			t.Error("EndDateTime should NOT be written when end date is zero")
+		}
+	}
+}
+
+// TestWrite_BillingPeriod_BothDates tests that document-level billing period
+// is written correctly when both start and end dates are provided
+func TestWrite_BillingPeriod_BothDates(t *testing.T) {
+	t.Parallel()
+
+	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
+	periodStart, _ := time.Parse("02.01.2006", "01.12.2025")
+	periodEnd, _ := time.Parse("02.01.2006", "31.12.2025")
+
+	inv := Invoice{
+		InvoiceNumber:       "PERIOD-003",
+		InvoiceTypeCode:     380,
+		Profile:             CProfileEN16931,
+		InvoiceDate:         invoiceDate,
+		InvoiceCurrencyCode: "EUR",
+		// BG-14: Billing period with both dates
+		BillingSpecifiedPeriodStart: periodStart,
+		BillingSpecifiedPeriodEnd:   periodEnd,
+		Seller: Party{
+			Name:              "Seller Company",
+			VATaxRegistration: "DE123456",
+			PostalAddress: &PostalAddress{
+				Line1:        "Seller Street 1",
+				City:         "Berlin",
+				PostcodeCode: "10115",
+				CountryID:    "DE",
+			},
+		},
+		Buyer: Party{
+			Name: "Buyer Company",
+			PostalAddress: &PostalAddress{
+				Line1:        "Buyer Street 1",
+				City:         "Paris",
+				PostcodeCode: "75001",
+				CountryID:    "FR",
+			},
+		},
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(1),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(100),
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+				Total:                    decimal.NewFromInt(100),
+				TaxTypeCode:              "VAT",
+				TaxCategoryCode:          "S",
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(nil)
+	inv.UpdateTotals()
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write() failed: %v", err)
+	}
+
+	xmlOutput := buf.String()
+
+	// Should have BillingSpecifiedPeriod element
+	if !strings.Contains(xmlOutput, "<ram:BillingSpecifiedPeriod>") {
+		t.Error("BillingSpecifiedPeriod element should be written when both dates are provided")
+	}
+
+	// Should have both StartDateTime and EndDateTime elements
+	if !strings.Contains(xmlOutput, "<ram:StartDateTime>") {
+		t.Error("StartDateTime should be present in BillingSpecifiedPeriod")
+	}
+	if !strings.Contains(xmlOutput, "<ram:EndDateTime>") {
+		t.Error("EndDateTime should be present in BillingSpecifiedPeriod")
+	}
+
+	// Extract the dates and verify they're correct
+	if !strings.Contains(xmlOutput, "20251201") { // Start date: 01.12.2025
+		t.Error("StartDateTime should contain correct date value (20251201)")
+	}
+	if !strings.Contains(xmlOutput, "20251231") { // End date: 31.12.2025
+		t.Error("EndDateTime should contain correct date value (20251231)")
+	}
+}

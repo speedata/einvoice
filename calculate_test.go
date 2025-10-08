@@ -772,3 +772,106 @@ func TestUpdateTotals_NoAllowancesOrCharges(t *testing.T) {
 			inv.TaxBasisTotal, inv.LineTotal)
 	}
 }
+
+// TestUpdateApplicableTradeTax_BasisAmountRounding tests that BasisAmount is rounded
+// to 2 decimal places to comply with BR-DEC-19 (Bug #4)
+// This reproduces the bug where BasisAmount can have more than 2 decimal places,
+// violating BR-DEC-19 and causing validation inconsistencies
+func TestUpdateApplicableTradeTax_BasisAmountRounding(t *testing.T) {
+	// Create invoice with line totals that sum to a value with > 2 decimals
+	inv := &Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(100.333), // 3 decimals
+			},
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(200.777), // 3 decimals
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{})
+
+	if len(inv.TradeTaxes) != 1 {
+		t.Fatalf("Expected 1 TradeTax entry, got %d", len(inv.TradeTaxes))
+	}
+
+	tt := inv.TradeTaxes[0]
+
+	// BUG: BasisAmount should be rounded to 2 decimals per BR-DEC-19
+	// Sum is 100.333 + 200.777 = 301.110 which should be rounded to 301.11
+	expectedBasis := decimal.NewFromFloat(301.11)
+
+	// Check if BasisAmount has at most 2 decimal places (BR-DEC-19)
+	if !hasMaxDecimals(tt.BasisAmount, 2) {
+		t.Errorf("BasisAmount has more than 2 decimal places: %s (violates BR-DEC-19)", tt.BasisAmount.String())
+	}
+
+	// Verify the rounded value
+	if !tt.BasisAmount.Equal(expectedBasis) {
+		t.Errorf("BasisAmount = %s, want %s (should be rounded to 2 decimals)", tt.BasisAmount.String(), expectedBasis.String())
+	}
+
+	// Verify CalculatedAmount is also correctly rounded
+	// 301.11 × 19% = 57.2109, rounded to 57.21
+	expectedTax := decimal.NewFromFloat(57.21)
+	if !tt.CalculatedAmount.Equal(expectedTax) {
+		t.Errorf("CalculatedAmount = %s, want %s", tt.CalculatedAmount.String(), expectedTax.String())
+	}
+}
+
+// TestUpdateApplicableTradeTax_ValidationConsistency tests that the BasisAmount
+// calculated by UpdateApplicableTradeTax matches the BasisAmount calculated by
+// BR-S-8 validation (Bug #4)
+func TestUpdateApplicableTradeTax_ValidationConsistency(t *testing.T) {
+	inv := &Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:          "S",
+				TaxRateApplicablePercent: decimal.NewFromFloat(19),
+				Total:                    decimal.NewFromFloat(100.335),
+			},
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                       false,
+				ActualAmount:                          decimal.NewFromFloat(10.225),
+				CategoryTradeTaxCategoryCode:          "S",
+				CategoryTradeTaxRateApplicablePercent: decimal.NewFromFloat(19),
+			},
+		},
+	}
+
+	inv.UpdateApplicableTradeTax(map[string]string{})
+
+	// Simulate what BR-S-8 validation does
+	tt := inv.TradeTaxes[0]
+	calculatedBasis := decimal.Zero
+	for _, line := range inv.InvoiceLines {
+		if line.TaxCategoryCode == "S" && line.TaxRateApplicablePercent.Equal(tt.Percent) {
+			calculatedBasis = calculatedBasis.Add(line.Total)
+		}
+	}
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if ac.CategoryTradeTaxCategoryCode == "S" && ac.CategoryTradeTaxRateApplicablePercent.Equal(tt.Percent) {
+			if ac.ChargeIndicator {
+				calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
+			} else {
+				calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+			}
+		}
+	}
+	calculatedBasis = calculatedBasis.Round(2) // BR-S-8 rounds for comparison
+
+	// BUG: Without rounding in UpdateApplicableTradeTax, these won't match
+	// UpdateApplicableTradeTax gives: 100.335 - 10.225 = 90.110 (3 decimals)
+	// BR-S-8 validation expects: 90.11 (2 decimals)
+	if !tt.BasisAmount.Equal(calculatedBasis) {
+		t.Errorf("BasisAmount mismatch: UpdateApplicableTradeTax=%s, BR-S-8 validation=%s (should be equal)",
+			tt.BasisAmount.String(), calculatedBasis.String())
+	}
+}
