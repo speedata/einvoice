@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATExport validates BR-G-1 through BR-G-10.
+// validateVATExport validates BR-G-1 through BR-G-10.
 //
 // These rules apply to invoices with Export outside EU VAT (category code 'G').
 // This category is for goods or services exported outside the European Union,
@@ -20,7 +20,7 @@ import (
 //   - VAT rate must be 0 (exports are not taxed)
 //   - VAT amount must be 0
 //   - Must have exemption reason explaining the export
-func (inv *Invoice) checkVATExport() {
+func (inv *Invoice) validateVATExport() {
 	// BR-G-1 Export außerhalb der EU (Export outside the EU)
 	// If invoice has line/allowance/charge with "G", must have at least one "G" in VAT breakdown
 	hasExportOutsideEU := false

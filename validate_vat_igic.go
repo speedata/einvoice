@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATIGIC validates BR-AF-1 through BR-AF-10.
+// validateVATIGIC validates BR-AF-1 through BR-AF-10.
 //
 // These rules apply to invoices with IGIC tax (category code 'L').
 // IGIC (Impuesto General Indirecto Canario) is the indirect general tax
@@ -21,7 +21,7 @@ import (
 //   - IGIC amount is calculated as basis × rate
 //   - Must NOT have exemption reason (not an exemption, it's a different tax)
 //   - Seller must have tax ID but buyer must NOT have VAT ID
-func (inv *Invoice) checkVATIGIC() {
+func (inv *Invoice) validateVATIGIC() {
 	// BR-AF-1 IGIC (Kanarische Inseln / Canary Islands)
 	// Invoice with category L must have seller VAT ID
 	hasIGIC := false

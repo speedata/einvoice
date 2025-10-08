@@ -149,13 +149,13 @@ func (inv *Invoice) Validate() error {
 	inv.violations = []SemanticError{}
 
 	// Always run EN 16931 core validation
-	inv.checkBR()
-	inv.checkBRO()
-	inv.checkBRDEC()
+	inv.validateCore()
+	inv.validateCalculations()
+	inv.validateDecimals()
 
 	// Auto-detect and run PEPPOL validation based on specification identifier
 	if inv.isPEPPOL() {
-		inv.checkPEPPOL()
+		inv.validatePEPPOL()
 	}
 
 	// Auto-detect country-specific rules based on seller location

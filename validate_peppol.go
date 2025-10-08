@@ -2,7 +2,7 @@ package einvoice
 
 import "github.com/speedata/einvoice/rules"
 
-// checkPEPPOL validates the invoice against PEPPOL BIS Billing 3.0 rules.
+// validatePEPPOL validates the invoice against PEPPOL BIS Billing 3.0 rules.
 //
 // PEPPOL (Pan-European Public Procurement On-Line) BIS Billing 3.0 extends
 // EN 16931 with additional validation rules required for the PEPPOL network.
@@ -31,7 +31,7 @@ import "github.com/speedata/einvoice/rules"
 //   - Format validations (PEPPOL-EN16931-F*)
 //   - Profile-specific rules (PEPPOL-EN16931-P*)
 //   - Common identifier format rules (PEPPOL-COMMON-R*)
-func (inv *Invoice) checkPEPPOL() {
+func (inv *Invoice) validatePEPPOL() {
 	// PEPPOL-EN16931-R001: Business process MUST be provided (BT-23)
 	if inv.BPSpecifiedDocumentContextParameter == "" {
 		inv.addViolation(rules.PEPPOLEN16931R1, "Business process MUST be provided")

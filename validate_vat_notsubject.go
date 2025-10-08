@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATNotSubject validates BR-O-1 through BR-O-14.
+// validateVATNotSubject validates BR-O-1 through BR-O-14.
 //
 // These rules apply to invoices with "Not subject to VAT" category (code 'O').
 // This applies to transactions that fall outside the scope of VAT entirely,
@@ -21,7 +21,7 @@ import (
 //   - VAT amount must be 0
 //   - Must have exemption reason explaining why not subject to VAT
 //   - Only one 'O' category allowed in VAT breakdown
-func (inv *Invoice) checkVATNotSubject() {
+func (inv *Invoice) validateVATNotSubject() {
 	// BR-O-1 Not subject to VAT
 	// Invoice with category O must have seller OR buyer tax ID
 	hasNotSubjectToVAT := false

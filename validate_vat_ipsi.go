@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATIPSI validates BR-AG-1 through BR-AG-10.
+// validateVATIPSI validates BR-AG-1 through BR-AG-10.
 //
 // These rules apply to invoices with IPSI tax (category code 'M').
 // IPSI (Impuesto sobre la Producción, los Servicios y la Importación) is
@@ -22,7 +22,7 @@ import (
 //   - IPSI amount is calculated as basis × rate
 //   - Must NOT have exemption reason (not an exemption, it's a different tax)
 //   - Seller must have tax ID but buyer must NOT have VAT ID
-func (inv *Invoice) checkVATIPSI() {
+func (inv *Invoice) validateVATIPSI() {
 	// BR-AG-1 IPSI (Ceuta/Melilla)
 	// Invoice with category M must have seller VAT ID
 	hasIPSI := false

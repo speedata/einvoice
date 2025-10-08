@@ -688,7 +688,7 @@ func TestCheckBRO_BR_CO_10_Valid(t *testing.T) {
 		LineTotal: decimal.NewFromFloat(300.00),
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-10 violations were added
 	for _, v := range inv.violations {
@@ -708,7 +708,7 @@ func TestCheckBRO_BR_CO_10_Invalid(t *testing.T) {
 		LineTotal: decimal.NewFromFloat(250.00), // Wrong value
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that BR-CO-10 violation was added
 	found := false
@@ -734,7 +734,7 @@ func TestCheckBRO_BR_CO_13_Valid(t *testing.T) {
 		TaxBasisTotal:  decimal.NewFromFloat(900.00), // 1000 - 150 + 50
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-13 violations were added
 	for _, v := range inv.violations {
@@ -753,7 +753,7 @@ func TestCheckBRO_BR_CO_13_Invalid(t *testing.T) {
 		TaxBasisTotal:  decimal.NewFromFloat(1000.00), // Wrong: should be 900
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that BR-CO-13 violation was added
 	found := false
@@ -781,7 +781,7 @@ func TestCheckBRO_BR_CO_14_Valid(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-14 violations were added
 	for _, v := range inv.violations {
@@ -801,7 +801,7 @@ func TestCheckBRO_BR_CO_14_Invalid(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that BR-CO-14 violation was added
 	found := false
@@ -830,7 +830,7 @@ func TestCheckBRO_BR_CO_14_MultipleCategories(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-14 violations were added
 	for _, v := range inv.violations {
@@ -850,7 +850,7 @@ func TestCheckBRO_BR_CO_14_ZeroTax(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-14 violations were added
 	for _, v := range inv.violations {
@@ -868,7 +868,7 @@ func TestCheckBRO_BR_CO_15_Valid(t *testing.T) {
 		GrandTotal:    decimal.NewFromFloat(1071.00), // 900 + 171
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-15 violations were added
 	for _, v := range inv.violations {
@@ -886,7 +886,7 @@ func TestCheckBRO_BR_CO_15_Invalid(t *testing.T) {
 		GrandTotal:    decimal.NewFromFloat(1000.00), // Wrong: should be 1071
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that BR-CO-15 violation was added
 	found := false
@@ -913,7 +913,7 @@ func TestCheckBRO_BR_CO_16_Valid(t *testing.T) {
 		DuePayableAmount: decimal.NewFromFloat(971.05), // 1071 - 100 + 0.05
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-16 violations were added
 	for _, v := range inv.violations {
@@ -932,7 +932,7 @@ func TestCheckBRO_BR_CO_16_Invalid(t *testing.T) {
 		DuePayableAmount: decimal.NewFromFloat(971.00), // Wrong: should be 971.05
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that BR-CO-16 violation was added
 	found := false
@@ -968,7 +968,7 @@ func TestCheckBRO_MultipleViolations(t *testing.T) {
 		DuePayableAmount: decimal.NewFromFloat(250.00), // Wrong: should be 250.50 (BR-CO-16)
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that all four violations were detected
 	violations := make(map[string]bool)
@@ -993,7 +993,7 @@ func TestCheckBRO_BR_CO_16_NegativeRounding(t *testing.T) {
 		DuePayableAmount: decimal.NewFromFloat(68.86), // 119 - 50 + (-0.14)
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Check that no BR-CO-16 violations were added
 	for _, v := range inv.violations {
@@ -1036,7 +1036,7 @@ func TestBR45_CompositeKey_DifferentCategories(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Should not have any BR-45 violations because each category is matched correctly
 	for _, v := range inv.violations {
@@ -1071,7 +1071,7 @@ func TestBR45_CompositeKey_SameCategory(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Should not have BR-45 violations
 	for _, v := range inv.violations {
@@ -1110,7 +1110,7 @@ func TestBR45_CompositeKey_WithDocumentLevelAllowances(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Should not have BR-45 violations (allowance correctly reduces basis)
 	for _, v := range inv.violations {
@@ -1171,7 +1171,7 @@ func TestBR45_CompositeKey_MultipleCategories(t *testing.T) {
 		},
 	}
 
-	inv.checkBRO()
+	inv.validateCalculations()
 
 	// Should not have BR-45 violations
 	for _, v := range inv.violations {

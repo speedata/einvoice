@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATExempt validates BR-E-1 through BR-E-10.
+// validateVATExempt validates BR-E-1 through BR-E-10.
 //
 // These rules apply to invoices with Exempt from VAT (category code 'E').
 // VAT exemption applies to specific goods/services that are excluded from VAT
@@ -19,7 +19,7 @@ import (
 //   - VAT rate must be 0 (exempt, not taxable)
 //   - VAT amount must be 0
 //   - Must have exemption reason explaining why VAT is exempt
-func (inv *Invoice) checkVATExempt() {
+func (inv *Invoice) validateVATExempt() {
 	// BR-E-1 Steuerbefreit (Exempt from VAT)
 	// If invoice has line/allowance/charge with "E", must have at least one "E" in VAT breakdown
 	hasExempt := false

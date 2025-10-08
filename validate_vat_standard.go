@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATStandard validates BR-S-1 through BR-S-10.
+// validateVATStandard validates BR-S-1 through BR-S-10.
 //
 // These rules apply to invoices with Standard rated VAT (category code 'S').
 // Standard rate is the normal VAT rate applied to most goods and services.
@@ -18,7 +18,7 @@ import (
 //   - VAT rate must be greater than 0 (not zero)
 //   - VAT amount is calculated as basis amount × rate
 //   - Must NOT have exemption reason or code
-func (inv *Invoice) checkVATStandard() {
+func (inv *Invoice) validateVATStandard() {
 	// BR-S-1 Umsatzsteuer mit Normalsatz
 	// If invoice has line/allowance/charge with "Standard rated" (S), must have at least one "S" in VAT breakdown
 	hasStandardRated := false

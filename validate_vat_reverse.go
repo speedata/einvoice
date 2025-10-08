@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// checkVATReverse validates BR-AE-1 through BR-AE-10.
+// validateVATReverse validates BR-AE-1 through BR-AE-10.
 //
 // These rules apply to invoices with Reverse charge VAT (category code 'AE').
 // Reverse charge is when the buyer, not the seller, is liable to pay the VAT.
@@ -18,7 +18,7 @@ import (
 //   - VAT rate must be 0 (liability transferred to buyer)
 //   - VAT amount must be 0 in the invoice
 //   - Must have exemption reason explaining the reverse charge
-func (inv *Invoice) checkVATReverse() {
+func (inv *Invoice) validateVATReverse() {
 	// BR-AE-1 Umkehrung der Steuerschuldnerschaft (Reverse charge)
 	// If invoice has line/allowance/charge with "AE", must have at least one "AE" in VAT breakdown
 	hasReverseCharge := false

@@ -7,7 +7,7 @@ import (
 	"github.com/speedata/einvoice/rules"
 )
 
-func (inv *Invoice) checkBRO() {
+func (inv *Invoice) validateCalculations() {
 	var sum decimal.Decimal
 
 	// BR-CO-9 VAT identifier country prefix validation
@@ -267,7 +267,7 @@ func (inv *Invoice) checkBRO() {
 
 }
 
-func (inv *Invoice) checkBR() {
+func (inv *Invoice) validateCore() {
 	// BR-1
 	// Eine Rechnung (INVOICE) muss eine Spezifikationskennung "Specification identification" (BT-24) enthalten.
 	if inv.GuidelineSpecifiedDocumentContextParameter == "" {
@@ -775,15 +775,15 @@ func (inv *Invoice) checkBR() {
 	}
 
 	// VAT category validations - delegated to specialized methods
-	inv.checkVATStandard()
-	inv.checkVATReverse()
-	inv.checkVATExempt()
-	inv.checkVATZero()
-	inv.checkVATExport()
-	inv.checkVATIntracommunity()
-	inv.checkVATIGIC()
-	inv.checkVATIPSI()
-	inv.checkVATNotSubject()
+	inv.validateVATStandard()
+	inv.validateVATReverse()
+	inv.validateVATExempt()
+	inv.validateVATZero()
+	inv.validateVATExport()
+	inv.validateVATIntracommunity()
+	inv.validateVATIGIC()
+	inv.validateVATIPSI()
+	inv.validateVATNotSubject()
 }
 
 // hasMaxDecimals checks if a decimal value has at most maxDecimals decimal places.
@@ -794,7 +794,7 @@ func hasMaxDecimals(value decimal.Decimal, maxDecimals int) bool {
 	return value.Exponent() >= -int32(maxDecimals)
 }
 
-func (inv *Invoice) checkBRDEC() {
+func (inv *Invoice) validateDecimals() {
 	// Helper function to validate decimal precision
 	checkDecimalPrecision := func(value decimal.Decimal, fieldName string, btCode string, rule rules.Rule) {
 		if !value.IsZero() && !hasMaxDecimals(value, 2) {
