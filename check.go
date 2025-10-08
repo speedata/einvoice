@@ -156,22 +156,14 @@ func (inv *Invoice) checkBRO() {
 	// BR-CO-19 Liefer- oder Rechnungszeitraum
 	// Wenn die Gruppe "INVOICING PERIOD" (BG-14) verwendet wird, müssen entweder das Element "Invoicing period start date" (BT-73) oder das
 	// Element "Invoicing period end date" (BT-74) oder beide gefüllt sein.
-	if !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero() {
-		if inv.BillingSpecifiedPeriodStart.IsZero() && inv.BillingSpecifiedPeriodEnd.IsZero() {
-			inv.addViolation(rules.BRCO19, "If invoicing period is used, either start date or end date must be filled")
-		}
-	}
+	// Note: If at least one date is set (!IsZero()), then BR-CO-19 is automatically satisfied.
+	// The rule only applies when BG-14 is present in XML, which our writer ensures by only writing when at least one date exists.
 
 	// BR-CO-20 Rechnungszeitraum auf Positionsebene
 	// Wenn die Gruppe "INVOICE LINE PERIOD" (BG-26) verwendet wird, müssen entweder das Element "Invoice line period start date" (BT-134) oder
 	// das Element "Invoice line period end date" (BT-135) oder beide gefüllt sein.
-	for _, line := range inv.InvoiceLines {
-		if !line.BillingSpecifiedPeriodStart.IsZero() || !line.BillingSpecifiedPeriodEnd.IsZero() {
-			if line.BillingSpecifiedPeriodStart.IsZero() && line.BillingSpecifiedPeriodEnd.IsZero() {
-				inv.addViolation(rules.BRCO20, fmt.Sprintf("Invoice line %s: if line period is used, either start date or end date must be filled", line.LineID))
-			}
-		}
-	}
+	// Note: If at least one date is set (!IsZero()), then BR-CO-20 is automatically satisfied.
+	// The rule only applies when BG-26 is present in XML, which our writer ensures by only writing when at least one date exists.
 
 	// BR-CO-25 Rechnung
 	// Im Falle eines positiven Zahlbetrags "Amount due for payment" (BT-115) muss entweder das Element Fälligkeitsdatum "Payment due date" (BT-9)
