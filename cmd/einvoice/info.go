@@ -11,10 +11,9 @@ import (
 
 // InvoiceInfo represents the complete invoice information for display
 type InvoiceInfo struct {
-	File       string           `json:"file"`
-	Invoice    *InvoiceDetails  `json:"invoice,omitempty"`
-	Validation *ValidationInfo  `json:"validation,omitempty"`
-	Error      string           `json:"error,omitempty"`
+	File    string          `json:"file"`
+	Invoice *InvoiceDetails `json:"invoice,omitempty"`
+	Error   string          `json:"error,omitempty"`
 }
 
 // InvoiceDetails contains detailed invoice information
@@ -72,19 +71,12 @@ type TotalsInfo struct {
 	DuePayableAmount string `json:"due_payable_amount"`
 }
 
-// ValidationInfo contains validation results
-type ValidationInfo struct {
-	Valid      bool        `json:"valid"`
-	Violations []Violation `json:"violations,omitempty"`
-}
 
 func runInfo(args []string) int {
 	// Parse flags for the info subcommand
 	infoFlags := flag.NewFlagSet("info", flag.ExitOnError)
 	var format string
-	var validate bool
 	infoFlags.StringVar(&format, "format", "text", "Output format: text, json")
-	infoFlags.BoolVar(&validate, "validate", false, "Run validation and include results")
 	infoFlags.Usage = infoUsage
 	_ = infoFlags.Parse(args)
 
@@ -97,7 +89,7 @@ func runInfo(args []string) int {
 	filename := infoFlags.Arg(0)
 
 	// Get invoice information
-	info := getInvoiceInfo(filename, validate)
+	info := getInvoiceInfo(filename)
 
 	// Output results
 	switch format {
@@ -114,13 +106,10 @@ func runInfo(args []string) int {
 	if info.Error != "" {
 		return exitError
 	}
-	if validate && info.Validation != nil && !info.Validation.Valid {
-		return exitViolations
-	}
 	return exitOK
 }
 
-func getInvoiceInfo(filename string, validate bool) InvoiceInfo {
+func getInvoiceInfo(filename string) InvoiceInfo {
 	info := InvoiceInfo{
 		File: filename,
 	}
@@ -259,28 +248,6 @@ func getInvoiceInfo(filename string, validate bool) InvoiceInfo {
 
 	info.Invoice = details
 
-	// Run validation if requested
-	if validate {
-		validationInfo := &ValidationInfo{}
-		err := invoice.Validate()
-		if err == nil {
-			validationInfo.Valid = true
-		} else if ve, ok := err.(*einvoice.ValidationError); ok {
-			validationInfo.Valid = false
-			semanticErrors := ve.Violations()
-			validationInfo.Violations = make([]Violation, len(semanticErrors))
-			for i, se := range semanticErrors {
-				validationInfo.Violations[i] = Violation{
-					Rule:        se.Rule.Code,
-					Fields:      se.Rule.Fields,
-					Description: se.Rule.Description,
-					Text:        se.Text,
-				}
-			}
-		}
-		info.Validation = validationInfo
-	}
-
 	return info
 }
 
@@ -399,23 +366,6 @@ func outputInfoText(info InvoiceInfo) {
 		fmt.Printf("\n")
 	}
 
-	// Validation results
-	if info.Validation != nil {
-		fmt.Printf("Validation\n")
-		fmt.Printf("----------\n")
-		if info.Validation.Valid {
-			fmt.Printf("✓ Invoice is valid\n")
-		} else {
-			fmt.Printf("✗ Invoice has %d violation(s):\n", len(info.Validation.Violations))
-			for _, violation := range info.Validation.Violations {
-				primaryField := ""
-				if len(violation.Fields) > 0 {
-					primaryField = fmt.Sprintf(" (%s)", violation.Fields[0])
-				}
-				fmt.Printf("  - %s%s: %s\n", violation.Rule, primaryField, violation.Text)
-			}
-		}
-	}
 }
 
 func outputInfoJSON(info InvoiceInfo) {
@@ -433,18 +383,14 @@ Display detailed information about an electronic invoice.
 
 Options:
   --format string   Output format: text, json (default "text")
-  --validate        Run validation and include results
   --help            Show this help message
 
 Exit codes:
   0  Success
-  1  Invoice has validation violations (only when --validate is used)
   2  Error occurred (file not found, parse error, etc.)
 
 Examples:
   einvoice info invoice.xml
-  einvoice info --validate invoice.xml
   einvoice info --format json invoice.xml
-  einvoice info --format json --validate invoice.xml
 `)
 }
