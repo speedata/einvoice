@@ -75,14 +75,14 @@ func TestParseInvoiceFile_UnsupportedFormat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	// Write JSON content (unsupported format)
 	content := []byte(`{"invoice": "data"}`)
 	if _, err := tmpfile.Write(content); err != nil {
 		t.Fatal(err)
 	}
-	tmpfile.Close()
+	_ = tmpfile.Close()
 
 	_, err = parseInvoiceFile(tmpfile.Name())
 	if err == nil {
@@ -102,8 +102,8 @@ func TestParseInvoiceFile_EmptyFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Close()
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
+	_ = tmpfile.Close()
 
 	_, err = parseInvoiceFile(tmpfile.Name())
 	if err == nil {
@@ -152,6 +152,7 @@ func TestParseInvoiceFile_PDF(t *testing.T) {
 
 			if invoice == nil {
 				t.Error("parseInvoiceFile() returned nil invoice without error")
+				return
 			}
 
 			// Basic sanity checks

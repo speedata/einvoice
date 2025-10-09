@@ -26,7 +26,7 @@ func parseInvoiceFile(filename string) (*einvoice.Invoice, error) {
 	// Read magic bytes to detect file type
 	header := make([]byte, 512)
 	_, err = f.Read(header)
-	f.Close()
+	_ = f.Close() // Ignore close error on read-only file
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}

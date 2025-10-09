@@ -21,7 +21,7 @@ func extractXMLFromPDF(filename string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open PDF: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Extract all attachments in-memory
 	attachments, err := api.ExtractAttachmentsRaw(f, "", nil, nil)
