@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/speedata/einvoice"
-	"github.com/speedata/einvoice/cmd/einvoice/codelists"
+	"github.com/speedata/einvoice/cmd/codelists"
 )
 
 // InvoiceInfo represents the complete invoice information for display

@@ -14,7 +14,7 @@ Provides descriptions for invoice document type codes (e.g., "380" → "Standard
 
 **Usage:**
 ```go
-import "github.com/speedata/einvoice/cmd/einvoice/codelists"
+import "github.com/speedata/einvoice/cmd/codelists"
 
 description := codelists.DocumentType("380")
 // Returns: "Standard Invoice"
@@ -45,7 +45,7 @@ The code lists are **generated** from official sources, not checked into the rep
 To regenerate the code lists from upstream sources:
 
 ```bash
-cd cmd/einvoice/codelists
+cd cmd/codelists
 go generate
 ```
 
@@ -68,7 +68,6 @@ Planned additions include:
 - Payment means codes (UNTDID 4461)
 - Tax category codes (UNTDID 5305)
 - Multi-language support (see [#30](https://github.com/speedata/einvoice/issues/30))
-- `--show-codes` flag to display raw codes instead of descriptions
 
 ## Updating Code Lists
 
