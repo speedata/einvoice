@@ -87,6 +87,8 @@ func (cp CodeSchemaType) String() string {
 		return "ZUGFeRD/Factur-X"
 	case UBL:
 		return "UBL"
+	case SchemaTypeUnknown:
+		return "unknown"
 	default:
 		return "unknown"
 	}
@@ -98,8 +100,9 @@ func (cd CodeDocument) String() string {
 
 // CodeSchemaType is the main XML flavor. Currently only CII is supported.
 const (
-	CII CodeSchemaType = iota
-	UBL
+	SchemaTypeUnknown CodeSchemaType = iota // Zero value for programmatically created invoices
+	CII                                     // ZUGFeRD/Factur-X (Cross Industry Invoice)
+	UBL                                     // Universal Business Language
 )
 
 // CodePartyType represents the type of the party.
@@ -352,7 +355,15 @@ type Invoice struct {
 	SchemaType                                CodeSchemaType               // UBL or CII
 	InvoiceReferencedDocument                 []ReferencedDocument         // BG-3
 	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
-	violations                                []SemanticError // Private field - use Validate() and check error instead
+
+	// Private fields for tracking XML element presence (BR-12 through BR-15)
+	// These are set during parsing to distinguish between missing elements and zero values
+	hasLineTotalInXML        bool
+	hasTaxBasisTotalInXML    bool
+	hasGrandTotalInXML       bool
+	hasDuePayableAmountInXML bool
+
+	violations []SemanticError // Private field - use Validate() and check error instead
 }
 
 // Profile helper methods for Invoice

@@ -185,6 +185,14 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	}
 
 	summation := applicableHeaderTradeSettlement.Eval("ram:SpecifiedTradeSettlementHeaderMonetarySummation")
+
+	// BR-12 through BR-15: Track XML element presence to validate later
+	// This allows validation to distinguish between missing elements and zero values
+	inv.hasLineTotalInXML = summation.Eval("count(ram:LineTotalAmount)").Int() > 0
+	inv.hasTaxBasisTotalInXML = summation.Eval("count(ram:TaxBasisTotalAmount)").Int() > 0
+	inv.hasGrandTotalInXML = summation.Eval("count(ram:GrandTotalAmount)").Int() > 0
+	inv.hasDuePayableAmountInXML = summation.Eval("count(ram:DuePayableAmount)").Int() > 0
+
 	inv.LineTotal, err = getDecimal(summation, "ram:LineTotalAmount")
 	if err != nil {
 		return err
