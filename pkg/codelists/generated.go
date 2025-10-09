@@ -1884,7 +1884,7 @@ var unitCodes = map[string]string{
 	"WTT": "watt",
 	"WW": "millilitre of water",
 	"X1": "Gunter's chain",
-	"XPP": "package",
+	"XPP": "piece",
 	"YDK": "square yard",
 	"YDQ": "cubic yard",
 	"YRD": "yard",

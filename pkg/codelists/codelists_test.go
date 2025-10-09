@@ -46,8 +46,8 @@ func TestUnitCode(t *testing.T) {
 		want string
 	}{
 		{"C62", "one"},
-		{"XPP", "package"},
-		{"H87", "piece"},
+		{"XPP", "piece"},  // UNECE Rec 21 code for piece
+		{"H87", "piece"},  // UNECE Rec 20 code for piece
 		{"MTR", "metre"},
 		{"KGM", "kilogram"},
 		{"UNKNOWN", "UNKNOWN"}, // Unknown code returns itself

@@ -97,7 +97,7 @@ func TestFormatUnitCode(t *testing.T) {
 			code:      "XPP",
 			showCodes: false,
 			verbose:   false,
-			want:      "package",
+			want:      "piece",
 		},
 		{
 			name:      "default unknown code",
@@ -127,7 +127,7 @@ func TestFormatUnitCode(t *testing.T) {
 			code:      "XPP",
 			showCodes: false,
 			verbose:   true,
-			want:      "XPP (package)",
+			want:      "XPP (piece)",
 		},
 		{
 			name:      "verbose unknown code",

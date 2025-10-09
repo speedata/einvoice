@@ -157,9 +157,11 @@ func fetchUnitCodes() ([]codeEntry, error) {
 		})
 	}
 
-	// Add custom ZUGFeRD codes not in UNECE
+	// Add UNECE Recommendation 21 codes not in Recommendation 20 CSV
+	// XPP is from Rec 21 (codes prefixed with X) and widely used in PEPPOL/ZUGFeRD
+	// XPP = Piece: a loose or unpacked article
 	customCodes := []codeEntry{
-		{Code: "XPP", Name: "package"},
+		{Code: "XPP", Name: "piece"},
 	}
 
 	for _, custom := range customCodes {

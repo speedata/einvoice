@@ -23,14 +23,14 @@ description := codelists.DocumentType("999")
 // Returns: "Unknown" (for codes not in the list)
 ```
 
-### UNECE Recommendation 20 - Unit Codes
+### UNECE Recommendation 20/21 - Unit Codes
 
-Provides descriptions for unit of measure codes (e.g., "XPP" → "package", "C62" → "one").
+Provides descriptions for unit of measure codes (e.g., "XPP" → "piece", "C62" → "one").
 
 **Usage:**
 ```go
 description := codelists.UnitCode("XPP")
-// Returns: "package"
+// Returns: "piece"
 
 description := codelists.UnitCode("UNKNOWN")
 // Returns: "UNKNOWN" (returns the code itself if not found)
@@ -52,7 +52,7 @@ go generate
 This runs `cmd/gencodelists` which:
 1. Fetches UNTDID 1001 document types from [invopop/gobl](https://github.com/invopop/gobl) (Apache 2.0)
 2. Fetches UNECE Rec 20 unit codes from [datasets/unece-units-of-measure](https://github.com/datasets/unece-units-of-measure)
-3. Adds custom ZUGFeRD-specific codes (e.g., XPP)
+3. Adds UNECE Rec 21 codes used in PEPPOL/ZUGFeRD (e.g., XPP)
 4. Generates `generated.go` with Go maps
 
 **Note:** The generated file is ~60KB of Go code, which is version-controlled. The source data files (JSON/CSV) are NOT checked in.
@@ -61,6 +61,7 @@ This runs `cmd/gencodelists` which:
 
 - **Document Types (UNTDID 1001)**: EN16931 code list via invopop/gobl
 - **Unit Codes (UNECE Rec 20)**: Official UNECE CSV from GitHub datasets
+- **Unit Codes (UNECE Rec 21)**: Codes prefixed with "X" used in PEPPOL/ZUGFeRD (e.g., XPP = piece)
 
 ## Future Enhancements
 
