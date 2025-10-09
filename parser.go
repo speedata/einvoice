@@ -534,7 +534,7 @@ func ParseXMLFile(filename string) (*Invoice, error) {
 	if err != nil {
 		return nil, fmt.Errorf("einvoice: cannot open file (%w)", err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	return ParseReader(r)
 }
