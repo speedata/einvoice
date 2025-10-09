@@ -330,23 +330,39 @@ func (inv *Invoice) validateCore() {
 	}
 	// BR-12 Gesamtsummen auf Dokumentenebene
 	// Eine Rechnung (INVOICE) muss die Summe der Rechnungspositionen-Nettobeträge "Sum of Invoice line net amount" (BT-106) enthalten.
-	// Note: EN 16931 schematron only validates element presence, not non-zero value.
-	// Zero is valid (e.g., credit notes, zero-rated items). Field is always present in Go model.
+	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
+	// Zero is valid (e.g., credit notes, zero-rated items).
+	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
+	if !inv.hasLineTotalInXML && inv.SchemaType == CII {
+		inv.addViolation(rules.BR12, "LineTotalAmount element missing in XML")
+	}
 
 	// BR-13 Gesamtsummen auf Dokumentenebene
 	// Eine Rechnung (INVOICE) muss den Gesamtbetrag der Rechnung ohne Umsatzsteuer "Invoice total amount without VAT" (BT-109) enthalten.
-	// Note: EN 16931 schematron only validates element presence, not non-zero value.
-	// Zero is valid (e.g., zero-rated items). Field is always present in Go model.
+	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
+	// Zero is valid (e.g., zero-rated items).
+	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
+	if !inv.hasTaxBasisTotalInXML && inv.SchemaType == CII {
+		inv.addViolation(rules.BR13, "TaxBasisTotalAmount element missing in XML")
+	}
 
 	// BR-14 Gesamtsummen auf Dokumentenebene
 	// Eine Rechnung (INVOICE) muss den Gesamtbetrag der Rechnung mit Umsatzsteuer "Invoice total amount with VAT" (BT-112) enthalten.
-	// Note: EN 16931 schematron only validates element presence, not non-zero value.
-	// Zero is valid (e.g., zero-rated items). Field is always present in Go model.
+	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
+	// Zero is valid (e.g., zero-rated items).
+	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
+	if !inv.hasGrandTotalInXML && inv.SchemaType == CII {
+		inv.addViolation(rules.BR14, "GrandTotalAmount element missing in XML")
+	}
 
 	// BR-15 Gesamtsummen auf Dokumentenebene
 	// Eine Rechnung (INVOICE) muss den ausstehenden Betrag "Amount due for payment" (BT-115) enthalten.
-	// Note: EN 16931 schematron only validates element presence, not non-zero value.
-	// Zero is valid for prepaid invoices (TotalPrepaidAmount = GrandTotalAmount). Field is always present in Go model.
+	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
+	// Zero is valid for prepaid invoices (TotalPrepaidAmount = GrandTotalAmount).
+	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
+	if !inv.hasDuePayableAmountInXML && inv.SchemaType == CII {
+		inv.addViolation(rules.BR15, "DuePayableAmount element missing in XML")
+	}
 	// BR-16 Rechnung
 	// Eine Rechnung (INVOICE) muss mindestens eine Rechnungsposition "INVOICE LINE" (BG-25) enthalten.
 	if is(levelBasic, inv) {

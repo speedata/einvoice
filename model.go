@@ -352,7 +352,15 @@ type Invoice struct {
 	SchemaType                                CodeSchemaType               // UBL or CII
 	InvoiceReferencedDocument                 []ReferencedDocument         // BG-3
 	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
-	violations                                []SemanticError // Private field - use Validate() and check error instead
+
+	// Private fields for tracking XML element presence (BR-12 through BR-15)
+	// These are set during parsing to distinguish between missing elements and zero values
+	hasLineTotalInXML        bool
+	hasTaxBasisTotalInXML    bool
+	hasGrandTotalInXML       bool
+	hasDuePayableAmountInXML bool
+
+	violations []SemanticError // Private field - use Validate() and check error instead
 }
 
 // Profile helper methods for Invoice
