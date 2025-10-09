@@ -1,0 +1,29 @@
+einvoice - Electronic Invoice Library for Go
+Copyright 2024 Patrick Gundlach, Berlin
+
+This product includes software developed at speedata (https://github.com/speedata/einvoice).
+
+This software is licensed under the BSD 3-Clause License. See License.md for details.
+
+================================================================================
+
+This product includes the following third-party software:
+
+pdfcpu - PDF processor written in Go
+Copyright (c) 2017-2025 Horst Rutter
+Licensed under the Apache License, Version 2.0
+https://github.com/pdfcpu/pdfcpu
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+================================================================================
