@@ -19,6 +19,7 @@ import (
 const (
 	untdidURL = "https://raw.githubusercontent.com/invopop/gobl/main/data/catalogues/untdid.json"
 	uneceURL  = "https://raw.githubusercontent.com/datasets/unece-units-of-measure/main/data/units-of-measure.csv"
+	uneceRec21URL = "https://datahub.io/core/unece-package-codes/_r/-/data/data.csv"
 )
 
 type codeEntry struct {
@@ -44,12 +45,23 @@ func main() {
 	}
 	log.Printf("Fetched %d document types", len(docTypes))
 
-	// Fetch unit codes
-	unitCodes, err := fetchUnitCodes()
+	// Fetch UNECE Rec 20 unit codes
+	rec20Codes, err := fetchUnitCodes()
 	if err != nil {
-		log.Fatalf("Failed to fetch unit codes: %v", err)
+		log.Fatalf("Failed to fetch Rec 20 unit codes: %v", err)
 	}
-	log.Printf("Fetched %d unit codes", len(unitCodes))
+	log.Printf("Fetched %d Rec 20 unit codes", len(rec20Codes))
+
+	// Fetch UNECE Rec 21 package codes (prefixed with X)
+	rec21Codes, err := fetchPackageCodes()
+	if err != nil {
+		log.Fatalf("Failed to fetch Rec 21 package codes: %v", err)
+	}
+	log.Printf("Fetched %d Rec 21 package codes", len(rec21Codes))
+
+	// Merge unit codes
+	unitCodes := mergeUnitCodes(rec20Codes, rec21Codes)
+	log.Printf("Total unit codes: %d", len(unitCodes))
 
 	// Generate Go code
 	if err := generateGoCode(*output, *pkg, docTypes, unitCodes); err != nil {
@@ -120,7 +132,6 @@ func fetchUnitCodes() ([]codeEntry, error) {
 	}
 
 	var entries []codeEntry
-	seen := make(map[string]bool)
 
 	for {
 		record, err := reader.Read()
@@ -145,37 +156,99 @@ func fetchUnitCodes() ([]codeEntry, error) {
 			continue
 		}
 
-		// Skip empty or duplicate codes
-		if code == "" || name == "" || seen[code] {
+		// Skip empty codes
+		if code == "" || name == "" {
 			continue
 		}
 
-		seen[code] = true
 		entries = append(entries, codeEntry{
 			Code: code,
 			Name: name,
 		})
 	}
 
-	// Add UNECE Recommendation 21 codes not in Recommendation 20 CSV
-	// XPP is from Rec 21 (codes prefixed with X) and widely used in PEPPOL/ZUGFeRD
-	// XPP = Piece: a loose or unpacked article
-	customCodes := []codeEntry{
-		{Code: "XPP", Name: "piece"},
+	return entries, nil
+}
+
+func fetchPackageCodes() ([]codeEntry, error) {
+	resp, err := http.Get(uneceRec21URL)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
-	for _, custom := range customCodes {
-		if !seen[custom.Code] {
-			entries = append(entries, custom)
+	reader := csv.NewReader(resp.Body)
+
+	// Read header
+	if _, err := reader.Read(); err != nil {
+		return nil, err
+	}
+
+	var entries []codeEntry
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		// CSV format: Status,Code,Name,Description,Numeric code
+		if len(record) < 3 {
+			continue
+		}
+
+		code := strings.TrimSpace(record[1])
+		name := strings.TrimSpace(record[2])
+
+		// Skip empty codes
+		if code == "" || name == "" {
+			continue
+		}
+
+		// Per PEPPOL rules: Rec 21 codes are prefixed with "X" to avoid duplication with Rec 20
+		// Example: PP becomes XPP
+		entries = append(entries, codeEntry{
+			Code: "X" + code,
+			Name: strings.ToLower(name), // lowercase to match Rec 20 style
+		})
+	}
+
+	return entries, nil
+}
+
+func mergeUnitCodes(rec20, rec21 []codeEntry) []codeEntry {
+	seen := make(map[string]bool)
+	var merged []codeEntry
+
+	// Add Rec 20 codes first
+	for _, entry := range rec20 {
+		if !seen[entry.Code] {
+			seen[entry.Code] = true
+			merged = append(merged, entry)
+		}
+	}
+
+	// Add Rec 21 codes (only if not already present)
+	for _, entry := range rec21 {
+		if !seen[entry.Code] {
+			seen[entry.Code] = true
+			merged = append(merged, entry)
 		}
 	}
 
 	// Sort by code
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Code < entries[j].Code
+	sort.Slice(merged, func(i, j int) bool {
+		return merged[i].Code < merged[j].Code
 	})
 
-	return entries, nil
+	return merged
 }
 
 func generateGoCode(output, pkg string, docTypes, unitCodes []codeEntry) error {
