@@ -87,6 +87,8 @@ func (cp CodeSchemaType) String() string {
 		return "ZUGFeRD/Factur-X"
 	case UBL:
 		return "UBL"
+	case SchemaTypeUnknown:
+		return "unknown"
 	default:
 		return "unknown"
 	}
@@ -98,8 +100,9 @@ func (cd CodeDocument) String() string {
 
 // CodeSchemaType is the main XML flavor. Currently only CII is supported.
 const (
-	CII CodeSchemaType = iota
-	UBL
+	SchemaTypeUnknown CodeSchemaType = iota // Zero value for programmatically created invoices
+	CII                                     // ZUGFeRD/Factur-X (Cross Industry Invoice)
+	UBL                                     // Universal Business Language
 )
 
 // CodePartyType represents the type of the party.
