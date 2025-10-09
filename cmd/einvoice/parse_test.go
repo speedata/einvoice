@@ -27,13 +27,13 @@ func TestParseInvoiceFile(t *testing.T) {
 			name:    "Non-existent file",
 			file:    "nonexistent.xml",
 			wantErr: true,
-			errMsg:  "no such file",
+			// No errMsg check - error message is platform-specific
 		},
 		{
 			name:    "Empty filename",
 			file:    "",
 			wantErr: true,
-			errMsg:  "no such file",
+			// No errMsg check - error message is platform-specific
 		},
 	}
 
