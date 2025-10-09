@@ -14,7 +14,7 @@ Provides descriptions for invoice document type codes (e.g., "380" → "Standard
 
 **Usage:**
 ```go
-import "github.com/speedata/einvoice/cmd/codelists"
+import "github.com/speedata/einvoice/pkg/codelists"
 
 description := codelists.DocumentType("380")
 // Returns: "Standard Invoice"
@@ -45,7 +45,7 @@ The code lists are **generated** from official sources, not checked into the rep
 To regenerate the code lists from upstream sources:
 
 ```bash
-cd cmd/codelists
+cd pkg/codelists
 go generate
 ```
 
