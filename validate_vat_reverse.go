@@ -149,7 +149,7 @@ func (inv *Invoice) validateVATReverse() {
 					}
 				}
 			}
-			calculatedBasis = calculatedBasis.Round(2)
+			calculatedBasis = roundHalfUp(calculatedBasis, 2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
 				inv.addViolation(rules.BRAE8, fmt.Sprintf("Reverse charge taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}

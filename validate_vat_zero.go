@@ -147,7 +147,7 @@ func (inv *Invoice) validateVATZero() {
 					}
 				}
 			}
-			calculatedBasis = calculatedBasis.Round(2)
+			calculatedBasis = roundHalfUp(calculatedBasis, 2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
 				inv.addViolation(rules.BRZ8, fmt.Sprintf("Zero rated taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}

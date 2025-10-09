@@ -145,7 +145,7 @@ func (inv *Invoice) validateVATExport() {
 					}
 				}
 			}
-			calculatedBasis = calculatedBasis.Round(2)
+			calculatedBasis = roundHalfUp(calculatedBasis, 2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
 				inv.addViolation(rules.BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
 			}
