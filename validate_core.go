@@ -329,25 +329,24 @@ func (inv *Invoice) validateCore() {
 		}
 	}
 	// BR-12 Gesamtsummen auf Dokumentenebene
-	// Eine Rechnung (INVOICE) muss die Summe der Rechnungspositionen-Nettobeträge "Sum of Invoice line net amount“ (BT-106) enthalten.
-	if inv.LineTotal.IsZero() {
-		inv.addViolation(rules.BR12, "Line total is zero")
-	}
+	// Eine Rechnung (INVOICE) muss die Summe der Rechnungspositionen-Nettobeträge "Sum of Invoice line net amount" (BT-106) enthalten.
+	// Note: EN 16931 schematron only validates element presence, not non-zero value.
+	// Zero is valid (e.g., credit notes, zero-rated items). Field is always present in Go model.
+
 	// BR-13 Gesamtsummen auf Dokumentenebene
-	// Eine Rechnung (INVOICE) muss den Gesamtbetrag der Rechnung ohne Umsatzsteuer "Invoice total amount without VAT“ (BT-109) enthalten.
-	if inv.TaxBasisTotal.IsZero() {
-		inv.addViolation(rules.BR13, "TaxBasisTotal zero")
-	}
+	// Eine Rechnung (INVOICE) muss den Gesamtbetrag der Rechnung ohne Umsatzsteuer "Invoice total amount without VAT" (BT-109) enthalten.
+	// Note: EN 16931 schematron only validates element presence, not non-zero value.
+	// Zero is valid (e.g., zero-rated items). Field is always present in Go model.
+
 	// BR-14 Gesamtsummen auf Dokumentenebene
-	// Eine Rechnung (INVOICE) muss den Gesamtbetrag der Rechnung mit Umsatzsteuer "Invoice total amount with VAT“ (BT-112) enthalten.
-	if inv.GrandTotal.IsZero() {
-		inv.addViolation(rules.BR14, "GrandTotal is zero")
-	}
+	// Eine Rechnung (INVOICE) muss den Gesamtbetrag der Rechnung mit Umsatzsteuer "Invoice total amount with VAT" (BT-112) enthalten.
+	// Note: EN 16931 schematron only validates element presence, not non-zero value.
+	// Zero is valid (e.g., zero-rated items). Field is always present in Go model.
+
 	// BR-15 Gesamtsummen auf Dokumentenebene
-	// Eine Rechnung (INVOICE) muss den ausstehenden Betrag "Amount due for payment“ (BT-115) enthalten.
-	if inv.DuePayableAmount.IsZero() {
-		inv.addViolation(rules.BR15, "DuePayableAmount is zero")
-	}
+	// Eine Rechnung (INVOICE) muss den ausstehenden Betrag "Amount due for payment" (BT-115) enthalten.
+	// Note: EN 16931 schematron only validates element presence, not non-zero value.
+	// Zero is valid for prepaid invoices (TotalPrepaidAmount = GrandTotalAmount). Field is always present in Go model.
 	// BR-16 Rechnung
 	// Eine Rechnung (INVOICE) muss mindestens eine Rechnungsposition "INVOICE LINE" (BG-25) enthalten.
 	if is(levelBasic, inv) {

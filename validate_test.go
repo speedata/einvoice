@@ -30,10 +30,10 @@ func TestValidate_ManualInvoiceConstruction(t *testing.T) {
 				CountryID: "DE",
 			},
 		},
-		LineTotal:        decimal.Zero,       // BR-12 violation: zero
-		TaxBasisTotal:    decimal.Zero,       // BR-13 violation: zero
-		GrandTotal:       decimal.Zero,       // BR-14 violation: zero
-		DuePayableAmount: decimal.Zero,       // BR-15 violation: zero
+		LineTotal:        decimal.Zero,       // OK: zero is valid per EN 16931
+		TaxBasisTotal:    decimal.Zero,       // OK: zero is valid per EN 16931
+		GrandTotal:       decimal.Zero,       // OK: zero is valid per EN 16931
+		DuePayableAmount: decimal.Zero,       // OK: zero is valid per EN 16931 (prepaid invoices)
 		InvoiceLines:     []InvoiceLine{},    // BR-16 violation: no lines
 	}
 
@@ -50,7 +50,9 @@ func TestValidate_ManualInvoiceConstruction(t *testing.T) {
 	}
 
 	// Check specific violations
-	expectedRules := []string{"BR-02", "BR-03", "BR-05", "BR-06", "BR-09", "BR-12", "BR-13", "BR-14", "BR-15", "BR-16"}
+	// Note: BR-12 through BR-15 removed - EN 16931 only requires element presence, not non-zero values.
+	// Zero is valid for prepaid invoices (BR-15) and other scenarios.
+	expectedRules := []string{"BR-02", "BR-03", "BR-05", "BR-06", "BR-09", "BR-16"}
 	for _, rule := range expectedRules {
 		if !valErr.HasRuleCode(rule) {
 			t.Errorf("Expected violation for rule %s, but not found", rule)
