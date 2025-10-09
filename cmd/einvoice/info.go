@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/speedata/einvoice"
+	"github.com/speedata/einvoice/pkg/codelists"
 )
 
 // InvoiceInfo represents the complete invoice information for display
@@ -76,7 +77,11 @@ func runInfo(args []string) int {
 	// Parse flags for the info subcommand
 	infoFlags := flag.NewFlagSet("info", flag.ExitOnError)
 	var format string
+	var showCodes bool
+	var verbose bool
 	infoFlags.StringVar(&format, "format", "text", "Output format: text, json")
+	infoFlags.BoolVar(&showCodes, "show-codes", false, "Show raw codes instead of descriptions")
+	infoFlags.BoolVar(&verbose, "vv", false, "Show both codes and descriptions")
 	infoFlags.Usage = infoUsage
 	_ = infoFlags.Parse(args)
 
@@ -89,7 +94,7 @@ func runInfo(args []string) int {
 	filename := infoFlags.Arg(0)
 
 	// Get invoice information
-	info := getInvoiceInfo(filename)
+	info := getInvoiceInfo(filename, showCodes, verbose)
 
 	// Output results
 	switch format {
@@ -109,7 +114,52 @@ func runInfo(args []string) int {
 	return exitOK
 }
 
-func getInvoiceInfo(filename string) InvoiceInfo {
+// formatDocumentType formats a document type code based on display flags.
+// - showCodes=true: returns only the code (e.g., "380")
+// - verbose=true: returns code with description (e.g., "380 (Commercial invoice)")
+// - default: returns description only, or "Unknown (code)" if not found
+func formatDocumentType(code string, showCodes bool, verbose bool) string {
+	if showCodes {
+		return code
+	}
+
+	description := codelists.DocumentType(code)
+
+	if verbose {
+		return code + " (" + description + ")"
+	}
+
+	// Default mode: description only, but show code for unknown types
+	if description == "Unknown" {
+		return "Unknown (" + code + ")"
+	}
+	return description
+}
+
+// formatUnitCode formats a unit code based on display flags.
+// - showCodes=true: returns only the code (e.g., "XPP")
+// - verbose=true: returns code with description (e.g., "XPP (package)")
+// - default: returns description if found, code if not found
+func formatUnitCode(code string, showCodes bool, verbose bool) string {
+	if showCodes {
+		return code
+	}
+
+	description := codelists.UnitCode(code)
+
+	if verbose {
+		// If description equals code, it means it wasn't found
+		if description == code {
+			return code
+		}
+		return code + " (" + description + ")"
+	}
+
+	// Default mode: return whatever UnitCode returns (description or code)
+	return description
+}
+
+func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	info := InvoiceInfo{
 		File: filename,
 	}
@@ -122,9 +172,10 @@ func getInvoiceInfo(filename string) InvoiceInfo {
 	}
 
 	// Extract invoice details
+	typeCode := invoice.InvoiceTypeCode.String()
 	details := &InvoiceDetails{
 		Number:          invoice.InvoiceNumber,
-		Type:            invoice.InvoiceTypeCode.String(),
+		Type:            formatDocumentType(typeCode, showCodes, verbose),
 		Profile:         einvoice.GetProfileName(invoice.GuidelineSpecifiedDocumentContextParameter),
 		ProfileURN:      invoice.GuidelineSpecifiedDocumentContextParameter,
 		BusinessProcess: invoice.BPSpecifiedDocumentContextParameter,
@@ -194,7 +245,8 @@ func getInvoiceInfo(filename string) InvoiceInfo {
 		if !line.BilledQuantity.IsZero() {
 			lineInfo.Quantity = line.BilledQuantity.String()
 			if line.BilledQuantityUnit != "" {
-				lineInfo.Quantity += " " + line.BilledQuantityUnit
+				unitName := formatUnitCode(line.BilledQuantityUnit, showCodes, verbose)
+				lineInfo.Quantity += " " + unitName
 			}
 		}
 
@@ -383,7 +435,16 @@ Display detailed information about an electronic invoice.
 
 Options:
   --format string   Output format: text, json (default "text")
+  --show-codes      Show raw codes instead of descriptions
+  -vv               Show both codes and descriptions
   --help            Show this help message
+
+Display modes:
+  Default:      Shows human-readable descriptions (e.g., Type: Commercial invoice)
+  --show-codes: Shows only raw codes (e.g., Type: 380)
+  -vv:          Shows both codes and descriptions (e.g., Type: 380 (Commercial invoice))
+
+Note: If both --show-codes and -vv are provided, --show-codes takes precedence.
 
 Exit codes:
   0  Success
@@ -391,6 +452,8 @@ Exit codes:
 
 Examples:
   einvoice info invoice.xml
+  einvoice info --show-codes invoice.xml
+  einvoice info -vv invoice.xml
   einvoice info --format json invoice.xml
 `)
 }

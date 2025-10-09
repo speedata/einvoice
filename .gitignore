@@ -1,3 +1,4 @@
 # Binaries
-einvoice
+/einvoice
 cmd/einvoice/einvoice
+/gencodelists
