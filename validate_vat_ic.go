@@ -121,7 +121,7 @@ func (inv *Invoice) validateVATIntracommunity() {
 					}
 				}
 			}
-			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal).Round(2)
+			expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
 			if !tt.BasisAmount.Equal(expectedBasis) {
 				inv.addViolation(rules.BRIC6, fmt.Sprintf("Intra-community supply taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
@@ -158,7 +158,7 @@ func (inv *Invoice) validateVATIntracommunity() {
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "K" {
 			key := tt.Percent.String()
-			expectedBasis := taxRateMap[key].Round(2)
+			expectedBasis := roundHalfUp(taxRateMap[key], 2)
 			if !tt.BasisAmount.Equal(expectedBasis) {
 				inv.addViolation(rules.BRIC8, fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}

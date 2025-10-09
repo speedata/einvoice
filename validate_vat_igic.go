@@ -78,7 +78,7 @@ func (inv *Invoice) validateVATIGIC() {
 					}
 				}
 			}
-			expectedBasis := lineTotal.Sub(allowanceTotal).Add(chargeTotal).Round(2)
+			expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
 			if !tt.BasisAmount.Equal(expectedBasis) {
 				inv.addViolation(rules.BRAF5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
@@ -118,7 +118,7 @@ func (inv *Invoice) validateVATIGIC() {
 	for _, tt := range inv.TradeTaxes {
 		if tt.CategoryCode == "L" {
 			key := tt.Percent.String()
-			expectedBasis := igicRateMap[key].Round(2)
+			expectedBasis := roundHalfUp(igicRateMap[key], 2)
 			if !tt.BasisAmount.Equal(expectedBasis) {
 				inv.addViolation(rules.BRAF7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}

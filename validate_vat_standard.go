@@ -147,8 +147,8 @@ func (inv *Invoice) validateVATStandard() {
 					}
 				}
 			}
-			// Round to 2 decimals for comparison
-			calculatedBasis = calculatedBasis.Round(2)
+			// Round to 2 decimals for comparison using commercial rounding (round half up)
+			calculatedBasis = roundHalfUp(calculatedBasis, 2)
 			if !tt.BasisAmount.Equal(calculatedBasis) {
 				inv.addViolation(rules.BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String()))
 			}
