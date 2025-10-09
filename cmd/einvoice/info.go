@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/speedata/einvoice"
+	"github.com/speedata/einvoice/cmd/einvoice/codelists"
 )
 
 // InvoiceInfo represents the complete invoice information for display
@@ -122,9 +123,10 @@ func getInvoiceInfo(filename string) InvoiceInfo {
 	}
 
 	// Extract invoice details
+	typeCode := invoice.InvoiceTypeCode.String()
 	details := &InvoiceDetails{
 		Number:          invoice.InvoiceNumber,
-		Type:            invoice.InvoiceTypeCode.String(),
+		Type:            codelists.DocumentType(typeCode),
 		Profile:         einvoice.GetProfileName(invoice.GuidelineSpecifiedDocumentContextParameter),
 		ProfileURN:      invoice.GuidelineSpecifiedDocumentContextParameter,
 		BusinessProcess: invoice.BPSpecifiedDocumentContextParameter,
@@ -194,7 +196,8 @@ func getInvoiceInfo(filename string) InvoiceInfo {
 		if !line.BilledQuantity.IsZero() {
 			lineInfo.Quantity = line.BilledQuantity.String()
 			if line.BilledQuantityUnit != "" {
-				lineInfo.Quantity += " " + line.BilledQuantityUnit
+				unitName := codelists.UnitCode(line.BilledQuantityUnit)
+				lineInfo.Quantity += " " + unitName
 			}
 		}
 
