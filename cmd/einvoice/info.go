@@ -164,8 +164,8 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 		File: filename,
 	}
 
-	// Parse the invoice XML
-	invoice, err := einvoice.ParseXMLFile(filename)
+	// Parse the invoice (XML or PDF)
+	invoice, err := parseInvoiceFile(filename)
 	if err != nil {
 		info.Error = fmt.Sprintf("Failed to parse invoice: %v", err)
 		return info
@@ -429,9 +429,11 @@ func outputInfoJSON(info InvoiceInfo) {
 }
 
 func infoUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: einvoice info [options] <file.xml>
+	fmt.Fprintf(os.Stderr, `Usage: einvoice info [options] <file>
 
 Display detailed information about an electronic invoice.
+
+Supports both XML and ZUGFeRD/Factur-X PDF formats.
 
 Options:
   --format string   Output format: text, json (default "text")
@@ -452,8 +454,9 @@ Exit codes:
 
 Examples:
   einvoice info invoice.xml
+  einvoice info invoice.pdf
   einvoice info --show-codes invoice.xml
-  einvoice info -vv invoice.xml
+  einvoice info -vv invoice.pdf
   einvoice info --format json invoice.xml
 `)
 }

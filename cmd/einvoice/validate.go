@@ -80,8 +80,8 @@ func validateInvoice(filename string) Result {
 		File: filename,
 	}
 
-	// Parse the invoice XML
-	invoice, err := einvoice.ParseXMLFile(filename)
+	// Parse the invoice (XML or PDF)
+	invoice, err := parseInvoiceFile(filename)
 	if err != nil {
 		result.Error = fmt.Sprintf("Failed to parse invoice: %v", err)
 		return result
@@ -179,9 +179,11 @@ func outputJSON(result Result) {
 }
 
 func validateUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: einvoice validate [options] <file.xml>
+	fmt.Fprintf(os.Stderr, `Usage: einvoice validate [options] <file>
 
 Validates an electronic invoice against business rules.
+
+Supports both XML and ZUGFeRD/Factur-X PDF formats.
 
 The validator automatically detects which rules to apply based on:
   - Specification identifier (BT-24) for PEPPOL BIS Billing 3.0
@@ -202,7 +204,8 @@ Exit codes:
 
 Examples:
   einvoice validate invoice.xml
+  einvoice validate invoice.pdf
   einvoice validate --verbose invoice.xml
-  einvoice validate --format json invoice.xml
+  einvoice validate --format json invoice.pdf
 `)
 }
