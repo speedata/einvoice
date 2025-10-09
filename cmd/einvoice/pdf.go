@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
@@ -43,10 +44,8 @@ func extractXMLFromPDF(filename string) ([]byte, error) {
 
 	// First pass: search for exact matches with known filenames
 	for _, attachment := range attachments {
-		for _, knownName := range knownNames {
-			if attachment.FileName == knownName {
-				return readAttachment(attachment)
-			}
+		if slices.Contains(knownNames, attachment.FileName) {
+			return readAttachment(attachment)
 		}
 	}
 
