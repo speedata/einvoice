@@ -17,7 +17,6 @@ import (
 //   - Plain XML invoice files
 //   - ZUGFeRD/Factur-X PDF files with embedded XML
 func parseInvoiceFile(filename string) (*einvoice.Invoice, error) {
-	// Open file for type detection
 	switch strings.ToLower(filepath.Ext(filename)) {
 	case ".pdf":
 		// Extract embedded XML from PDF
