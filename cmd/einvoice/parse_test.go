@@ -112,7 +112,7 @@ func TestParseInvoiceFile_EmptyFile(t *testing.T) {
 	}
 
 	// Empty file should be rejected as unsupported format
-	expectedMsg := "unsupported file format"
+	expectedMsg := "empty root element namespace"
 	if !contains(err.Error(), expectedMsg) {
 		t.Errorf("parseInvoiceFile() error = %q, want error containing %q", err.Error(), expectedMsg)
 	}

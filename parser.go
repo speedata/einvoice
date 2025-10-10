@@ -523,8 +523,12 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 	cii := ctx.Root()
 	rootns := cii.Eval("namespace-uri()").String()
 	switch rootns {
+	case "":
+		return nil, fmt.Errorf("empty root element namespace")
 	case "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100":
 		inv, err = parseCII(cii)
+	default:
+		return nil, fmt.Errorf("unknown root element namespace: %s", rootns)
 	}
 
 	if err != nil {
