@@ -77,3 +77,40 @@ func TestUnitCodeConsistency(t *testing.T) {
 		t.Errorf("UnitCode(\"C62\") = %q, want \"one\"", first)
 	}
 }
+
+func TestTextSubjectQualifier(t *testing.T) {
+	tests := []struct {
+		code string
+		want string
+	}{
+		{"AAA", "Goods item description"},
+		{"AAB", "Payment term"},
+		{"AUT", "Authentication"},
+		{"BLC", "Transport contract document clause"},
+		{"999", "Unknown"}, // Unknown code
+		{"", "Unknown"},    // Empty code
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.code, func(t *testing.T) {
+			got := TextSubjectQualifier(tt.code)
+			if got != tt.want {
+				t.Errorf("TextSubjectQualifier(%q) = %q, want %q", tt.code, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTextSubjectQualifierConsistency(t *testing.T) {
+	// Ensure multiple calls return the same result
+	first := TextSubjectQualifier("AAA")
+	second := TextSubjectQualifier("AAA")
+
+	if first != second {
+		t.Errorf("TextSubjectQualifier returned inconsistent results: %q vs %q", first, second)
+	}
+
+	if first != "Goods item description" {
+		t.Errorf("TextSubjectQualifier(\"AAA\") = %q, want \"Goods item description\"", first)
+	}
+}
