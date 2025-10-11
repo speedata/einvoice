@@ -11,10 +11,12 @@ func underline(s string) string {
 	return s + "\n" + strings.Repeat("-", utf8.RuneCountInString(s))
 }
 
-// wrapText wraps the input text to the specified width n. It breaks lines at
+// wrapTextIndent wraps the input text to the specified width n. It breaks lines at
 // word boundaries (spaces) where possible. If a single word exceeds the width n,
-// it will be placed on its own line without breaking it.
-func wrapText(text string, n int) string {
+// it will be placed on its own line without breaking it. Lines are separated by
+// newline characters. If n is less than 1, the original text is returned.
+// indentation is added to each line except the first.
+func wrapTextIndent(text string, n int, indent int) string {
 	if n < 1 {
 		return text
 	}
@@ -38,6 +40,7 @@ func wrapText(text string, n int) string {
 			// Current line is full, save it and start a new line
 			wrappedLines = append(wrappedLines, currentLine.String())
 			currentLine.Reset()
+			currentLine.WriteString(strings.Repeat(" ", indent))
 			currentLine.WriteString(word)
 		}
 	}

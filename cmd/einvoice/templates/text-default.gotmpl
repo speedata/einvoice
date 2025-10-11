@@ -13,8 +13,11 @@ Invoice Number:  {{.Number}}
 Date:            {{.Date}}
 Type:            {{.Type}}
 Profile:         {{.Profile}}
-{{- if .BusinessProcess }}
-Business Process: {{.BusinessProcess}}
+{{- with .BusinessProcess }}
+Business Process: {{.}}
+{{- end }}
+{{- with .BuyerOrderReferencedDocument }}
+Buyer Order Ref: {{.}}
 {{- end }}
 Currency:        {{.Currency}}
 
@@ -24,15 +27,35 @@ Currency:        {{.Currency}}
 {{ padright .Seller.Name 40 -}}          {{ .Buyer.Name }}
 
 {{- if or .Seller.Address .Buyer.Address }}
+{{- if or .Seller.Address.Line1 .Buyer.Address.Line1 }}
+{{ padright .Seller.Address.Line1 40 -}} {{ .Buyer.Address.Line1 }}
+{{- end }}
+{{- if or .Seller.Address.Line2 .Buyer.Address.Line2 }}
+{{ padright .Seller.Address.Line2 40 -}} {{ .Buyer.Address.Line2 }}
+{{- end }}
+{{- if or .Seller.Address.Line3 .Buyer.Address.Line3 }}
+{{ padright .Seller.Address.Line3 40 -}} {{ .Buyer.Address.Line3 }}
+{{- end }}
 {{ padright (printf "%s %s" .Seller.Address.PostalCode .Seller.Address.City) 40 -}}
 {{ (printf "%s %s" .Buyer.Address.PostalCode .Buyer.Address.City)}}
 {{ padright .Seller.Address.Country 40 -}} {{ .Buyer.Address.Country }}
-{{- end }}
-
+{{- end -}}
 {{- if or .Seller.VATNumber .Buyer.VATNumber }}
 VAT: {{ padright .Seller.VATNumber 35 -}}{{ .Buyer.VATNumber }}
-{{ end }}
+{{- end -}}
+
+{{- /* id */ -}}
+{{- if or .Seller.ID .Buyer.ID }}
+{{ with .Seller.ID }}ID: {{ padright . 36 -}}{{else}}{{ padright "" 40}}{{end}}{{ with .Buyer.ID }}ID: {{.}}{{end}}
+{{- end -}}
+
+{{- /* global id */ -}}
+{{- if or .Seller.GlobalID .Buyer.GlobalID }}
+Global ID: {{ padright .Seller.GlobalID 29 -}}{{ .Buyer.GlobalID }}
+{{ end -}}
 {{- else -}}
+
+{{- /* narrow layout */ -}}
 Seller:
   {{.Seller.Name}}
   {{- if .Seller.Address }}
@@ -55,38 +78,55 @@ Buyer:
 
 {{ underline (printf "%s (%d items)" "Invoice Lines" .LineCount) }}
 {{- range .Lines }}
+
+{{- /* wide layout */ -}}
 {{- if ge $w 80 }}
-{{ padright (printf "Line %s" .ID) 10 }} {{ if .Description }}{{ .Description }}{{ end }}
-{{ padright "" 10 }} Qty: {{ .Quantity }}   Unit: {{ .UnitPrice }} {{ $.Currency }}   Net: {{ .NetAmount }} {{ $.Currency }}
-{{- else }}
+{{ padright (printf "Line %s" .ID) 10 }}{{ if .Description }}{{ wrap .Description (max (min $w 60) 30) 10 }}
+{{- end -}}
+{{- with .Note }}
+          {{ wrap . (max (min $w 60) 30) 10}}{{ end }}
+{{ padright "" 10 }}Qty: {{ .Quantity }}  Unit: {{ .NetPrice }} {{ $.Currency }}  Total: {{ .NetAmount }} {{ $.Currency }}
+
+
+{{- /* narrow layout */ -}}
+{{- else -}}
 Line {{ .ID }}:
-{{ if .Description }} Description: {{ wrap .Description (max (min $w 60) 30) }}{{ end }}
+{{ if .Description }} Description: {{ wrap .Description (max (min $w 60) 30 10) }}{{ end }}
 {{ if .Quantity }} Quantity: {{ .Quantity }}{{ end }}
-{{ if .UnitPrice }} Unit Price: {{ .UnitPrice }} {{ $.Currency }}{{ end }}
+{{ if .NetPrice }} Unit Price: {{ .NetPrice }} {{ $.Currency }}{{ end }}
  Net Amount: {{ .NetAmount }} {{ $.Currency }}
 {{- end }}
 {{- end }}
 
-{{ underline "Totals" }}
-{{- $wd := 30 }}
-{{ padmiddle "Line Total:" (printf "%s %s" .Totals.LineTotal .Currency) $wd }} {{- /* left column */ -}}
-{{- if .Totals.AllowanceTotal }}{{padmiddle "Allowances:" (printf "-%s %s" .Totals.AllowanceTotal .Currency) $wd }}{{ end }}
-{{- if .Totals.ChargeTotal }}
-{{ padright "" $wd }} Charges:    +{{ .Totals.ChargeTotal }} {{ .Currency }}
+{{/* Tax breakdown */}}
+{{ underline "Tax Breakdown" }}
+{{- if .TradeTax }}
+{{ padright "Type" 10 }}{{ padright "Category" 10 }}{{ padright "Rate" 8 }}{{ padright "Basis" 15 }}{{ padright "Amount" 15 }}
+{{- range .TradeTax }}
+{{ padright .Type 10 }}{{ padright .Category 10 }}{{ padright (printf "%s%%" .Percent) 8 }}{{ padright (printf "%s %s" .BasisAmount $.Currency) 15 }}{{ padright (printf "%s %s" .CalculatedAmount $.Currency) 15 }}{{ if .ExemptionReason }}{{ .ExemptionReason }}{{ end }}
 {{- end }}
+{{- else }}
+No tax information available.
+{{- end }}
+
+
+
+{{ underline "Totals" }}
+{{ $wd := 30 -}}
+{{ padmiddle "Line Total:" (printf "%s %s" .Totals.LineTotal .Currency) $wd }}
+{{ if .Totals.AllowanceTotal }}{{padmiddle "Allowances:" (printf "-%s %s" .Totals.AllowanceTotal .Currency) $wd }}{{ end }}
+{{ if .Totals.ChargeTotal }}{{ padmiddle "Charges:"  (printf "+%s %s" .Totals.ChargeTotal  .Currency ) $wd }}{{- end }}
 {{ padmiddle "Tax Basis:"   (printf "%s %s" .Totals.TaxBasisTotal .Currency) $wd }}
 {{ padmiddle "Tax Total:"   (printf "%s %s" .Totals.TaxTotal      .Currency) $wd }}
 {{ padmiddle "Grand Total:" (printf "%s %s" .Totals.GrandTotal    .Currency) $wd  }}
-{{- if .Totals.TotalPrepaid }}Prepaid:         -{{ .Totals.TotalPrepaid }} {{ .Currency }}{{ end }}
-{{- if .Totals.RoundingAmount }}
-Rounding:        {{ .Totals.RoundingAmount }} {{ .Currency }}
-{{- end }}
+{{ if .Totals.TotalPrepaid }}{{ padmiddle "Prepaid:" (printf "-%s %s" .Totals.TotalPrepaid .Currency ) $wd }}{{ end }}
+{{ if .Totals.RoundingAmount }}{{ padmiddle "Rounding:"  (printf "%s %s" .Totals.RoundingAmount ) $wd }}{{ end }}
 {{ padmiddle "Due Amount:"  (printf "%s %s" .Totals.DuePayableAmount .Currency) $wd }}
 
 {{if .PaymentTerms }}
 {{ underline "Payment Terms" }}
 {{- range .PaymentTerms }}
-{{ wrap . $w}}
+{{ wrap . $w 0}}
 {{- end }}
 {{- end }}
 

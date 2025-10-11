@@ -34,33 +34,40 @@ type NoteInfo struct {
 
 // InvoiceDetails contains detailed invoice information
 type InvoiceDetails struct {
-	Number          string      `json:"number"`
-	Date            string      `json:"date"`
-	Type            string      `json:"type"`
-	Profile         string      `json:"profile"`
-	ProfileURN      string      `json:"profile_urn,omitempty"`
-	BusinessProcess string      `json:"business_process,omitempty"`
-	Currency        string      `json:"currency"`
-	Seller          *PartyInfo  `json:"seller"`
-	Buyer           *PartyInfo  `json:"buyer"`
-	Lines           []LineInfo  `json:"lines,omitempty"`
-	LineCount       int         `json:"line_count"`
-	Totals          *TotalsInfo `json:"totals"`
-	PaymentTerms    []string    `json:"payment_terms,omitempty"`
-	Notes           []NoteInfo  `json:"notes,omitempty"`
-	TermWidth       int         `json:"-"`
+	Number                       string      `json:"number"`
+	Date                         string      `json:"date"`
+	Type                         string      `json:"type"`
+	Profile                      string      `json:"profile"`
+	ProfileURN                   string      `json:"profile_urn,omitempty"`
+	BusinessProcess              string      `json:"business_process,omitempty"`
+	Currency                     string      `json:"currency"`
+	BuyerOrderReferencedDocument string      `json:"buyer_order_referenced_document,omitempty"`
+	Seller                       *PartyInfo  `json:"seller"`
+	Buyer                        *PartyInfo  `json:"buyer"`
+	Lines                        []LineInfo  `json:"lines,omitempty"`
+	LineCount                    int         `json:"line_count"`
+	Totals                       *TotalsInfo `json:"totals"`
+	PaymentTerms                 []string    `json:"payment_terms,omitempty"`
+	TradeTax                     []TaxInfo   `json:"trade_tax,omitempty"`
+	Notes                        []NoteInfo  `json:"notes,omitempty"`
+	TermWidth                    int         `json:"-"`
 }
 
 // PartyInfo contains party details
 type PartyInfo struct {
 	Name      string       `json:"name"`
+	ID        string       `json:"id,omitempty"`
+	GlobalID  string       `json:"global_id,omitempty"`
 	VATNumber string       `json:"vat_number,omitempty"`
+	TaxNumber string       `json:"tax_number,omitempty"`
 	Address   *AddressInfo `json:"address,omitempty"`
 }
 
 // AddressInfo contains address details
 type AddressInfo struct {
-	Street     string `json:"street,omitempty"`
+	Line1      string `json:"line1,omitempty"`
+	Line2      string `json:"line2,omitempty"`
+	Line3      string `json:"line3,omitempty"`
 	City       string `json:"city"`
 	PostalCode string `json:"postal_code"`
 	Country    string `json:"country"`
@@ -70,8 +77,10 @@ type AddressInfo struct {
 type LineInfo struct {
 	ID          string `json:"id"`
 	Description string `json:"description,omitempty"`
+	Note        string `json:"note,omitempty"`
 	Quantity    string `json:"quantity"`
-	UnitPrice   string `json:"unit_price"`
+	NetPrice    string `json:"net_price"`
+	GrossPrice  string `json:"gross_price,omitempty"`
 	NetAmount   string `json:"net_amount"`
 }
 
@@ -86,6 +95,17 @@ type TotalsInfo struct {
 	TotalPrepaid     string `json:"total_prepaid,omitempty"`
 	RoundingAmount   string `json:"rounding_amount,omitempty"`
 	DuePayableAmount string `json:"due_payable_amount"`
+}
+
+// TaxInfo contains tax breakdown details
+type TaxInfo struct {
+	CalculatedAmount string `json:"calculated_amount"`
+	Percent          string `json:"percent"`
+	Type             string `json:"type,omitempty"`
+	Category         string `json:"category,omitempty"`
+	ExemptionReason  string `json:"exemption_reason,omitempty"`
+	ExemptionCode    string `json:"exemption_code,omitempty"`
+	BasisAmount      string `json:"basis_amount,omitempty"`
 }
 
 func detectTerminalWidth() int {
@@ -176,7 +196,7 @@ func outputInfoTextTemplate(info InvoiceInfo, templatePath string) error {
 
 	funcMap := template.FuncMap{
 		"add":       func(a, b int) int { return a + b },
-		"wrap":      wrapText,
+		"wrap":      wrapTextIndent,
 		"padright":  padRight,
 		"padmiddle": padMiddle,
 		"hr":        hr,
@@ -281,19 +301,29 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 
 	// Extract seller information
 	details.Seller = &PartyInfo{
+		ID:        strings.Join(invoice.Seller.ID, ", "),
 		Name:      invoice.Seller.Name,
 		VATNumber: invoice.Seller.VATaxRegistration,
+		TaxNumber: invoice.Seller.FCTaxRegistration,
 	}
+	// Add each global id in the form "scheme:id" to GlobalID
+	if len(invoice.Seller.GlobalID) > 0 {
+		var gids []string
+		for _, gid := range invoice.Seller.GlobalID {
+			if gid.ID != "" && gid.Scheme != "" {
+				gids = append(gids, fmt.Sprintf("%s:%s", gid.Scheme, gid.ID))
+			} else if gid.ID != "" {
+				gids = append(gids, gid.ID)
+			}
+		}
+		details.Seller.GlobalID = strings.Join(gids, ", ")
+	}
+
 	if invoice.Seller.PostalAddress != nil {
-		street := invoice.Seller.PostalAddress.Line1
-		if invoice.Seller.PostalAddress.Line2 != "" {
-			street += ", " + invoice.Seller.PostalAddress.Line2
-		}
-		if invoice.Seller.PostalAddress.Line3 != "" {
-			street += ", " + invoice.Seller.PostalAddress.Line3
-		}
 		details.Seller.Address = &AddressInfo{
-			Street:     street,
+			Line1:      invoice.Seller.PostalAddress.Line1,
+			Line2:      invoice.Seller.PostalAddress.Line2,
+			Line3:      invoice.Seller.PostalAddress.Line3,
 			City:       invoice.Seller.PostalAddress.City,
 			PostalCode: invoice.Seller.PostalAddress.PostcodeCode,
 			Country:    invoice.Seller.PostalAddress.CountryID,
@@ -302,19 +332,29 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 
 	// Extract buyer information
 	details.Buyer = &PartyInfo{
+		ID:        strings.Join(invoice.Buyer.ID, ", "),
 		Name:      invoice.Buyer.Name,
 		VATNumber: invoice.Buyer.VATaxRegistration,
 	}
+	// Add each global id in the form "scheme:id" to GlobalID
+	if len(invoice.Buyer.GlobalID) > 0 {
+		var gids []string
+		for _, gid := range invoice.Buyer.GlobalID {
+			if gid.ID != "" && gid.Scheme != "" {
+				gids = append(gids, fmt.Sprintf("%s:%s", gid.Scheme, gid.ID))
+			} else if gid.ID != "" {
+				gids = append(gids, gid.ID)
+			}
+		}
+		details.Buyer.GlobalID = strings.Join(gids, ", ")
+	}
+
 	if invoice.Buyer.PostalAddress != nil {
-		street := invoice.Buyer.PostalAddress.Line1
-		if invoice.Buyer.PostalAddress.Line2 != "" {
-			street += ", " + invoice.Buyer.PostalAddress.Line2
-		}
-		if invoice.Buyer.PostalAddress.Line3 != "" {
-			street += ", " + invoice.Buyer.PostalAddress.Line3
-		}
 		details.Buyer.Address = &AddressInfo{
-			Street:     street,
+			Line1: invoice.Buyer.PostalAddress.Line1,
+			Line2: invoice.Buyer.PostalAddress.Line2,
+			Line3: invoice.Buyer.PostalAddress.Line3,
+
 			City:       invoice.Buyer.PostalAddress.City,
 			PostalCode: invoice.Buyer.PostalAddress.PostcodeCode,
 			Country:    invoice.Buyer.PostalAddress.CountryID,
@@ -332,7 +372,6 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 		if line.ItemName != "" {
 			lineInfo.Description = line.ItemName
 		}
-
 		if !line.BilledQuantity.IsZero() {
 			lineInfo.Quantity = line.BilledQuantity.String()
 			if line.BilledQuantityUnit != "" {
@@ -341,13 +380,9 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 			}
 		}
 
-		// Prefer gross price, fall back to net price
-		if !line.GrossPrice.IsZero() {
-			lineInfo.UnitPrice = line.GrossPrice.String()
-		} else if !line.NetPrice.IsZero() {
-			lineInfo.UnitPrice = line.NetPrice.String()
-		}
-
+		lineInfo.NetPrice = line.NetPrice.String()
+		lineInfo.GrossPrice = line.GrossPrice.String()
+		lineInfo.Note = line.Note
 		details.Lines = append(details.Lines, lineInfo)
 	}
 
@@ -373,6 +408,8 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 		details.Totals.RoundingAmount = invoice.RoundingAmount.StringFixed(2)
 	}
 
+	details.BuyerOrderReferencedDocument = invoice.BuyerOrderReferencedDocument
+
 	// Extract payment terms
 	details.PaymentTerms = make([]string, 0, len(invoice.SpecifiedTradePaymentTerms))
 	for _, term := range invoice.SpecifiedTradePaymentTerms {
@@ -392,6 +429,20 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 			Text:             n.Text,
 			SubjectQualifier: n.SubjectCode,
 		})
+	}
+
+	// Extract trade tax breakdown
+	for _, tax := range invoice.TradeTaxes {
+		taxInfo := TaxInfo{
+			CalculatedAmount: tax.CalculatedAmount.StringFixed(2),
+			Percent:          tax.Percent.String(),
+			Type:             tax.Typ,
+			Category:         tax.CategoryCode,
+			ExemptionCode:    tax.ExemptionReasonCode,
+			ExemptionReason:  tax.ExemptionReason,
+			BasisAmount:      tax.BasisAmount.StringFixed(2),
+		}
+		details.TradeTax = append(details.TradeTax, taxInfo)
 	}
 
 	details.TermWidth = detectTerminalWidth()
