@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	untdidURL = "https://raw.githubusercontent.com/invopop/gobl/main/data/catalogues/untdid.json"
-	uneceURL  = "https://raw.githubusercontent.com/datasets/unece-units-of-measure/main/data/units-of-measure.csv"
+	untdidURL     = "https://raw.githubusercontent.com/invopop/gobl/main/data/catalogues/untdid.json"
+	uneceURL      = "https://raw.githubusercontent.com/datasets/unece-units-of-measure/main/data/units-of-measure.csv"
 	uneceRec21URL = "https://datahub.io/core/unece-package-codes/_r/-/data/data.csv"
+	untdid4451URL = "https://www.xrepository.de/api/xrepository/urn:xoev-de:kosit:codeliste:untdid.4451_4/download/UNTDID_4451_4.json"
 )
 
 type codeEntry struct {
@@ -63,8 +64,15 @@ func main() {
 	unitCodes := mergeUnitCodes(rec20Codes, rec21Codes)
 	log.Printf("Total unit codes: %d", len(unitCodes))
 
+	// Fetch UNTDID 4451 text subject qualifiers
+	textSubjectQualifiers, err := fetchTextSubjectQualifiers()
+	if err != nil {
+		log.Fatalf("Failed to fetch text subject qualifiers: %v", err)
+	}
+	log.Printf("Fetched %d text subject qualifiers", len(textSubjectQualifiers))
+
 	// Generate Go code
-	if err := generateGoCode(*output, *pkg, docTypes, unitCodes); err != nil {
+	if err := generateGoCode(*output, *pkg, docTypes, unitCodes, textSubjectQualifiers); err != nil {
 		log.Fatalf("Failed to generate code: %v", err)
 	}
 
@@ -223,6 +231,47 @@ func fetchPackageCodes() ([]codeEntry, error) {
 	return entries, nil
 }
 
+func fetchTextSubjectQualifiers() ([]codeEntry, error) {
+	resp, err := http.Get(untdid4451URL)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
+	}
+
+	// XRepository JSON structure
+	var data struct {
+		Daten [][]string `json:"daten"` // Array of [code, name, description]
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	var entries []codeEntry
+	for _, row := range data.Daten {
+		if len(row) < 2 {
+			continue
+		}
+		code := strings.TrimSpace(row[0])
+		name := strings.TrimSpace(row[1])
+
+		if code == "" || name == "" {
+			continue
+		}
+
+		entries = append(entries, codeEntry{
+			Code: code,
+			Name: name,
+		})
+	}
+
+	return entries, nil
+}
+
 func mergeUnitCodes(rec20, rec21 []codeEntry) []codeEntry {
 	seen := make(map[string]bool)
 	var merged []codeEntry
@@ -251,7 +300,7 @@ func mergeUnitCodes(rec20, rec21 []codeEntry) []codeEntry {
 	return merged
 }
 
-func generateGoCode(output, pkg string, docTypes, unitCodes []codeEntry) error {
+func generateGoCode(output, pkg string, docTypes, unitCodes, textSubjectQualifiers []codeEntry) error {
 	tmpl := template.Must(template.New("codelists").Parse(codeTemplate))
 
 	f, err := os.Create(output)
@@ -261,13 +310,15 @@ func generateGoCode(output, pkg string, docTypes, unitCodes []codeEntry) error {
 	defer func() { _ = f.Close() }()
 
 	data := struct {
-		Package      string
-		DocumentTypes []codeEntry
-		UnitCodes     []codeEntry
+		Package               string
+		DocumentTypes         []codeEntry
+		UnitCodes             []codeEntry
+		TextSubjectQualifiers []codeEntry
 	}{
-		Package:       pkg,
-		DocumentTypes: docTypes,
-		UnitCodes:     unitCodes,
+		Package:               pkg,
+		DocumentTypes:         docTypes,
+		UnitCodes:             unitCodes,
+		TextSubjectQualifiers: textSubjectQualifiers,
 	}
 
 	return tmpl.Execute(f, data)
@@ -289,6 +340,14 @@ var documentTypes = map[string]string{
 // Source: https://github.com/datasets/unece-units-of-measure
 var unitCodes = map[string]string{
 {{- range .UnitCodes}}
+	"{{.Code}}": "{{.Name}}",
+{{- end}}
+}
+
+// textSubjectQualifiers maps UNTDID 4451 text subject qualifier codes to human-readable names.
+// Source: https://www.xrepository.de (KoSIT - Coordination Office for IT Standards, Germany)
+var textSubjectQualifiers = map[string]string{
+{{- range .TextSubjectQualifiers}}
 	"{{.Code}}": "{{.Name}}",
 {{- end}}
 }

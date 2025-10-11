@@ -23,3 +23,12 @@ func UnitCode(code string) string {
 	}
 	return code
 }
+
+// TextSubjectQualifier returns the human-readable description for a UNTDID 4451 text subject qualifier code.
+// Returns "Unknown" if the code is not found.
+func TextSubjectQualifier(code string) string {
+	if name, ok := textSubjectQualifiers[code]; ok {
+		return name
+	}
+	return "Unknown"
+}
