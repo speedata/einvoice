@@ -1,14 +1,20 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
+	"text/template"
 
 	"github.com/speedata/einvoice"
 	"github.com/speedata/einvoice/pkg/codelists"
 )
+
+//go:embed templates/text-default.gotmpl
+var embeddedTemplates embed.FS
 
 // InvoiceInfo represents the complete invoice information for display
 type InvoiceInfo struct {
@@ -17,37 +23,44 @@ type InvoiceInfo struct {
 	Error   string          `json:"error,omitempty"`
 }
 
+// NoteInfo holds an invoice note and its subject qualifier (e.g., UNCL 4451
+// 3-digit code).
+type NoteInfo struct {
+	Text             string `json:"text"`
+	SubjectQualifier string `json:"subject_qualifier,omitempty"`
+}
+
 // InvoiceDetails contains detailed invoice information
 type InvoiceDetails struct {
-	Number          string          `json:"number"`
-	Date            string          `json:"date"`
-	Type            string          `json:"type"`
-	Profile         string          `json:"profile"`
-	ProfileURN      string          `json:"profile_urn,omitempty"`
-	BusinessProcess string          `json:"business_process,omitempty"`
-	Currency        string          `json:"currency"`
-	Seller          *PartyInfo      `json:"seller"`
-	Buyer           *PartyInfo      `json:"buyer"`
-	Lines           []LineInfo      `json:"lines,omitempty"`
-	LineCount       int             `json:"line_count"`
-	Totals          *TotalsInfo     `json:"totals"`
-	PaymentTerms    []string        `json:"payment_terms,omitempty"`
-	Notes           []string        `json:"notes,omitempty"`
+	Number          string      `json:"number"`
+	Date            string      `json:"date"`
+	Type            string      `json:"type"`
+	Profile         string      `json:"profile"`
+	ProfileURN      string      `json:"profile_urn,omitempty"`
+	BusinessProcess string      `json:"business_process,omitempty"`
+	Currency        string      `json:"currency"`
+	Seller          *PartyInfo  `json:"seller"`
+	Buyer           *PartyInfo  `json:"buyer"`
+	Lines           []LineInfo  `json:"lines,omitempty"`
+	LineCount       int         `json:"line_count"`
+	Totals          *TotalsInfo `json:"totals"`
+	PaymentTerms    []string    `json:"payment_terms,omitempty"`
+	Notes           []NoteInfo  `json:"notes,omitempty"`
 }
 
 // PartyInfo contains party details
 type PartyInfo struct {
-	Name    string  `json:"name"`
-	VATNumber string `json:"vat_number,omitempty"`
-	Address *AddressInfo `json:"address,omitempty"`
+	Name      string       `json:"name"`
+	VATNumber string       `json:"vat_number,omitempty"`
+	Address   *AddressInfo `json:"address,omitempty"`
 }
 
 // AddressInfo contains address details
 type AddressInfo struct {
-	Street      string `json:"street,omitempty"`
-	City        string `json:"city"`
-	PostalCode  string `json:"postal_code"`
-	Country     string `json:"country"`
+	Street     string `json:"street,omitempty"`
+	City       string `json:"city"`
+	PostalCode string `json:"postal_code"`
+	Country    string `json:"country"`
 }
 
 // LineInfo contains invoice line details
@@ -61,17 +74,16 @@ type LineInfo struct {
 
 // TotalsInfo contains all monetary totals
 type TotalsInfo struct {
-	LineTotal       string `json:"line_total"`
-	AllowanceTotal  string `json:"allowance_total,omitempty"`
-	ChargeTotal     string `json:"charge_total,omitempty"`
-	TaxBasisTotal   string `json:"tax_basis_total"`
-	TaxTotal        string `json:"tax_total"`
-	GrandTotal      string `json:"grand_total"`
-	TotalPrepaid    string `json:"total_prepaid,omitempty"`
-	RoundingAmount  string `json:"rounding_amount,omitempty"`
+	LineTotal        string `json:"line_total"`
+	AllowanceTotal   string `json:"allowance_total,omitempty"`
+	ChargeTotal      string `json:"charge_total,omitempty"`
+	TaxBasisTotal    string `json:"tax_basis_total"`
+	TaxTotal         string `json:"tax_total"`
+	GrandTotal       string `json:"grand_total"`
+	TotalPrepaid     string `json:"total_prepaid,omitempty"`
+	RoundingAmount   string `json:"rounding_amount,omitempty"`
 	DuePayableAmount string `json:"due_payable_amount"`
 }
-
 
 func runInfo(args []string) int {
 	// Parse flags for the info subcommand
@@ -79,9 +91,12 @@ func runInfo(args []string) int {
 	var format string
 	var showCodes bool
 	var verbose bool
+	var templatePath string
+
 	infoFlags.StringVar(&format, "format", "text", "Output format: text, json")
 	infoFlags.BoolVar(&showCodes, "show-codes", false, "Show raw codes instead of descriptions")
 	infoFlags.BoolVar(&verbose, "vv", false, "Show both codes and descriptions")
+	infoFlags.StringVar(&templatePath, "template", "", "Path to a custom Go text template file")
 	infoFlags.Usage = infoUsage
 	_ = infoFlags.Parse(args)
 
@@ -101,7 +116,10 @@ func runInfo(args []string) int {
 	case "json":
 		outputInfoJSON(info)
 	case "text":
-		outputInfoText(info)
+		if err := outputInfoTextTemplate(info, templatePath); err != nil {
+			fmt.Fprintf(os.Stderr, "Template error: %v\n", err)
+			return exitError
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown format %q (use 'text' or 'json')\n", format)
 		return exitError
@@ -112,6 +130,44 @@ func runInfo(args []string) int {
 		return exitError
 	}
 	return exitOK
+}
+
+// outputInfoTextTemplate renders the text output using either a user-supplied or embedded template.
+func outputInfoTextTemplate(info InvoiceInfo, templatePath string) error {
+	if info.Error != "" {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", info.Error)
+		return nil
+	}
+
+	var tplBytes []byte
+	var err error
+
+	// Load template: use embedded one if none provided
+	switch {
+	case templatePath == "":
+		tplBytes, err = embeddedTemplates.ReadFile("templates/text-default.gotmpl")
+	case strings.HasPrefix(templatePath, "builtin:"):
+		// Reserved for possible future builtins (e.g., "builtin:compact")
+		name := strings.TrimPrefix(templatePath, "builtin:")
+		tplBytes, err = embeddedTemplates.ReadFile("templates/" + name + ".gotmpl")
+	default:
+		tplBytes, err = os.ReadFile(templatePath)
+	}
+	if err != nil {
+		return fmt.Errorf("cannot load template: %w", err)
+	}
+
+	funcMap := template.FuncMap{
+		"nonempty": func(s string) bool { return strings.TrimSpace(s) != "" },
+		"sub1":     func(i int) int { return i - 1 },
+	}
+
+	tpl, err := template.New("invoice").Funcs(funcMap).Parse(string(tplBytes))
+	if err != nil {
+		return fmt.Errorf("template parse error: %w", err)
+	}
+
+	return tpl.Execute(os.Stdout, info.Invoice)
 }
 
 // formatDocumentType formats a document type code based on display flags.
@@ -291,133 +347,20 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	}
 
 	// Extract notes
-	details.Notes = make([]string, 0, len(invoice.Notes))
-	for _, note := range invoice.Notes {
-		if note.Text != "" {
-			details.Notes = append(details.Notes, note.Text)
+	for _, n := range invoice.Notes {
+		// Skip empty notes
+		if n.Text == "" {
+			continue
 		}
-	}
 
+		details.Notes = append(details.Notes, NoteInfo{
+			Text:             n.Text,
+			SubjectQualifier: n.SubjectCode,
+		})
+	}
 	info.Invoice = details
 
 	return info
-}
-
-func outputInfoText(info InvoiceInfo) {
-	if info.Error != "" {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", info.Error)
-		return
-	}
-
-	inv := info.Invoice
-
-	// Header section
-	fmt.Printf("Invoice Information\n")
-	fmt.Printf("===================\n\n")
-
-	// Basic invoice details
-	fmt.Printf("Invoice Number:  %s\n", inv.Number)
-	fmt.Printf("Date:            %s\n", inv.Date)
-	fmt.Printf("Type:            %s\n", inv.Type)
-	fmt.Printf("Profile:         %s\n", inv.Profile)
-	if inv.BusinessProcess != "" {
-		fmt.Printf("Business Process: %s\n", inv.BusinessProcess)
-	}
-	fmt.Printf("Currency:        %s\n", inv.Currency)
-	fmt.Printf("\n")
-
-	// Seller information
-	fmt.Printf("Seller\n")
-	fmt.Printf("------\n")
-	fmt.Printf("Name:            %s\n", inv.Seller.Name)
-	if inv.Seller.VATNumber != "" {
-		fmt.Printf("VAT Number:      %s\n", inv.Seller.VATNumber)
-	}
-	if inv.Seller.Address != nil {
-		if inv.Seller.Address.Street != "" {
-			fmt.Printf("Address:         %s\n", inv.Seller.Address.Street)
-		}
-		fmt.Printf("                 %s %s\n", inv.Seller.Address.PostalCode, inv.Seller.Address.City)
-		fmt.Printf("                 %s\n", inv.Seller.Address.Country)
-	}
-	fmt.Printf("\n")
-
-	// Buyer information
-	fmt.Printf("Buyer\n")
-	fmt.Printf("-----\n")
-	fmt.Printf("Name:            %s\n", inv.Buyer.Name)
-	if inv.Buyer.VATNumber != "" {
-		fmt.Printf("VAT Number:      %s\n", inv.Buyer.VATNumber)
-	}
-	if inv.Buyer.Address != nil {
-		if inv.Buyer.Address.Street != "" {
-			fmt.Printf("Address:         %s\n", inv.Buyer.Address.Street)
-		}
-		fmt.Printf("                 %s %s\n", inv.Buyer.Address.PostalCode, inv.Buyer.Address.City)
-		fmt.Printf("                 %s\n", inv.Buyer.Address.Country)
-	}
-	fmt.Printf("\n")
-
-	// Invoice lines
-	fmt.Printf("Invoice Lines (%d items)\n", inv.LineCount)
-	fmt.Printf("---------------------\n")
-	for _, line := range inv.Lines {
-		fmt.Printf("Line %s:\n", line.ID)
-		if line.Description != "" {
-			fmt.Printf("  Description:   %s\n", line.Description)
-		}
-		if line.Quantity != "" {
-			fmt.Printf("  Quantity:      %s\n", line.Quantity)
-		}
-		if line.UnitPrice != "" {
-			fmt.Printf("  Unit Price:    %s %s\n", line.UnitPrice, inv.Currency)
-		}
-		fmt.Printf("  Net Amount:    %s %s\n", line.NetAmount, inv.Currency)
-		fmt.Printf("\n")
-	}
-
-	// Totals
-	fmt.Printf("Totals\n")
-	fmt.Printf("------\n")
-	fmt.Printf("Line Total:      %s %s\n", inv.Totals.LineTotal, inv.Currency)
-	if inv.Totals.AllowanceTotal != "" {
-		fmt.Printf("Allowances:      -%s %s\n", inv.Totals.AllowanceTotal, inv.Currency)
-	}
-	if inv.Totals.ChargeTotal != "" {
-		fmt.Printf("Charges:         +%s %s\n", inv.Totals.ChargeTotal, inv.Currency)
-	}
-	fmt.Printf("Tax Basis:       %s %s\n", inv.Totals.TaxBasisTotal, inv.Currency)
-	fmt.Printf("Tax Total:       %s %s\n", inv.Totals.TaxTotal, inv.Currency)
-	fmt.Printf("Grand Total:     %s %s\n", inv.Totals.GrandTotal, inv.Currency)
-	if inv.Totals.TotalPrepaid != "" {
-		fmt.Printf("Prepaid:         -%s %s\n", inv.Totals.TotalPrepaid, inv.Currency)
-	}
-	if inv.Totals.RoundingAmount != "" {
-		fmt.Printf("Rounding:        %s %s\n", inv.Totals.RoundingAmount, inv.Currency)
-	}
-	fmt.Printf("Due Amount:      %s %s\n", inv.Totals.DuePayableAmount, inv.Currency)
-	fmt.Printf("\n")
-
-	// Payment terms
-	if len(inv.PaymentTerms) > 0 {
-		fmt.Printf("Payment Terms\n")
-		fmt.Printf("-------------\n")
-		for _, term := range inv.PaymentTerms {
-			fmt.Printf("%s\n", term)
-		}
-		fmt.Printf("\n")
-	}
-
-	// Notes
-	if len(inv.Notes) > 0 {
-		fmt.Printf("Notes\n")
-		fmt.Printf("-----\n")
-		for _, note := range inv.Notes {
-			fmt.Printf("%s\n", note)
-		}
-		fmt.Printf("\n")
-	}
-
 }
 
 func outputInfoJSON(info InvoiceInfo) {
@@ -438,6 +381,7 @@ Supports both XML and ZUGFeRD/Factur-X PDF formats.
 Options:
   --format string   Output format: text, json (default "text")
   --show-codes      Show raw codes instead of descriptions
+  --template string Path to a custom Go text template file
   -vv               Show both codes and descriptions
   --help            Show this help message
 
@@ -458,5 +402,6 @@ Examples:
   einvoice info --show-codes invoice.xml
   einvoice info -vv invoice.pdf
   einvoice info --format json invoice.xml
+  einvoice info --template custom-template.gotmpl invoice.pdf
 `)
 }
