@@ -1,0 +1,94 @@
+Invoice Information
+===================
+
+Invoice Number:  {{.Number}}
+Date:            {{.Date}}
+Type:            {{.Type}}
+Profile:         {{.Profile}}
+{{- if .BusinessProcess }}
+Business Process: {{.BusinessProcess}}
+{{- end }}
+Currency:        {{.Currency}}
+
+Seller
+------
+Name:            {{.Seller.Name}}
+{{- if .Seller.VATNumber }}
+VAT Number:      {{.Seller.VATNumber}}
+{{- end }}
+{{- with .Seller.Address }}
+{{- if .Street }}
+Address:         {{.Street}}{{ end }}
+                 {{.PostalCode}} {{.City}}
+                 {{.Country}}
+{{- end }}
+
+Buyer
+-----
+Name:            {{.Buyer.Name}}
+{{- if .Buyer.VATNumber }}
+VAT Number:      {{.Buyer.VATNumber}}
+{{- end }}
+{{- with .Buyer.Address }}
+{{- if .Street }}
+Address:         {{.Street}}{{ end }}
+                 {{.PostalCode}} {{.City}}
+                 {{.Country}}
+{{- end }}
+
+Invoice Lines ({{.LineCount}} items)
+---------------------
+{{- range .Lines }}
+Line {{.ID}}:
+  {{- if .Description }}
+  Description:   {{.Description}}
+  {{- end }}
+  {{- if .Quantity }}
+  Quantity:      {{.Quantity}}
+  {{- end }}
+  {{- if .UnitPrice }}
+  Unit Price:    {{.UnitPrice}} {{$.Currency}}
+  {{- end }}
+  Net Amount:    {{.NetAmount}} {{$.Currency}}
+
+{{- end }}
+
+Totals
+------
+Line Total:      {{.Totals.LineTotal}} {{.Currency}}
+{{- if .Totals.AllowanceTotal }}
+Allowances:      -{{.Totals.AllowanceTotal}} {{.Currency}}
+{{- end }}
+{{- if .Totals.ChargeTotal }}
+Charges:         +{{.Totals.ChargeTotal}} {{.Currency}}
+{{- end }}
+Tax Basis:       {{.Totals.TaxBasisTotal}} {{.Currency}}
+Tax Total:       {{.Totals.TaxTotal}} {{.Currency}}
+Grand Total:     {{.Totals.GrandTotal}} {{.Currency}}
+{{- if .Totals.TotalPrepaid }}
+Prepaid:         -{{.Totals.TotalPrepaid}} {{.Currency}}
+{{- end }}
+{{- if .Totals.RoundingAmount }}
+Rounding:        {{.Totals.RoundingAmount}} {{.Currency}}
+{{- end }}
+Due Amount:      {{.Totals.DuePayableAmount}} {{.Currency}}
+
+{{- if .PaymentTerms }}
+Payment Terms
+-------------
+{{- range .PaymentTerms }}
+- {{ . }}
+{{- end }}
+{{- end }}
+
+{{- if .Notes }}
+
+Notes
+-----
+{{ range $i, $n := .Notes }}
+{{- if $n.SubjectQualifier }}[{{ $n.SubjectQualifier }}] {{ end }}{{ $n.Text }}
+{{- if lt $i (sub1 (len $.Notes)) }}
+----
+{{- end }}
+{{- end }}
+{{- end }}
