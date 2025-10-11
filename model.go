@@ -220,6 +220,11 @@ type InvoiceLine struct {
 	TaxCategoryCode                           string            // BT-151
 	TaxRateApplicablePercent                  decimal.Decimal   // BT-152
 	Total                                     decimal.Decimal   // BT-131
+
+	// Private fields for tracking XML element presence (BR-24, BR-26)
+	// These are set during parsing to distinguish between missing elements and zero values
+	hasLineTotalInXML bool
+	hasNetPriceInXML  bool
 }
 
 // PaymentMeans represents a payment means.
