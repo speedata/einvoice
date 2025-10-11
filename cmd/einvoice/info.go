@@ -175,9 +175,11 @@ func outputInfoTextTemplate(info InvoiceInfo, templatePath string) error {
 	}
 
 	funcMap := template.FuncMap{
-		"wrap": wrapText,
-		"pad":  padRight,
-		"hr":   hr,
+		"add":       func(a, b int) int { return a + b },
+		"wrap":      wrapText,
+		"padright":  padRight,
+		"padmiddle": padMiddle,
+		"hr":        hr,
 		"min": func(a, b int) int {
 			if a < b {
 				return a
@@ -190,8 +192,9 @@ func outputInfoTextTemplate(info InvoiceInfo, templatePath string) error {
 			}
 			return b
 		},
-		"nonempty": func(s string) bool { return strings.TrimSpace(s) != "" },
-		"sub1":     func(i int) int { return i - 1 },
+		"nonempty":  func(s string) bool { return strings.TrimSpace(s) != "" },
+		"sub1":      func(i int) int { return i - 1 },
+		"underline": underline,
 	}
 
 	tpl, err := template.New("invoice").Funcs(funcMap).Parse(string(tplBytes))
@@ -350,24 +353,24 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 
 	// Extract totals
 	details.Totals = &TotalsInfo{
-		LineTotal:        invoice.LineTotal.String(),
-		TaxBasisTotal:    invoice.TaxBasisTotal.String(),
-		TaxTotal:         invoice.TaxTotal.String(),
-		GrandTotal:       invoice.GrandTotal.String(),
-		DuePayableAmount: invoice.DuePayableAmount.String(),
+		LineTotal:        invoice.LineTotal.StringFixed(2),
+		TaxBasisTotal:    invoice.TaxBasisTotal.StringFixed(2),
+		TaxTotal:         invoice.TaxTotal.StringFixed(2),
+		GrandTotal:       invoice.GrandTotal.StringFixed(2),
+		DuePayableAmount: invoice.DuePayableAmount.StringFixed(2),
 	}
 
 	if !invoice.AllowanceTotal.IsZero() {
-		details.Totals.AllowanceTotal = invoice.AllowanceTotal.String()
+		details.Totals.AllowanceTotal = invoice.AllowanceTotal.StringFixed(2)
 	}
 	if !invoice.ChargeTotal.IsZero() {
-		details.Totals.ChargeTotal = invoice.ChargeTotal.String()
+		details.Totals.ChargeTotal = invoice.ChargeTotal.StringFixed(2)
 	}
 	if !invoice.TotalPrepaid.IsZero() {
-		details.Totals.TotalPrepaid = invoice.TotalPrepaid.String()
+		details.Totals.TotalPrepaid = invoice.TotalPrepaid.StringFixed(2)
 	}
 	if !invoice.RoundingAmount.IsZero() {
-		details.Totals.RoundingAmount = invoice.RoundingAmount.String()
+		details.Totals.RoundingAmount = invoice.RoundingAmount.StringFixed(2)
 	}
 
 	// Extract payment terms
