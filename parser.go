@@ -294,6 +294,8 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 }
 func parseSpecifiedLineTradeAgreement(specifiedLineTradeAgreement *cxpath.Context, invoiceLine *InvoiceLine) error {
 	var err error
+	// BR-26: Track XML element presence to validate later
+	invoiceLine.hasNetPriceInXML = specifiedLineTradeAgreement.Eval("count(ram:NetPriceProductTradePrice/ram:ChargeAmount)").Int() > 0
 	invoiceLine.NetPrice, err = getDecimal(specifiedLineTradeAgreement, "ram:NetPriceProductTradePrice/ram:ChargeAmount")
 	if err != nil {
 		return err
@@ -383,6 +385,8 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 			return err
 		}
 		invoiceLine.BilledQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
+		// BR-24: Track XML element presence to validate later
+		invoiceLine.hasLineTotalInXML = lineItem.Eval("count(ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount)").Int() > 0
 		invoiceLine.Total, err = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
 		if err != nil {
 			return err

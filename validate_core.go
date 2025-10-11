@@ -420,8 +420,11 @@ func (inv *Invoice) validateCore() {
 
 		// BR-24 Rechnungsposition
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Nettobetrag der Rechnungsposition "Invoice line net amount" (BT-131) enthalten.
-		if line.Total.IsZero() {
-			inv.addViolation(rules.BR24, "Line's net amount not found")
+		// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
+		// Zero is valid (e.g., free items, zero-rated services).
+		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
+		if !line.hasLineTotalInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR24, "LineTotalAmount element missing in XML for line "+line.LineID)
 		}
 
 		// BR-25 Artikelinformationen
@@ -433,8 +436,11 @@ func (inv *Invoice) validateCore() {
 		// BR-26 Detailinformationen zum Preis
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Preis des Postens, ohne Umsatzsteuer, nach Abzug des für diese Rechnungsposition
 		// geltenden Rabatts "Item net price" (BT-146) beinhalten.
-		if line.NetPrice.IsZero() {
-			inv.addViolation(rules.BR26, "Line's item net price not found")
+		// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
+		// Zero is valid (e.g., free items, promotional products).
+		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
+		if !line.hasNetPriceInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR26, "NetPrice ChargeAmount element missing in XML for line "+line.LineID)
 		}
 
 		// BR-27 Nettopreis des Artikels
