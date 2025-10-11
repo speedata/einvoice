@@ -6,11 +6,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/speedata/einvoice"
 	"github.com/speedata/einvoice/pkg/codelists"
+	"golang.org/x/term"
 )
 
 //go:embed templates/text-default.gotmpl
@@ -46,6 +48,7 @@ type InvoiceDetails struct {
 	Totals          *TotalsInfo `json:"totals"`
 	PaymentTerms    []string    `json:"payment_terms,omitempty"`
 	Notes           []NoteInfo  `json:"notes,omitempty"`
+	TermWidth       int         `json:"-"`
 }
 
 // PartyInfo contains party details
@@ -85,6 +88,20 @@ type TotalsInfo struct {
 	DuePayableAmount string `json:"due_payable_amount"`
 }
 
+func detectTerminalWidth() int {
+	// 1) Try real terminal size
+	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 {
+		return w
+	}
+	// 2) Fall back to $COLUMNS if present
+	if c := os.Getenv("COLUMNS"); c != "" {
+		if n, err := strconv.Atoi(c); err == nil && n > 0 {
+			return n
+		}
+	}
+	// 3) Sensible default
+	return 80
+}
 func runInfo(args []string) int {
 	// Parse flags for the info subcommand
 	infoFlags := flag.NewFlagSet("info", flag.ExitOnError)
@@ -158,6 +175,21 @@ func outputInfoTextTemplate(info InvoiceInfo, templatePath string) error {
 	}
 
 	funcMap := template.FuncMap{
+		"wrap": wrapText,
+		"pad":  padRight,
+		"hr":   hr,
+		"min": func(a, b int) int {
+			if a < b {
+				return a
+			}
+			return b
+		},
+		"max": func(a, b int) int {
+			if a > b {
+				return a
+			}
+			return b
+		},
 		"nonempty": func(s string) bool { return strings.TrimSpace(s) != "" },
 		"sub1":     func(i int) int { return i - 1 },
 	}
@@ -358,6 +390,8 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 			SubjectQualifier: n.SubjectCode,
 		})
 	}
+
+	details.TermWidth = detectTerminalWidth()
 	info.Invoice = details
 
 	return info

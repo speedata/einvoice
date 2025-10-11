@@ -1,3 +1,89 @@
+{{- /*
+  Responsive invoice template (narrow / wide)
+  Requirements:
+    - Go code sets `.TermWidth` (e.g., detectTerminalWidth or --width override)
+    - FuncMap provides: hr(int)->string, pad(string,int)->string, wrap(string,int)->string,
+                        min(int,int)->int, max(int,int)->int, sub1(int)->int
+*/ -}}
+
+{{- $w := .TermWidth -}}
+{{- if ge $w 100 }}
+{{/* ============================ WIDE LAYOUT ============================ */}}
+
+Invoice Information
+{{ hr (min $w 120) }}
+
+{{ pad (printf "Invoice Number:  %s" .Number) 48 }} Date:   {{ .Date }}
+{{ pad (printf "Type:            %s" .Type)   48 }} Profile: {{ .Profile }}
+{{- if .BusinessProcess }}
+{{ pad (printf "Business Proc.:  %s" .BusinessProcess) 48 }} Currency: {{ .Currency }}
+{{- else }}
+{{ pad (printf "Currency:        %s" .Currency) 48 }}
+{{- end }}
+
+Seller / Buyer
+{{ hr (min $w 120) }}
+{{ pad "Seller:" 12 }} {{ .Seller.Name }}
+{{- if .Seller.VATNumber }}{{ pad "" 12 }} VAT: {{ .Seller.VATNumber }}{{ end }}
+{{- with .Seller.Address }}
+{{ pad "" 12 }} {{ .PostalCode }} {{ .City }}
+{{ pad "" 12 }} {{ .Country }}
+{{- end }}
+
+{{ pad "Buyer:" 12 }} {{ .Buyer.Name }}
+{{- if .Buyer.VATNumber }}{{ pad "" 12 }} VAT: {{ .Buyer.VATNumber }}{{ end }}
+{{- with .Buyer.Address }}
+{{ pad "" 12 }} {{ .PostalCode }} {{ .City }}
+{{ pad "" 12 }} {{ .Country }}
+{{- end }}
+
+Invoice Lines ({{ .LineCount }} items)
+{{ hr (min $w 120) }}
+{{- range .Lines }}
+{{- /* single-line summary per item in wide mode */}}
+{{ pad (printf "Line %s" .ID) 10 }} {{ if .Description }}{{ .Description }}{{ end }}
+{{ pad "" 10 }} Qty: {{ .Quantity }}   Unit: {{ .UnitPrice }} {{ $.Currency }}   Net: {{ .NetAmount }} {{ $.Currency }}
+
+{{- end }}
+
+Totals
+{{ hr (min $w 120) }}
+{{ pad (printf "Line Total:      %s %s" .Totals.LineTotal .Currency) 40 }} {{- /* left column */ -}}
+{{- if .Totals.AllowanceTotal }} Allowances: -{{ .Totals.AllowanceTotal }} {{ .Currency }}{{ end }}
+{{- if .Totals.ChargeTotal }}
+{{ pad "" 40 }} Charges:    +{{ .Totals.ChargeTotal }} {{ .Currency }}
+{{- end }}
+{{ pad (printf "Tax Basis:       %s %s" .Totals.TaxBasisTotal .Currency) 40 }}
+Tax Total:  {{ .Totals.TaxTotal }} {{ .Currency }}
+Grand Total:     {{ .Totals.GrandTotal }} {{ .Currency }}
+{{- if .Totals.TotalPrepaid }}Prepaid:         -{{ .Totals.TotalPrepaid }} {{ .Currency }}{{ end }}
+{{- if .Totals.RoundingAmount }}
+Rounding:        {{ .Totals.RoundingAmount }} {{ .Currency }}
+{{- end }}
+Due Amount:      {{ .Totals.DuePayableAmount }} {{ .Currency }}
+
+{{- if .PaymentTerms }}
+Payment Terms
+{{ hr (min $w 120) }}
+{{- range .PaymentTerms }}
+- {{ . }}
+{{- end }}
+{{- end }}
+
+{{- if .Notes }}
+Notes
+{{ hr (min $w 120) }}
+{{- range $i, $n := .Notes }}
+{{- if $n.SubjectQualifier }}[{{ $n.SubjectQualifier }}] {{ end }}{{ $n.Text }}
+{{- if lt $i (sub1 (len $.Notes)) }}
+----
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- else }}
+{{/* ============================ NARROW LAYOUT ========================== */}}
+
 Invoice Information
 ===================
 
@@ -41,7 +127,7 @@ Invoice Lines ({{.LineCount}} items)
 {{- range .Lines }}
 Line {{.ID}}:
   {{- if .Description }}
-  Description:   {{.Description}}
+  Description:   {{ wrap .Description (max (min $w 60) 30) }}
   {{- end }}
   {{- if .Quantity }}
   Quantity:      {{.Quantity}}
@@ -91,4 +177,6 @@ Notes
 ----
 {{- end }}
 {{- end }}
+{{- end }}
+
 {{- end }}
