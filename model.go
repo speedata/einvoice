@@ -257,7 +257,7 @@ type AllowanceCharge struct {
 type TradeTax struct {
 	CalculatedAmount    decimal.Decimal // BT-117
 	BasisAmount         decimal.Decimal // BT-116
-	Typ                 string          // BT-118-0
+	TypeCode            string          // BT-118-0
 	CategoryCode        string          // BT-118
 	Percent             decimal.Decimal // BT-119
 	ExemptionReason     string          // BT-120

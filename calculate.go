@@ -34,7 +34,7 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 			CategoryCode: lineitem.TaxCategoryCode,
 			Percent:      lineitem.TaxRateApplicablePercent,
 			BasisAmount:  lineitem.Total,
-			Typ:          "VAT",
+			TypeCode:     "VAT",
 		}
 		found := false
 
@@ -78,7 +78,7 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 				CategoryCode: ac.CategoryTradeTaxCategoryCode,
 				Percent:      ac.CategoryTradeTaxRateApplicablePercent,
 				BasisAmount:  basisAmount,
-				Typ:          "VAT",
+				TypeCode:     "VAT",
 			}
 			applicableTradeTaxes = append(applicableTradeTaxes, tradeTax)
 		}
