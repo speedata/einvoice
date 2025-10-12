@@ -18,8 +18,8 @@ func TestValidateInvoice(t *testing.T) {
 		wantViolation bool
 	}{
 		{
-			name:      "valid invoice from testcases",
-			filename:  "../../testcases/zugferd_2p0_EN16931_1_Teilrechnung.xml",
+			name:      "valid invoice from testdata",
+			filename:  "../../testdata/cii/en16931/zugferd_2p0_EN16931_1_Teilrechnung.xml",
 			wantValid: false, // We don't know if this is valid without checking
 			wantError: false,
 		},
@@ -252,7 +252,7 @@ func TestRunValidate(t *testing.T) {
 
 func TestIntegration_ValidFile(t *testing.T) {
 	// Test with the actual test case file if it exists
-	testFile := filepath.Join("..", "..", "testcases", "zugferd_2p0_EN16931_1_Teilrechnung.xml")
+	testFile := filepath.Join("..", "..", "testdata", "cii", "en16931", "zugferd_2p0_EN16931_1_Teilrechnung.xml")
 	if _, err := os.Stat(testFile); os.IsNotExist(err) {
 		t.Skip("Test file not found, skipping integration test")
 	}
@@ -289,7 +289,7 @@ func TestIntegration_ValidFile(t *testing.T) {
 
 func TestIntegration_ValidateCommand(t *testing.T) {
 	// Test with the actual test case file if it exists
-	testFile := filepath.Join("..", "..", "testcases", "zugferd_2p0_EN16931_1_Teilrechnung.xml")
+	testFile := filepath.Join("..", "..", "testdata", "cii", "en16931", "zugferd_2p0_EN16931_1_Teilrechnung.xml")
 	if _, err := os.Stat(testFile); os.IsNotExist(err) {
 		t.Skip("Test file not found, skipping integration test")
 	}

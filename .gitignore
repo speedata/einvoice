@@ -2,3 +2,28 @@
 /einvoice
 cmd/einvoice/einvoice
 /gencodelists
+
+# Test coverage
+coverage.out
+coverage.txt
+coverage.html
+*.coverprofile
+
+# Test artifacts
+bench.txt
+*.test
+
+# Downloaded test suites (temporary, fixtures are organized in testdata/)
+testdata/en16931-testsuite/
+testdata/peppol-testsuite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

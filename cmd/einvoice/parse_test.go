@@ -8,7 +8,7 @@ import (
 
 func TestParseInvoiceFile(t *testing.T) {
 	// Use the same test file pattern as validate_test.go
-	testFile := filepath.Join("..", "..", "testcases", "zugferd_2p0_EN16931_1_Teilrechnung.xml")
+	testFile := filepath.Join("..", "..", "testdata", "cii", "en16931", "zugferd_2p0_EN16931_1_Teilrechnung.xml")
 
 	tests := []struct {
 		name    string
@@ -18,7 +18,7 @@ func TestParseInvoiceFile(t *testing.T) {
 		skipIf  bool
 	}{
 		{
-			name:    "Valid XML file from testcases",
+			name:    "Valid XML file from testdata",
 			file:    testFile,
 			wantErr: false,
 			skipIf:  !fileExists(testFile),
