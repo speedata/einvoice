@@ -75,3 +75,52 @@ jobs:
       with:
         version: latest
         args: --timeout=5m
+
+  fuzz:
+    name: Fuzz Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run FuzzParseCII
+      run: go test -fuzz=FuzzParseCII -fuzztime=30s
+
+    - name: Run FuzzParseUBL
+      run: go test -fuzz=FuzzParseUBL -fuzztime=30s
+
+    - name: Run FuzzValidate
+      run: go test -fuzz=FuzzValidate -fuzztime=30s
+
+    - name: Run FuzzRoundTrip
+      run: go test -fuzz=FuzzRoundTrip -fuzztime=30s
+
+  benchmark:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run benchmarks
+      run: go test -bench=. -benchmem -benchtime=100ms -run=^$ ./...

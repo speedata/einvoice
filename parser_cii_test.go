@@ -12,7 +12,7 @@ func TestSimple(t *testing.T) {
 
 	inv, err := ParseXMLFile("testdata/cii/en16931/zugferd_2p0_EN16931_1_Teilrechnung.xml")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	expected := Invoice{

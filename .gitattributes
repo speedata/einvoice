@@ -1,0 +1,9 @@
+# Git attributes for einvoice repository
+
+# Fuzz test corpus files
+# These are binary files that should not be merged automatically
+# Use binary merge strategy to avoid corruption
+testdata/fuzz/**/* binary merge=binary
+
+# Treat all fuzz corpus files as binary to prevent line ending conversions
+testdata/fuzz/**/* -text -diff
