@@ -58,7 +58,7 @@ func buildInvoice() error {
 }
 ```
 
-Writing an invoice (parsing):
+Round-trip: parsing and writing back:
 
 ```go
 func dothings() error {
@@ -67,6 +67,7 @@ func dothings() error {
 		return err
 	}
 
+	// Write back in the same format (CII or UBL)
 	return inv.Write(os.Stdout)
 }
 ```
