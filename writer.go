@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -303,11 +304,20 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 		ard := elt.CreateElement("ram:AdditionalReferencedDocument")
 		ard.CreateElement("ram:IssuerAssignedID").SetText(doc.IssuerAssignedID)
 		ard.CreateElement("ram:TypeCode").SetText(doc.TypeCode)
-		ard.CreateElement("ram:Name").SetText(doc.Name)
-		abo := ard.CreateElement("ram:AttachmentBinaryObject")
-		abo.CreateAttr("mimeCode", doc.AttachmentMimeCode)
-		abo.CreateAttr("filename", doc.AttachmentFilename)
-		// .SetText(base64.StdEncoding.EncodeToString(doc.AttachmentBinaryObject))
+		if doc.Name != "" {
+			ard.CreateElement("ram:Name").SetText(doc.Name)
+		}
+		// BT-125: Only write AttachmentBinaryObject if attachment data exists (PEPPOL-EN16931-R008)
+		if len(doc.AttachmentBinaryObject) > 0 {
+			abo := ard.CreateElement("ram:AttachmentBinaryObject")
+			if doc.AttachmentMimeCode != "" {
+				abo.CreateAttr("mimeCode", doc.AttachmentMimeCode)
+			}
+			if doc.AttachmentFilename != "" {
+				abo.CreateAttr("filename", doc.AttachmentFilename)
+			}
+			abo.SetText(base64.StdEncoding.EncodeToString(doc.AttachmentBinaryObject))
+		}
 		if doc.TypeCode == "130" {
 			ard.CreateElement("ram:ReferenceTypeCode").SetText(doc.ReferenceTypeCode)
 		}
@@ -440,11 +450,22 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	for _, stac := range inv.SpecifiedTradeAllowanceCharge {
 		stacElt := elt.CreateElement("ram:SpecifiedTradeAllowanceCharge")
 		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", stac.ChargeIndicator))
-		stacElt.CreateElement("ram:BasisAmount").SetText(stac.BasisAmount.StringFixed(2))
+		// BT-93, BT-100: BasisAmount is optional - only create if non-zero (PEPPOL-EN16931-R008)
+		if !stac.BasisAmount.IsZero() {
+			stacElt.CreateElement("ram:BasisAmount").SetText(stac.BasisAmount.StringFixed(2))
+		}
 		stacElt.CreateElement("ram:ActualAmount").SetText(stac.ActualAmount.StringFixed(2))
+		// BT-98, BT-105: ReasonCode is optional - only create if non-zero (PEPPOL-EN16931-R008)
+		if stac.ReasonCode != 0 {
+			stacElt.CreateElement("ram:ReasonCode").SetText(fmt.Sprintf("%d", stac.ReasonCode))
+		}
 		// BT-97, BT-104: Reason is optional - only create if non-empty (PEPPOL-EN16931-R008)
 		if stac.Reason != "" {
 			stacElt.CreateElement("ram:Reason").SetText(stac.Reason)
+		}
+		// BT-94, BT-101: CalculationPercent is optional - only create if non-zero (PEPPOL-EN16931-R008)
+		if !stac.CalculationPercent.IsZero() {
+			stacElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(stac.CalculationPercent))
 		}
 		ctt := stacElt.CreateElement("ram:CategoryTradeTax")
 		ctt.CreateElement("ram:TypeCode").SetText(stac.CategoryTradeTaxType)

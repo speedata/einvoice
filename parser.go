@@ -147,8 +147,16 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		}
 		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, allowanceCharge)
 	}
-	inv.BillingSpecifiedPeriodStart, _ = parseTime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
-	inv.BillingSpecifiedPeriodEnd, _ = parseTime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
+	// Parse billing period dates - log errors but continue parsing
+	var dateErr error
+	inv.BillingSpecifiedPeriodStart, dateErr = parseTime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
+	if dateErr != nil {
+		return fmt.Errorf("invalid billing period start date: %w", dateErr)
+	}
+	inv.BillingSpecifiedPeriodEnd, dateErr = parseTime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
+	if dateErr != nil {
+		return fmt.Errorf("invalid billing period end date: %w", dateErr)
+	}
 
 	// ram:SpecifiedTradePaymentTerms
 	for paymentTerm := range applicableHeaderTradeSettlement.Each("ram:SpecifiedTradePaymentTerms") {
@@ -243,15 +251,20 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	return nil
 }
 
-func parseCIIApplicableHeaderTradeDelivery(applicableHeaderTradeDelivery *cxpath.Context, inv *Invoice) {
+func parseCIIApplicableHeaderTradeDelivery(applicableHeaderTradeDelivery *cxpath.Context, inv *Invoice) error {
 	inv.DespatchAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:DespatchAdviceReferencedDocument").String()
 	// BT-72
-	inv.OccurrenceDateTime, _ = parseTime(applicableHeaderTradeDelivery, "ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString")
+	var err error
+	inv.OccurrenceDateTime, err = parseTime(applicableHeaderTradeDelivery, "ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString")
+	if err != nil {
+		return fmt.Errorf("invalid occurrence date time: %w", err)
+	}
 
 	if applicableHeaderTradeDelivery.Eval("count(ram:ShipToTradeParty)").Int() > 0 {
 		st := parseParty(applicableHeaderTradeDelivery.Eval("ram:ShipToTradeParty"))
 		inv.ShipTo = &st
 	}
+	return nil
 }
 
 func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpath.Context, inv *Invoice) error {
@@ -438,8 +451,14 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		if err != nil {
 			return err
 		}
-		invoiceLine.BillingSpecifiedPeriodStart, _ = parseTime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
-		invoiceLine.BillingSpecifiedPeriodEnd, _ = parseTime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
+		invoiceLine.BillingSpecifiedPeriodStart, err = parseTime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
+		if err != nil {
+			return fmt.Errorf("invalid line billing period start date for line %s: %w", invoiceLine.LineID, err)
+		}
+		invoiceLine.BillingSpecifiedPeriodEnd, err = parseTime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
+		if err != nil {
+			return fmt.Errorf("invalid line billing period end date for line %s: %w", invoiceLine.LineID, err)
+		}
 
 		inv.InvoiceLines = append(inv.InvoiceLines, invoiceLine)
 	}
@@ -447,7 +466,9 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		return err
 	}
 
-	parseCIIApplicableHeaderTradeDelivery(supplyChainTradeTransaction.Eval("ram:ApplicableHeaderTradeDelivery"), inv)
+	if err = parseCIIApplicableHeaderTradeDelivery(supplyChainTradeTransaction.Eval("ram:ApplicableHeaderTradeDelivery"), inv); err != nil {
+		return err
+	}
 
 	if err = parseCIIApplicableHeaderTradeSettlement(supplyChainTradeTransaction.Eval("ram:ApplicableHeaderTradeSettlement"), inv); err != nil {
 		return err
