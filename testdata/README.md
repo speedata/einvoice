@@ -1,36 +1,34 @@
 # Test Fixtures
 
-This directory contains organized test fixtures for the einvoice library. Fixtures are organized by **profile** and **format** to support targeted testing.
+Test fixtures for the einvoice library, organized by profile and format for targeted testing.
+
+See [SOURCES.md](SOURCES.md) for provenance tracking, license information, and file counts.
 
 ## Directory Structure
 
 ```
 testdata/
 ├── README.md              # This file
-├── SOURCES.md            # Provenance tracking for all fixtures
-├── cii/                  # Cross Industry Invoice (ZUGFeRD/Factur-X) fixtures
-│   ├── minimum/          # Minimum profile (Level 1) - 2 files
-│   ├── basicwl/          # Basic WL profile (Level 2) - 2 files
-│   ├── basic/            # Basic profile (Level 3) - 4 files
-│   ├── en16931/          # EN 16931 profile (Level 4) - 16 files
-│   ├── extended/         # Extended profile (Level 5) - 6 files
-│   └── xrechnung/        # XRechnung profile (Level 4) - 4 files
-├── ubl/                  # Universal Business Language 2.1 fixtures
-│   ├── invoice/          # UBL Invoice documents - 12 files
-│   └── creditnote/       # UBL CreditNote documents - 3 files
-├── peppol/               # PEPPOL BIS Billing 3.0 fixtures
-│   ├── valid/            # Valid PEPPOL invoices - 11 files
-│   └── invalid/          # Invalid examples for negative testing
+├── SOURCES.md            # Provenance and license tracking
+├── cii/                  # Cross Industry Invoice (ZUGFeRD/Factur-X)
+│   ├── minimum/          # Minimum profile (Level 1)
+│   ├── basicwl/          # Basic WL profile (Level 2)
+│   ├── basic/            # Basic profile (Level 3)
+│   ├── en16931/          # EN 16931 profile (Level 4)
+│   ├── extended/         # Extended profile (Level 5)
+│   └── xrechnung/        # XRechnung profile (Level 4)
+├── ubl/                  # Universal Business Language 2.1
+│   ├── invoice/          # Invoice documents
+│   └── creditnote/       # CreditNote documents
+├── peppol/               # PEPPOL BIS Billing 3.0
+│   ├── valid/            # Valid PEPPOL invoices
+│   └── invalid/          # Invalid examples (future)
 └── negative/             # Negative test cases
-    ├── malformed/        # Malformed XML - 2 files
-    └── missing_fields/   # Missing required fields
+    ├── malformed/        # Malformed XML
+    └── missing_fields/   # Missing required fields (future)
 ```
 
-**Total: 62 test fixtures** (organized from official test suites and standards)
-
-## Fixture Organization
-
-### Why Profile-Based Organization?
+## Why Profile-Based Organization?
 
 The einvoice library is **profile-aware**:
 - Parser auto-detects profiles from `GuidelineSpecifiedDocumentContextParameter` (BT-24)
@@ -38,6 +36,7 @@ The einvoice library is **profile-aware**:
 - Validation enforces profile-specific rules
 
 Organizing by profile makes tests simpler:
+
 ```go
 // Easy: Get all EN 16931 fixtures
 fixtures, _ := filepath.Glob("testdata/cii/en16931/*.xml")
@@ -137,64 +136,21 @@ func TestValidatePEPPOL(t *testing.T) {
 }
 ```
 
-## Coverage Goals
+## Coverage Gaps
 
-### Current Coverage (Baseline)
+Areas needing more test fixtures (UBL writer functions with low coverage):
 
-- **Total: 63.2%** (target: 80%)
-- Main package: 73.9%
-- cmd/einvoice: 28.5%
-- pkg/codelists: 100.0%
-
-### Coverage Gaps
-
-Areas needing more tests (UBL writer has most gaps):
-
-| Function                    | Coverage | Priority |
-|-----------------------------|----------|----------|
-| writeUBLLineAllowanceCharge | 0.0%     | HIGH     |
-| writeUBLPaymentMeans        | 4.2%     | HIGH     |
-| writeUBLPaymentTerms        | 14.3%    | HIGH     |
-| writeUBLLineItem            | 37.1%    | MEDIUM   |
-| writeUBLHeader              | 40.7%    | MEDIUM   |
-| writeUBLParties             | 43.8%    | MEDIUM   |
-| writeUBLParty               | 46.6%    | MEDIUM   |
-| writeUBLLinePrice           | 50.0%    | MEDIUM   |
-| writeUBLLines               | 55.2%    | MEDIUM   |
-
-**Action**: More round-trip tests with UBL fixtures covering:
-- Payment means (credit transfer, direct debit, card, SEPA)
-- Payment terms
-- Line-level allowances/charges
-- Complex party structures
-- Line item variations
-
-## Fixture Sources
-
-All fixtures are sourced from official standards and test suites:
-
-- **ZUGFeRD 2.3.3 Official Examples**: https://www.ferd-net.de/download-zugferd
-  - All profiles: Minimum (2), BasicWL (2), Basic (3), EN16931 (6), Extended (4), XRechnung (3)
-  - Total: 20 files covering complete ZUGFeRD/Factur-X profile range
-
-- **EN 16931 Test Suite**: https://github.com/ConnectingEurope/eInvoicing-EN16931
-  - CII examples (10 files in `cii/en16931/`, 1 file in `cii/xrechnung/`)
-  - UBL examples (10 invoices + 1 credit note in `ubl/`)
-
-- **UBL 2.1 OASIS Specification**: https://docs.oasis-open.org/ubl/
-  - Official UBL 2.1 Invoice and CreditNote examples (2 files)
-
-- **PEPPOL BIS Billing 3.0**: https://github.com/OpenPEPPOL/peppol-bis-invoice-3
-  - Base examples, VAT categories, national examples (11 files in `peppol/valid/`)
-
-- **horstoeko/zugferd**: https://github.com/horstoeko/zugferd
-  - Additional test files (3 files) and invalid examples for negative testing (2 files)
-
-See [SOURCES.md](SOURCES.md) for detailed provenance tracking with commit hashes.
-
-## Updating Fixtures
-
-Fixtures update rarely. See [SOURCES.md](SOURCES.md) for the manual update process when upstream test suites are updated.
+| Function                    | Coverage | Priority | Needed Fixtures |
+|-----------------------------|----------|----------|-----------------|
+| writeUBLLineAllowanceCharge | 0.0%     | HIGH     | Line-level allowances/charges |
+| writeUBLPaymentMeans        | 4.2%     | HIGH     | Credit transfer, direct debit, card, SEPA |
+| writeUBLPaymentTerms        | 14.3%    | HIGH     | Payment terms with various conditions |
+| writeUBLLineItem            | 37.1%    | MEDIUM   | Line item variations |
+| writeUBLHeader              | 40.7%    | MEDIUM   | Header field variations |
+| writeUBLParties             | 43.8%    | MEDIUM   | Complex party structures |
+| writeUBLParty               | 46.6%    | MEDIUM   | Party field combinations |
+| writeUBLLinePrice           | 50.0%    | MEDIUM   | Price variations |
+| writeUBLLines               | 55.2%    | MEDIUM   | Multiple line scenarios |
 
 ## Adding Custom Fixtures
 
@@ -202,28 +158,14 @@ You can add custom fixtures alongside official ones:
 
 1. Place in appropriate directory (by profile/format)
 2. Use descriptive filenames: `custom-<description>.xml`
-3. Document in a comment at top of file:
+3. Document in XML comment header:
    ```xml
    <!-- Custom test fixture for testing <specific scenario> -->
    ```
 
-## Testing Commands
+## Status
 
-```bash
-# Run all tests
-go test ./...
-
-# Run tests with coverage
-go test -coverprofile=coverage.out ./...
-
-# View coverage in browser
-go tool cover -html=coverage.out
-```
-
-## Notes
-
-- **Profile coverage**: All ZUGFeRD profiles (Minimum, BasicWL, Basic, EN16931, Extended, XRechnung) now have official test fixtures
-- **Negative tests**: `negative/malformed/` directory contains invalid XML examples for error handling tests
-- **Parser robustness**: Parser should handle fixtures gracefully even if they have validation violations
-- **Format auto-detection**: Parser automatically detects CII vs UBL format
-- **Total fixtures**: 62 XML files across all profiles, formats, and document types
+- ✅ All ZUGFeRD profiles (Minimum, BasicWL, Basic, EN16931, Extended, XRechnung) have official test fixtures
+- ✅ UBL 2.1 Invoice and CreditNote formats covered
+- ✅ PEPPOL BIS Billing 3.0 validation examples included
+- ⚠️  UBL writer functions need more coverage (see table above)
