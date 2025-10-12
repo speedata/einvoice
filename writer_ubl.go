@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"time"
@@ -175,7 +176,19 @@ func writeUBLHeader(inv *Invoice, root *etree.Element, prefix string) {
 			externalRef.CreateElement("cbc:URI").SetText(doc.URIID)
 		}
 
-		// TODO: Handle embedded binary objects
+		// BT-125: Handle embedded binary objects (only write if data exists - PEPPOL-EN16931-R008)
+		if len(doc.AttachmentBinaryObject) > 0 {
+			attachment := addDocRef.CreateElement("cac:Attachment")
+			embeddedDoc := attachment.CreateElement("cbc:EmbeddedDocumentBinaryObject")
+
+			if doc.AttachmentMimeCode != "" {
+				embeddedDoc.CreateAttr("mimeCode", doc.AttachmentMimeCode)
+			}
+			if doc.AttachmentFilename != "" {
+				embeddedDoc.CreateAttr("filename", doc.AttachmentFilename)
+			}
+			embeddedDoc.SetText(base64.StdEncoding.EncodeToString(doc.AttachmentBinaryObject))
+		}
 	}
 
 	// BT-72: Actual delivery date (in Delivery element, handled in writeUBLParties)
