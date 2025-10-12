@@ -3,9 +3,78 @@ package einvoice
 import (
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/speedata/cxpath"
 )
+
+// parseCIITime parses CII format dates (YYYYMMDD) into time.Time.
+func parseCIITime(ctx *cxpath.Context, path string) (time.Time, error) {
+	timestring := ctx.Eval(path).String()
+	if timestring == "" {
+		return time.Time{}, nil
+	}
+
+	parsedDate, err := time.Parse("20060102", timestring)
+	if err != nil {
+		return parsedDate, fmt.Errorf("%w", err)
+	}
+
+	return parsedDate, nil
+}
+
+// parseCIIParty parses a party (buyer, seller, payee, etc.) from CII format.
+// Uses CII-specific XPath with ram: namespace prefixes.
+func parseCIIParty(tradeParty *cxpath.Context) Party {
+	adr := Party{}
+	for id := range tradeParty.Each("ram:ID") {
+		adr.ID = append(adr.ID, id.String())
+	}
+
+	for gid := range tradeParty.Each("ram:GlobalID") {
+		scheme := GlobalID{
+			Scheme: gid.Eval("@schemeID").String(),
+			ID:     gid.String(),
+		}
+		adr.GlobalID = append(adr.GlobalID, scheme)
+	}
+
+	adr.Name = tradeParty.Eval("ram:Name").String()
+
+	if tradeParty.Eval("count(ram:SpecifiedLegalOrganization) > 0").Bool() {
+		slo := SpecifiedLegalOrganization{}
+		slo.ID = tradeParty.Eval("ram:SpecifiedLegalOrganization/ram:ID").String()
+		slo.Scheme = tradeParty.Eval("ram:SpecifiedLegalOrganization/ram:ID/@schemeID").String()
+		slo.TradingBusinessName = tradeParty.Eval("ram:SpecifiedLegalOrganization/ram:TradingBusinessName").String()
+		adr.SpecifiedLegalOrganization = &slo
+	}
+
+	for dtc := range tradeParty.Each("ram:DefinedTradeContact") {
+		contact := DefinedTradeContact{}
+		contact.EMail = dtc.Eval("ram:EmailURIUniversalCommunication/ram:URIID").String()
+		contact.PhoneNumber = dtc.Eval("ram:TelephoneUniversalCommunication/ram:CompleteNumber").String()
+		contact.PersonName = dtc.Eval("ram:PersonName").String()
+		adr.DefinedTradeContact = append(adr.DefinedTradeContact, contact)
+	}
+
+	if tradeParty.Eval("count(ram:PostalTradeAddress)").Int() > 0 {
+		postalAddress := &PostalAddress{
+			PostcodeCode:           tradeParty.Eval("ram:PostalTradeAddress/ram:PostcodeCode").String(),
+			Line1:                  tradeParty.Eval("ram:PostalTradeAddress/ram:LineOne").String(),
+			Line2:                  tradeParty.Eval("ram:PostalTradeAddress/ram:LineTwo").String(),
+			Line3:                  tradeParty.Eval("ram:PostalTradeAddress/ram:LineThree").String(),
+			City:                   tradeParty.Eval("ram:PostalTradeAddress/ram:CityName").String(),
+			CountryID:              tradeParty.Eval("ram:PostalTradeAddress/ram:CountryID").String(),
+			CountrySubDivisionName: tradeParty.Eval("ram:PostalTradeAddress/ram:CountrySubDivisionName").String(),
+		}
+		adr.PostalAddress = postalAddress
+	}
+
+	adr.FCTaxRegistration = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='FC']").String()
+	adr.VATaxRegistration = tradeParty.Eval("ram:SpecifiedTaxRegistration/ram:ID[@schemeID='VA']").String()
+
+	return adr
+}
 
 // parseCII interprets the XML file as a ZUGFeRD or Factur-X cross industry invoice.
 // It sets up CII-specific namespaces and parses the document structure.
@@ -52,7 +121,7 @@ func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, inv *Invoice) 
 	inv.InvoiceNumber = exchangedDocument.Eval("ram:ID/text()").String()
 	inv.InvoiceTypeCode = CodeDocument(exchangedDocument.Eval("ram:TypeCode").Int())
 
-	invoiceDate, err := parseTime(exchangedDocument, "ram:IssueDateTime/udt:DateTimeString")
+	invoiceDate, err := parseCIITime(exchangedDocument, "ram:IssueDateTime/udt:DateTimeString")
 	if err != nil {
 		return err
 	}
@@ -141,8 +210,8 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		if err != nil {
 			return err
 		}
-		invoiceLine.BillingSpecifiedPeriodStart, _ = parseTime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
-		invoiceLine.BillingSpecifiedPeriodEnd, _ = parseTime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
+		invoiceLine.BillingSpecifiedPeriodStart, _ = parseCIITime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
+		invoiceLine.BillingSpecifiedPeriodEnd, _ = parseCIITime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
 
 		inv.InvoiceLines = append(inv.InvoiceLines, invoiceLine)
 	}
@@ -165,11 +234,11 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 	inv.BuyerOrderReferencedDocument = applicableHeaderTradeAgreement.Eval("ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID").String() // BT-13
 	// BT-12
 	inv.ContractReferencedDocument = applicableHeaderTradeAgreement.Eval("ram:ContractReferencedDocument/ram:IssuerAssignedID").String() // BT-13
-	inv.Buyer = parseParty(applicableHeaderTradeAgreement.Eval("ram:BuyerTradeParty"))
-	inv.Seller = parseParty(applicableHeaderTradeAgreement.Eval("ram:SellerTradeParty"))
+	inv.Buyer = parseCIIParty(applicableHeaderTradeAgreement.Eval("ram:BuyerTradeParty"))
+	inv.Seller = parseCIIParty(applicableHeaderTradeAgreement.Eval("ram:SellerTradeParty"))
 
 	if applicableHeaderTradeAgreement.Eval("count(ram:SellerTaxRepresentativeTradeParty)").Int() > 0 {
-		trp := parseParty(applicableHeaderTradeAgreement.Eval("ram:SellerTaxRepresentativeTradeParty"))
+		trp := parseCIIParty(applicableHeaderTradeAgreement.Eval("ram:SellerTaxRepresentativeTradeParty"))
 		inv.SellerTaxRepresentativeTradeParty = &trp
 	}
 
@@ -201,10 +270,10 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 func parseCIIApplicableHeaderTradeDelivery(applicableHeaderTradeDelivery *cxpath.Context, inv *Invoice) {
 	inv.DespatchAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:DespatchAdviceReferencedDocument").String()
 	// BT-72
-	inv.OccurrenceDateTime, _ = parseTime(applicableHeaderTradeDelivery, "ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString")
+	inv.OccurrenceDateTime, _ = parseCIITime(applicableHeaderTradeDelivery, "ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString")
 
 	if applicableHeaderTradeDelivery.Eval("count(ram:ShipToTradeParty)").Int() > 0 {
-		st := parseParty(applicableHeaderTradeDelivery.Eval("ram:ShipToTradeParty"))
+		st := parseCIIParty(applicableHeaderTradeDelivery.Eval("ram:ShipToTradeParty"))
 		inv.ShipTo = &st
 	}
 }
@@ -217,7 +286,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	inv.CreditorReferenceID = applicableHeaderTradeSettlement.Eval("ram:CreditorReferenceID").String()
 	// BG-10
 	if applicableHeaderTradeSettlement.Eval("count(ram:PayeeTradeParty)").Int() > 0 {
-		ptp := parseParty(applicableHeaderTradeSettlement.Eval("ram:PayeeTradeParty"))
+		ptp := parseCIIParty(applicableHeaderTradeSettlement.Eval("ram:PayeeTradeParty"))
 		inv.PayeeTradeParty = &ptp
 	}
 
@@ -268,14 +337,14 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		}
 		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, allowanceCharge)
 	}
-	inv.BillingSpecifiedPeriodStart, _ = parseTime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
-	inv.BillingSpecifiedPeriodEnd, _ = parseTime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
+	inv.BillingSpecifiedPeriodStart, _ = parseCIITime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
+	inv.BillingSpecifiedPeriodEnd, _ = parseCIITime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString")
 
 	// ram:SpecifiedTradePaymentTerms
 	for paymentTerm := range applicableHeaderTradeSettlement.Each("ram:SpecifiedTradePaymentTerms") {
 		spt := SpecifiedTradePaymentTerms{}
 		spt.Description = paymentTerm.Eval("ram:Description").String()
-		spt.DueDate, err = parseTime(paymentTerm, "ram:DueDateDateTime/udt:DateTimeString")
+		spt.DueDate, err = parseCIITime(paymentTerm, "ram:DueDateDateTime/udt:DateTimeString")
 
 		if err != nil {
 			return err
@@ -352,7 +421,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	for refdoc := range applicableHeaderTradeSettlement.Each("ram:InvoiceReferencedDocument") {
 		refDoc := ReferencedDocument{}
 
-		refDoc.Date, err = parseTime(refdoc, "ram:FormattedIssueDateTime/qdt:DateTimeString")
+		refDoc.Date, err = parseCIITime(refdoc, "ram:FormattedIssueDateTime/qdt:DateTimeString")
 		if err != nil {
 			return err
 		}
