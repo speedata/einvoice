@@ -288,82 +288,28 @@ func BenchmarkParseCII(b *testing.B) {
 
 ### Fuzz Testing
 
-Fuzz testing uses Go 1.18+ native fuzzing to find crashes, panics, and edge cases by testing with randomized inputs.
+Fuzz testing uses Go 1.18+ native fuzzing to find crashes and edge cases.
 
 **Running fuzz tests:**
 ```bash
-# Run all fuzz tests for 30 seconds each
+# Run for 30 seconds
 go test -fuzz=FuzzParseCII -fuzztime=30s
-go test -fuzz=FuzzParseUBL -fuzztime=30s
-go test -fuzz=FuzzValidate -fuzztime=30s
-go test -fuzz=FuzzRoundTrip -fuzztime=30s
 
-# Run specific fuzz test for 5 minutes
+# Run for 5 minutes
 go test -fuzz=FuzzRoundTrip -fuzztime=5m
 
-# Run with specific number of iterations
+# Run specific number of iterations
 go test -fuzz=FuzzParseCII -fuzztime=100000x
 ```
 
-**Corpus management:**
-Fuzz tests automatically build a corpus of interesting inputs in `testdata/fuzz/`. The corpus is:
-- **Local only** - Not committed to git (see `.gitignore`)
-- **Auto-generated** - Created when you run fuzz tests
-- **Optional** - Used to optimize subsequent fuzz runs, but not required
-- **Seeded** - Valid fixtures from `testdata/cii/` and `testdata/ubl/` are used as initial seeds
+**Available fuzz tests:**
+- `parser_cii_test.go:FuzzParseCII` - CII parser
+- `parser_ubl_test.go:FuzzParseUBL` - UBL parser
+- `validation_test.go:FuzzValidate` - Validation logic
+- `einvoice_test.go:FuzzRoundTrip` - Full round-trip cycle
 
-The corpus is gitignored because it's temporary data that can be regenerated anytime. CI runs generate their own corpus during the 30-second fuzz runs.
-
-**Writing fuzz tests:**
-```go
-func FuzzParseCII(f *testing.F) {
-    // Seed corpus with valid CII XML files
-    seeds := []string{
-        "testdata/cii/minimum/zugferd-minimum-rechnung.xml",
-        "testdata/cii/en16931/zugferd_2p3_EN16931_1.xml",
-    }
-
-    for _, seed := range seeds {
-        data, err := os.ReadFile(seed)
-        if err == nil {
-            f.Add(data)  // Add seed to corpus
-        }
-    }
-
-    f.Fuzz(func(t *testing.T, data []byte) {
-        // Parser should never panic, even with invalid input
-        _, err := ParseReader(bytes.NewReader(data))
-        _ = err // Error is expected for invalid inputs
-    })
-}
-```
-
-**Fuzz test best practices:**
-- Seed with valid fixtures to guide mutation
-- Test that functions never panic (even with invalid input)
-- Keep fuzz functions simple - focus on "no crash" rather than correctness
-- Use `FuzzRoundTrip` pattern to test parse→write→parse integrity
-
-**Critical fuzz test - FuzzRoundTrip:**
-The most important fuzz test is `FuzzRoundTrip` in `einvoice_test.go`, which ensures:
-1. Any valid invoice that can be parsed
-2. Can be written to XML
-3. And the written XML can be parsed back successfully
-
-This guarantees round-trip integrity for all invoices.
-
-**Examples in codebase:**
-- `parser_cii_test.go:FuzzParseCII` - Fuzzes CII parser with 6 profile seeds
-- `parser_ubl_test.go:FuzzParseUBL` - Fuzzes UBL parser
-- `validation_test.go:FuzzValidate` - Fuzzes validation logic
-- `einvoice_test.go:FuzzRoundTrip` - **Critical:** Fuzzes full parse→write→parse cycle
-
-**Phase 1 fuzz test results:**
-All fuzz tests passed with no crashes or bugs found:
-- FuzzParseCII: 109,978 executions in 60s
-- FuzzParseUBL: 61 executions in 60s (slower due to large UBL files)
-- FuzzValidate: 578,194 executions in 60s
-- FuzzRoundTrip: 493,611 executions in 60s
+**Results:**
+All fuzz tests passed with no crashes found (Phase 1: 109K-578K executions each)
 
 ## Continuous Integration
 
