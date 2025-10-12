@@ -408,9 +408,9 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 			return err
 		}
 
-		tradeTax.Typ = subtotal.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String()
-		if tradeTax.Typ == "" {
-			tradeTax.Typ = "VAT" // Default to VAT
+		tradeTax.TypeCode = subtotal.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String()
+		if tradeTax.TypeCode == "" {
+			tradeTax.TypeCode = "VAT" // Default to VAT
 		}
 
 		tradeTax.CategoryCode = subtotal.Eval("cac:TaxCategory/cbc:ID").String()
