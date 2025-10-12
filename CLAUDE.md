@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Go library for reading, writing, and verifying electronic invoices (XML) conforming to the EN 16931 standard. It supports ZUGFeRD/Factur-X Cross Industry Invoice (CII) format. UBL format is not yet supported.
+This is a Go library for reading, writing, and verifying electronic invoices (XML) conforming to the EN 16931 standard. It supports both ZUGFeRD/Factur-X Cross Industry Invoice (CII) format and UBL 2.1 format (Invoice and CreditNote).
 
 ## Common Commands
 
@@ -53,10 +53,17 @@ Profiles are detected automatically via `GuidelineSpecifiedDocumentContextParame
 
 Helper methods: `IsMinimum()`, `IsBasicWL()`, `IsBasic()`, `IsEN16931()`, `IsExtended()`, `IsXRechnung()`, `ProfileLevel()` (returns int 0-5)
 
-**Parsing (`parser.go`)**
-- `ParseXMLFile(filename)`: Reads ZUGFeRD/Factur-X XML files
+**Parsing**
+- `ParseXMLFile(filename)`: Reads both CII and UBL XML files
 - `ParseReader(io.Reader)`: Parses from any reader
-- Uses XPath-based parsing via `github.com/speedata/cxpath`
+- **CII Parser (`parser.go`)**: ZUGFeRD/Factur-X format
+  - Uses XPath-based parsing via `github.com/speedata/cxpath`
+  - Date format: YYYYMMDD (20060102)
+- **UBL Parser (`parser_ubl.go`)**: UBL 2.1 Invoice and CreditNote
+  - Auto-detects Invoice vs CreditNote based on root element
+  - Date format: ISO 8601 (2006-01-02)
+  - Namespace handling: Direct `cac:` and `cbc:` prefixes (no document prefix concatenation)
+- Format auto-detection: Automatically recognizes CII or UBL based on root element
 - Automatically validates business rules during parsing
 
 **Calculation (`calculate.go`)**
@@ -120,12 +127,24 @@ Package structure:
 
 Rule naming: `BR-01` → `rules.BR1`, `BR-S-08` → `rules.BRS8`, `BR-CO-14` → `rules.BRCO14`
 
-**Writing (`writer.go`)**
-- `Invoice.Write(io.Writer)`: Outputs ZUGFeRD/Factur-X XML
+**Writing**
+- `Invoice.Write(io.Writer)`: Outputs XML in the format specified by `SchemaType` field
 - Uses `github.com/beevik/etree` for XML generation
-- Profile-aware: outputs fields based on `ProfileLevel()` method
-- Level constants: `levelMinimum`=1, `levelBasicWL`=2, `levelBasic`=3, `levelEN16931`=4, `levelExtended`=5
-- Helper functions: `formatPercent()`, `addTimeUDT()`, `addTimeQDT()`
+- **CII Writer (`writer_cii.go`)**: ZUGFeRD/Factur-X format
+  - Profile-aware: outputs fields based on `ProfileLevel()` method
+  - Level constants: `levelMinimum`=1, `levelBasicWL`=2, `levelBasic`=3, `levelEN16931`=4, `levelExtended`=5
+  - Helper functions: `formatPercent()`, `addTimeCIIUDT()`, `addTimeCIIQDT()`
+  - Date format: YYYYMMDD (20060102)
+- **UBL Writer (`writer_ubl.go`)**: UBL 2.1 Invoice and CreditNote
+  - Document type detection: InvoiceTypeCode 381 → CreditNote, 380 → Invoice
+  - Root element namespaces:
+    - Invoice: `urn:oasis:names:specification:ubl:schema:xsd:Invoice-2`
+    - CreditNote: `urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2`
+  - Common namespaces: `cac:` (CommonAggregateComponents-2), `cbc:` (CommonBasicComponents-2)
+  - Helper functions: `addTimeUBL()` (ISO 8601 date formatting)
+  - Modular structure: `writeUBLHeader()`, `writeUBLParties()`, `writeUBLAllowanceCharge()`, `writeUBLTaxTotal()`, `writeUBLMonetarySummation()`, `writeUBLPaymentMeans()`, `writeUBLPaymentTerms()`, `writeUBLLines()`
+  - Date format: ISO 8601 (2006-01-02)
+- Round-trip support: Written XML can be parsed back to verify correctness
 
 ### Key Design Patterns
 
@@ -147,10 +166,16 @@ Profiles are ordered by inclusiveness: Extended (5) > EN16931/PEPPOL/XRechnung (
 All monetary amounts use `github.com/shopspring/decimal` for exact arithmetic. Tax calculations round to 2 decimal places. VAT percentage formatting removes trailing zeros via regex.
 
 **XML Namespaces**
-- `rsm`: CrossIndustryInvoice:100
-- `ram`: ReusableAggregateBusinessInformationEntity:100
-- `udt`: UnqualifiedDataType:100
-- `qdt`: QualifiedDataType:100
+- **CII (ZUGFeRD/Factur-X)**:
+  - `rsm`: CrossIndustryInvoice:100
+  - `ram`: ReusableAggregateBusinessInformationEntity:100
+  - `udt`: UnqualifiedDataType:100
+  - `qdt`: QualifiedDataType:100
+- **UBL 2.1**:
+  - Invoice root: `urn:oasis:names:specification:ubl:schema:xsd:Invoice-2`
+  - CreditNote root: `urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2`
+  - `cac`: CommonAggregateComponents-2
+  - `cbc`: CommonBasicComponents-2
 
 ### BT/BG Field References
 
@@ -169,7 +194,10 @@ Comments in code reference these terms. When modifying calculations or validatio
 Always call `UpdateApplicableTradeTax()` before `UpdateTotals()` when modifying invoice data. TradeTaxes must be current before total calculations.
 
 **Time Parsing**
-Dates use format "20060102" (YYYYMMDD). Zero time values are treated as "not set" rather than errors.
+Dates use different formats depending on schema type:
+- CII (ZUGFeRD/Factur-X): "20060102" (YYYYMMDD)
+- UBL 2.1: "2006-01-02" (ISO 8601 YYYY-MM-DD)
+Zero time values are treated as "not set" rather than errors.
 
 **ChargeIndicator Boolean**
 In `AllowanceCharge`, `ChargeIndicator=false` means allowance/discount, `true` means charge. This affects sign in calculations.
