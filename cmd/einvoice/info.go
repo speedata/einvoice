@@ -383,10 +383,9 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 
 	if invoice.Buyer.PostalAddress != nil {
 		details.Buyer.Address = &AddressInfo{
-			Line1: invoice.Buyer.PostalAddress.Line1,
-			Line2: invoice.Buyer.PostalAddress.Line2,
-			Line3: invoice.Buyer.PostalAddress.Line3,
-
+			Line1:      invoice.Buyer.PostalAddress.Line1,
+			Line2:      invoice.Buyer.PostalAddress.Line2,
+			Line3:      invoice.Buyer.PostalAddress.Line3,
 			City:       invoice.Buyer.PostalAddress.City,
 			PostalCode: invoice.Buyer.PostalAddress.PostcodeCode,
 			Country:    invoice.Buyer.PostalAddress.CountryID,
