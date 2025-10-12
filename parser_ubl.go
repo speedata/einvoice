@@ -109,13 +109,13 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 
 	// BT-2: Invoice date
 	var err error
-	inv.InvoiceDate, err = parseTimeUBL(root, prefix+"cbc:IssueDate")
+	inv.InvoiceDate, err = parseTimeUBL(root, "cbc:IssueDate")
 	if err != nil {
 		return err
 	}
 
 	// BT-72: Actual delivery date (optional, in cac:Delivery)
-	inv.OccurrenceDateTime, _ = parseTimeUBL(root, prefix+"cac:Delivery/cbc:ActualDeliveryDate")
+	inv.OccurrenceDateTime, _ = parseTimeUBL(root, "cac:Delivery/cbc:ActualDeliveryDate")
 
 	// BT-5: Invoice currency
 	inv.InvoiceCurrencyCode = root.Eval("cbc:DocumentCurrencyCode").String()
@@ -167,9 +167,9 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BG-14: Invoice period (document level)
-	if root.Eval(fmt.Sprintf("count(%scac:InvoicePeriod)", prefix)).Int() > 0 {
-		inv.BillingSpecifiedPeriodStart, _ = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:StartDate")
-		inv.BillingSpecifiedPeriodEnd, _ = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:EndDate")
+	if root.Eval("count(cac:InvoicePeriod)").Int() > 0 {
+		inv.BillingSpecifiedPeriodStart, _ = parseTimeUBL(root, "cac:InvoicePeriod/cbc:StartDate")
+		inv.BillingSpecifiedPeriodEnd, _ = parseTimeUBL(root, "cac:InvoicePeriod/cbc:EndDate")
 	}
 
 	// BG-24: Additional supporting documents
@@ -199,33 +199,33 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 // parseUBLParties parses all party elements (BG-4, BG-7, BG-10, BG-11, BG-13).
 func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BG-4: Seller (AccountingSupplierParty)
-	inv.Seller = parseUBLParty(root, prefix+"cac:AccountingSupplierParty/cac:Party")
+	inv.Seller = parseUBLParty(root, "cac:AccountingSupplierParty/cac:Party")
 
 	// BG-7: Buyer (AccountingCustomerParty)
-	inv.Buyer = parseUBLParty(root, prefix+"cac:AccountingCustomerParty/cac:Party")
+	inv.Buyer = parseUBLParty(root, "cac:AccountingCustomerParty/cac:Party")
 
 	// BG-10: Payee (optional)
-	if root.Eval(fmt.Sprintf("count(%scac:PayeeParty)", prefix)).Int() > 0 {
-		payee := parseUBLParty(root, prefix+"cac:PayeeParty")
+	if root.Eval("count(cac:PayeeParty)").Int() > 0 {
+		payee := parseUBLParty(root, "cac:PayeeParty")
 		inv.PayeeTradeParty = &payee
 	}
 
 	// BG-11: Seller tax representative (optional)
-	if root.Eval(fmt.Sprintf("count(%scac:TaxRepresentativeParty)", prefix)).Int() > 0 {
-		taxRep := parseUBLParty(root, prefix+"cac:TaxRepresentativeParty")
+	if root.Eval("count(cac:TaxRepresentativeParty)").Int() > 0 {
+		taxRep := parseUBLParty(root, "cac:TaxRepresentativeParty")
 		inv.SellerTaxRepresentativeTradeParty = &taxRep
 	}
 
 	// BG-13: Delivery information (optional)
-	if root.Eval(fmt.Sprintf("count(%scac:Delivery)", prefix)).Int() > 0 {
+	if root.Eval("count(cac:Delivery)").Int() > 0 {
 		// Delivery party
-		if root.Eval(fmt.Sprintf("count(%scac:Delivery/cac:DeliveryParty)", prefix)).Int() > 0 {
-			shipTo := parseUBLParty(root, prefix+"cac:Delivery/cac:DeliveryParty")
+		if root.Eval("count(cac:Delivery/cac:DeliveryParty)").Int() > 0 {
+			shipTo := parseUBLParty(root, "cac:Delivery/cac:DeliveryParty")
 			inv.ShipTo = &shipTo
-		} else if root.Eval(fmt.Sprintf("count(%scac:Delivery/cac:DeliveryLocation)", prefix)).Int() > 0 {
+		} else if root.Eval("count(cac:Delivery/cac:DeliveryLocation)").Int() > 0 {
 			// If no DeliveryParty, create one from DeliveryLocation address
 			shipTo := Party{}
-			if root.Eval(fmt.Sprintf("count(%scac:Delivery/cac:DeliveryLocation/cac:Address)", prefix)).Int() > 0 {
+			if root.Eval("count(cac:Delivery/cac:DeliveryLocation/cac:Address)").Int() > 0 {
 				postalAddr := &PostalAddress{
 					Line1:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:StreetName").String(),
 					Line2:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:AdditionalStreetName").String(),
@@ -376,7 +376,7 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	var err error
-	inv.TaxTotal, err = getDecimal(root, prefix+"cac:TaxTotal/cbc:TaxAmount")
+	inv.TaxTotal, err = getDecimal(root, "cac:TaxTotal/cbc:TaxAmount")
 	if err != nil {
 		return err
 	}
