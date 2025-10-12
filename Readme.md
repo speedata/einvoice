@@ -140,18 +140,17 @@ fi
 
 ## Current status
 
-* Reading and writing of EN 16931 ZUGFeRD XML files is possible
+* **Reading and writing** of EN 16931 invoices in both formats:
+  - **ZUGFeRD/Factur-X** (CII format)
+  - **UBL 2.1** (Invoice and CreditNote)
 * Intelligent validation with auto-detection:
   - **EN 16931 Core Rules**: BR-1 to BR-65, BR-CO-*, BR-DEC-*
   - **VAT Category Rules**: BR-S-*, BR-AE-*, BR-E-*, BR-Z-*, BR-G-*, BR-IC-*, BR-IG-*, BR-IP-*, BR-O-*
   - **PEPPOL BIS Billing 3.0**: Auto-detected and validated (PEPPOL-EN16931-R*)
   - Single `Validate()` method handles all rule sets automatically
 * XML output for all ZUGFeRD profiles (Minimum, BasicWL, Basic, EN16931, Extended, XRechnung)
+* UBL 2.1 Invoice and CreditNote output with full EN 16931 compliance
 * Profile detection based on specification identifier URN (BT-24)
-
-## Limitations
-
-* No UBL based XML
-
-These points will be addressed. Stay tuned for updates!
+* Format auto-detection when parsing (automatically recognizes CII or UBL)
+* Round-trip support: parse and write back in the same format
 
