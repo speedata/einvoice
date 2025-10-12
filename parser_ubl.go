@@ -93,66 +93,66 @@ func parseUBL(ctx *cxpath.Context) (*Invoice, error) {
 // parseUBLHeader parses the document header elements (BT-1 to BT-24, BG-1, BG-3, BG-14, BG-24).
 func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BT-24: CustomizationID (Specification identifier)
-	inv.GuidelineSpecifiedDocumentContextParameter = root.Eval(prefix + "cbc:CustomizationID").String()
+	inv.GuidelineSpecifiedDocumentContextParameter = root.Eval("cbc:CustomizationID").String()
 
 	// BT-23: ProfileID (Business process type)
-	inv.BPSpecifiedDocumentContextParameter = root.Eval(prefix + "cbc:ProfileID").String()
+	inv.BPSpecifiedDocumentContextParameter = root.Eval("cbc:ProfileID").String()
 
 	// BT-1: Invoice number
-	inv.InvoiceNumber = root.Eval(prefix + "cbc:ID").String()
+	inv.InvoiceNumber = root.Eval("cbc:ID").String()
 
 	// BT-3: Invoice type code
-	inv.InvoiceTypeCode = CodeDocument(root.Eval(prefix + "cbc:InvoiceTypeCode").Int())
+	inv.InvoiceTypeCode = CodeDocument(root.Eval("cbc:InvoiceTypeCode").Int())
 	if inv.InvoiceTypeCode == 0 {
 		// Try CreditNoteTypeCode for credit notes
-		inv.InvoiceTypeCode = CodeDocument(root.Eval(prefix + "cbc:CreditNoteTypeCode").Int())
+		inv.InvoiceTypeCode = CodeDocument(root.Eval("cbc:CreditNoteTypeCode").Int())
 	}
 
 	// BT-2: Invoice date
 	var err error
-	inv.InvoiceDate, err = parseTimeUBL(root, prefix+"cbc:IssueDate")
+	inv.InvoiceDate, err = parseTimeUBL(root, "cbc:IssueDate")
 	if err != nil {
 		return err
 	}
 
 	// BT-72: Actual delivery date (optional, in cac:Delivery)
-	inv.OccurrenceDateTime, err = parseTimeUBL(root, prefix+"cac:Delivery/cbc:ActualDeliveryDate")
+	inv.OccurrenceDateTime, err = parseTimeUBL(root, "cac:Delivery/cbc:ActualDeliveryDate")
 	if err != nil {
 		return fmt.Errorf("invalid occurrence date time: %w", err)
 	}
 
 	// BT-5: Invoice currency
-	inv.InvoiceCurrencyCode = root.Eval(prefix + "cbc:DocumentCurrencyCode").String()
+	inv.InvoiceCurrencyCode = root.Eval("cbc:DocumentCurrencyCode").String()
 
 	// BT-6: Tax currency (optional)
-	inv.TaxCurrencyCode = root.Eval(prefix + "cbc:TaxCurrencyCode").String()
+	inv.TaxCurrencyCode = root.Eval("cbc:TaxCurrencyCode").String()
 
 	// BT-10: Buyer reference (optional)
-	inv.BuyerReference = root.Eval(prefix + "cbc:BuyerReference").String()
+	inv.BuyerReference = root.Eval("cbc:BuyerReference").String()
 
 	// BT-19: Accounting cost (Buyer accounting reference)
-	inv.ReceivableSpecifiedTradeAccountingAccount = root.Eval(prefix + "cbc:AccountingCost").String()
+	inv.ReceivableSpecifiedTradeAccountingAccount = root.Eval("cbc:AccountingCost").String()
 
 	// BT-13: Purchase order reference
-	inv.BuyerOrderReferencedDocument = root.Eval(prefix + "cac:OrderReference/cbc:ID").String()
+	inv.BuyerOrderReferencedDocument = root.Eval("cac:OrderReference/cbc:ID").String()
 
 	// BT-14: Sales order reference
-	inv.SellerOrderReferencedDocument = root.Eval(prefix + "cac:OrderReference/cbc:SalesOrderID").String()
+	inv.SellerOrderReferencedDocument = root.Eval("cac:OrderReference/cbc:SalesOrderID").String()
 
 	// BT-12: Contract document reference
-	inv.ContractReferencedDocument = root.Eval(prefix + "cac:ContractDocumentReference/cbc:ID").String()
+	inv.ContractReferencedDocument = root.Eval("cac:ContractDocumentReference/cbc:ID").String()
 
 	// BT-11: Project reference
-	inv.SpecifiedProcuringProjectID = root.Eval(prefix + "cac:ProjectReference/cbc:ID").String()
+	inv.SpecifiedProcuringProjectID = root.Eval("cac:ProjectReference/cbc:ID").String()
 
 	// BT-16: Despatch advice reference
-	inv.DespatchAdviceReferencedDocument = root.Eval(prefix + "cac:DespatchDocumentReference/cbc:ID").String()
+	inv.DespatchAdviceReferencedDocument = root.Eval("cac:DespatchDocumentReference/cbc:ID").String()
 
 	// BT-15: Receiving advice reference
-	inv.ReceivingAdviceReferencedDocument = root.Eval(prefix + "cac:ReceiptDocumentReference/cbc:ID").String()
+	inv.ReceivingAdviceReferencedDocument = root.Eval("cac:ReceiptDocumentReference/cbc:ID").String()
 
 	// BG-1: Process notes
-	for note := range root.Each(prefix + "cbc:Note") {
+	for note := range root.Each("cbc:Note") {
 		inv.Notes = append(inv.Notes, Note{
 			Text: note.String(),
 			// UBL doesn't typically have subject codes in Note elements
@@ -160,7 +160,7 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BG-3: Preceding invoice references
-	for ref := range root.Each(prefix + "cac:BillingReference/cac:InvoiceDocumentReference") {
+	for ref := range root.Each("cac:BillingReference/cac:InvoiceDocumentReference") {
 		refDoc := ReferencedDocument{
 			ID: ref.Eval("cbc:ID").String(),
 		}
@@ -174,19 +174,19 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BG-14: Invoice period (document level)
-	if root.Eval(fmt.Sprintf("count(%scac:InvoicePeriod)", prefix)).Int() > 0 {
-		inv.BillingSpecifiedPeriodStart, err = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:StartDate")
+	if root.Eval("count(cac:InvoicePeriod)").Int() > 0 {
+		inv.BillingSpecifiedPeriodStart, err = parseTimeUBL(root, "cac:InvoicePeriod/cbc:StartDate")
 		if err != nil {
 			return fmt.Errorf("invalid billing period start date: %w", err)
 		}
-		inv.BillingSpecifiedPeriodEnd, err = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:EndDate")
+		inv.BillingSpecifiedPeriodEnd, err = parseTimeUBL(root, "cac:InvoicePeriod/cbc:EndDate")
 		if err != nil {
 			return fmt.Errorf("invalid billing period end date: %w", err)
 		}
 	}
 
 	// BG-24: Additional supporting documents
-	for doc := range root.Each(prefix + "cac:AdditionalDocumentReference") {
+	for doc := range root.Each("cac:AdditionalDocumentReference") {
 		addDoc := Document{
 			IssuerAssignedID: doc.Eval("cbc:ID").String(),
 			TypeCode:         doc.Eval("cbc:DocumentTypeCode").String(),
@@ -217,41 +217,41 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 // parseUBLParties parses all party elements (BG-4, BG-7, BG-10, BG-11, BG-13).
 func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BG-4: Seller (AccountingSupplierParty)
-	inv.Seller = parseUBLParty(root, prefix+"cac:AccountingSupplierParty/cac:Party")
+	inv.Seller = parseUBLParty(root, "cac:AccountingSupplierParty/cac:Party")
 
 	// BG-7: Buyer (AccountingCustomerParty)
-	inv.Buyer = parseUBLParty(root, prefix+"cac:AccountingCustomerParty/cac:Party")
+	inv.Buyer = parseUBLParty(root, "cac:AccountingCustomerParty/cac:Party")
 
 	// BG-10: Payee (optional)
-	if root.Eval(fmt.Sprintf("count(%scac:PayeeParty)", prefix)).Int() > 0 {
-		payee := parseUBLParty(root, prefix+"cac:PayeeParty")
+	if root.Eval("count(cac:PayeeParty)").Int() > 0 {
+		payee := parseUBLParty(root, "cac:PayeeParty")
 		inv.PayeeTradeParty = &payee
 	}
 
 	// BG-11: Seller tax representative (optional)
-	if root.Eval(fmt.Sprintf("count(%scac:TaxRepresentativeParty)", prefix)).Int() > 0 {
-		taxRep := parseUBLParty(root, prefix+"cac:TaxRepresentativeParty")
+	if root.Eval("count(cac:TaxRepresentativeParty)").Int() > 0 {
+		taxRep := parseUBLParty(root, "cac:TaxRepresentativeParty")
 		inv.SellerTaxRepresentativeTradeParty = &taxRep
 	}
 
 	// BG-13: Delivery information (optional)
-	if root.Eval(fmt.Sprintf("count(%scac:Delivery)", prefix)).Int() > 0 {
+	if root.Eval("count(cac:Delivery)").Int() > 0 {
 		// Delivery party
-		if root.Eval(fmt.Sprintf("count(%scac:Delivery/cac:DeliveryParty)", prefix)).Int() > 0 {
-			shipTo := parseUBLParty(root, prefix+"cac:Delivery/cac:DeliveryParty")
+		if root.Eval("count(cac:Delivery/cac:DeliveryParty)").Int() > 0 {
+			shipTo := parseUBLParty(root, "cac:Delivery/cac:DeliveryParty")
 			inv.ShipTo = &shipTo
-		} else if root.Eval(fmt.Sprintf("count(%scac:Delivery/cac:DeliveryLocation)", prefix)).Int() > 0 {
+		} else if root.Eval("count(cac:Delivery/cac:DeliveryLocation)").Int() > 0 {
 			// If no DeliveryParty, create one from DeliveryLocation address
 			shipTo := Party{}
-			if root.Eval(fmt.Sprintf("count(%scac:Delivery/cac:DeliveryLocation/cac:Address)", prefix)).Int() > 0 {
+			if root.Eval("count(cac:Delivery/cac:DeliveryLocation/cac:Address)").Int() > 0 {
 				postalAddr := &PostalAddress{
-					Line1:                  root.Eval(prefix + "cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:StreetName").String(),
-					Line2:                  root.Eval(prefix + "cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:AdditionalStreetName").String(),
-					Line3:                  root.Eval(prefix + "cac:Delivery/cac:DeliveryLocation/cac:Address/cac:AddressLine/cbc:Line").String(),
-					City:                   root.Eval(prefix + "cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:CityName").String(),
-					PostcodeCode:           root.Eval(prefix + "cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:PostalZone").String(),
-					CountrySubDivisionName: root.Eval(prefix + "cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:CountrySubentity").String(),
-					CountryID:              root.Eval(prefix + "cac:Delivery/cac:DeliveryLocation/cac:Address/cac:Country/cbc:IdentificationCode").String(),
+					Line1:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:StreetName").String(),
+					Line2:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:AdditionalStreetName").String(),
+					Line3:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cac:AddressLine/cbc:Line").String(),
+					City:                   root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:CityName").String(),
+					PostcodeCode:           root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:PostalZone").String(),
+					CountrySubDivisionName: root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:CountrySubentity").String(),
+					CountryID:              root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cac:Country/cbc:IdentificationCode").String(),
 				}
 				shipTo.PostalAddress = postalAddr
 			}
@@ -344,7 +344,7 @@ func parseUBLParty(ctx *cxpath.Context, partyPath string) Party {
 
 // parseUBLAllowanceCharge parses document-level allowances and charges (BG-20, BG-21).
 func parseUBLAllowanceCharge(root *cxpath.Context, inv *Invoice, prefix string) error {
-	for ac := range root.Each(prefix + "cac:AllowanceCharge") {
+	for ac := range root.Each("cac:AllowanceCharge") {
 		chargeIndicator := ac.Eval("string(cbc:ChargeIndicator) = 'true'").Bool()
 
 		basisAmount, err := getDecimal(ac, "cbc:BaseAmount")
@@ -388,13 +388,13 @@ func parseUBLAllowanceCharge(root *cxpath.Context, inv *Invoice, prefix string) 
 // parseUBLTaxTotal parses the tax breakdown (BG-23).
 func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BT-110: Total tax amount (document currency)
-	inv.TaxTotalCurrency = root.Eval(prefix + "cac:TaxTotal/cbc:TaxAmount/@currencyID").String()
+	inv.TaxTotalCurrency = root.Eval("cac:TaxTotal/cbc:TaxAmount/@currencyID").String()
 	if inv.TaxTotalCurrency == "" {
 		inv.TaxTotalCurrency = inv.InvoiceCurrencyCode
 	}
 
 	var err error
-	inv.TaxTotal, err = getDecimal(root, prefix+"cac:TaxTotal/cbc:TaxAmount")
+	inv.TaxTotal, err = getDecimal(root, "cac:TaxTotal/cbc:TaxAmount")
 	if err != nil {
 		return err
 	}
@@ -402,7 +402,7 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BT-111: Tax total in accounting currency (if different)
 	if inv.TaxCurrencyCode != "" && inv.TaxCurrencyCode != inv.InvoiceCurrencyCode {
 		// Find TaxTotal with accounting currency
-		for taxTotal := range root.Each(prefix + "cac:TaxTotal") {
+		for taxTotal := range root.Each("cac:TaxTotal") {
 			currency := taxTotal.Eval("cbc:TaxAmount/@currencyID").String()
 			if currency == inv.TaxCurrencyCode {
 				inv.TaxTotalVAT, _ = getDecimal(taxTotal, "cbc:TaxAmount")
@@ -413,7 +413,7 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BG-23: VAT breakdown (TaxSubtotal elements)
-	for subtotal := range root.Each(prefix + "cac:TaxTotal/cac:TaxSubtotal") {
+	for subtotal := range root.Each("cac:TaxTotal/cac:TaxSubtotal") {
 		tradeTax := TradeTax{}
 
 		tradeTax.BasisAmount, err = getDecimal(subtotal, "cbc:TaxableAmount")
@@ -449,7 +449,7 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 
 // parseUBLMonetarySummation parses the monetary totals (BT-106 to BT-115).
 func parseUBLMonetarySummation(root *cxpath.Context, inv *Invoice, prefix string) error {
-	legalMonetaryTotal := root.Eval(prefix + "cac:LegalMonetaryTotal")
+	legalMonetaryTotal := root.Eval("cac:LegalMonetaryTotal")
 
 	// Track XML element presence for BR-12 through BR-15 validation
 	inv.hasLineTotalInXML = legalMonetaryTotal.Eval("count(cbc:LineExtensionAmount)").Int() > 0
@@ -512,7 +512,7 @@ func parseUBLMonetarySummation(root *cxpath.Context, inv *Invoice, prefix string
 
 // parseUBLPaymentMeans parses payment means elements (BG-16, BG-17, BG-18, BG-19).
 func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) error {
-	for pm := range root.Each(prefix + "cac:PaymentMeans") {
+	for pm := range root.Each("cac:PaymentMeans") {
 		paymentMeans := PaymentMeans{
 			TypeCode:    pm.Eval("cbc:PaymentMeansCode").Int(),
 			Information: pm.Eval("cbc:InstructionNote").String(),
@@ -548,7 +548,7 @@ func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) err
 
 // parseUBLPaymentTerms parses payment terms (BT-20, BT-9, BT-89).
 func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) error {
-	for pt := range root.Each(prefix + "cac:PaymentTerms") {
+	for pt := range root.Each("cac:PaymentTerms") {
 		paymentTerm := SpecifiedTradePaymentTerms{
 			Description: pt.Eval("cbc:Note").String(),
 		}
@@ -571,7 +571,7 @@ func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) err
 
 // parseUBLLines parses all invoice line items (BG-25).
 func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
-	for lineItem := range root.Each(prefix + "cac:InvoiceLine") {
+	for lineItem := range root.Each("cac:InvoiceLine") {
 		invoiceLine := InvoiceLine{}
 		var err error
 
