@@ -110,6 +110,7 @@ type TaxInfo struct {
 	BasisAmount      string `json:"basis_amount,omitempty"`
 }
 
+// ChargeAllowanceInfo contains charge/allowance details
 type ChargeAllowanceInfo struct {
 	ChargeIndicator bool   `json:"charge_indicator"`
 	Amount          string `json:"amount"`

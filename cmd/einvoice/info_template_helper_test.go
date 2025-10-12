@@ -121,8 +121,8 @@ func TestWrapTextIndent(t *testing.T) {
 				chk(t, got)
 			}
 
-			// Sanity-Check: Nur wenn alle Wörter <= width sind,
-			// müssen die erzeugten Zeilen <= width bleiben.
+			// Sanity check: Only when all words are <= width, the produced
+			// lines must remain <= width.
 			if tc.width >= 1 && tc.want == "" {
 				words := strings.Fields(tc.text)
 				maxWordLen := 0
