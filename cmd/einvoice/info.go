@@ -34,23 +34,24 @@ type NoteInfo struct {
 
 // InvoiceDetails contains detailed invoice information
 type InvoiceDetails struct {
-	Number                       string      `json:"number"`
-	Date                         string      `json:"date"`
-	Type                         string      `json:"type"`
-	Profile                      string      `json:"profile"`
-	ProfileURN                   string      `json:"profile_urn,omitempty"`
-	BusinessProcess              string      `json:"business_process,omitempty"`
-	Currency                     string      `json:"currency"`
-	BuyerOrderReferencedDocument string      `json:"buyer_order_referenced_document,omitempty"`
-	Seller                       *PartyInfo  `json:"seller"`
-	Buyer                        *PartyInfo  `json:"buyer"`
-	Lines                        []LineInfo  `json:"lines,omitempty"`
-	LineCount                    int         `json:"line_count"`
-	Totals                       *TotalsInfo `json:"totals"`
-	PaymentTerms                 []string    `json:"payment_terms,omitempty"`
-	TradeTax                     []TaxInfo   `json:"trade_tax,omitempty"`
-	Notes                        []NoteInfo  `json:"notes,omitempty"`
-	TermWidth                    int         `json:"-"`
+	Number                       string                `json:"number"`
+	Date                         string                `json:"date"`
+	Type                         string                `json:"type"`
+	Profile                      string                `json:"profile"`
+	ProfileURN                   string                `json:"profile_urn,omitempty"`
+	BusinessProcess              string                `json:"business_process,omitempty"`
+	Currency                     string                `json:"currency"`
+	BuyerOrderReferencedDocument string                `json:"buyer_order_referenced_document,omitempty"`
+	Seller                       *PartyInfo            `json:"seller"`
+	Buyer                        *PartyInfo            `json:"buyer"`
+	Lines                        []LineInfo            `json:"lines,omitempty"`
+	LineCount                    int                   `json:"line_count"`
+	Totals                       *TotalsInfo           `json:"totals"`
+	PaymentTerms                 []string              `json:"payment_terms,omitempty"`
+	TradeTax                     []TaxInfo             `json:"trade_tax,omitempty"`
+	ChargeAllowances             []ChargeAllowanceInfo `json:"charge_allowances,omitempty"`
+	Notes                        []NoteInfo            `json:"notes,omitempty"`
+	TermWidth                    int                   `json:"-"`
 }
 
 // PartyInfo contains party details
@@ -106,6 +107,16 @@ type TaxInfo struct {
 	ExemptionReason  string `json:"exemption_reason,omitempty"`
 	ExemptionCode    string `json:"exemption_code,omitempty"`
 	BasisAmount      string `json:"basis_amount,omitempty"`
+}
+
+type ChargeAllowanceInfo struct {
+	ChargeIndicator bool   `json:"charge_indicator"`
+	Amount          string `json:"amount"`
+	Reason          string `json:"reason,omitempty"`
+	Type            string `json:"type,omitempty"`
+	Category        string `json:"category,omitempty"`
+	Percent         string `json:"percent,omitempty"`
+	BasisAmount     string `json:"basis_amount,omitempty"`
 }
 
 func detectTerminalWidth() int {
@@ -436,7 +447,7 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 		taxInfo := TaxInfo{
 			CalculatedAmount: tax.CalculatedAmount.StringFixed(2),
 			Percent:          tax.Percent.String(),
-			Type:             tax.Typ,
+			Type:             tax.TypeCode,
 			Category:         tax.CategoryCode,
 			ExemptionCode:    tax.ExemptionReasonCode,
 			ExemptionReason:  tax.ExemptionReason,
@@ -445,6 +456,19 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 		details.TradeTax = append(details.TradeTax, taxInfo)
 	}
 
+	// Extract charge/allowance information
+	for _, ca := range invoice.SpecifiedTradeAllowanceCharge {
+		caInfo := ChargeAllowanceInfo{
+			ChargeIndicator: ca.ChargeIndicator,
+			Amount:          ca.ActualAmount.StringFixed(2),
+			Reason:          ca.Reason,
+			Type:            ca.CategoryTradeTaxType,
+			Category:        ca.CategoryTradeTaxCategoryCode,
+			BasisAmount:     ca.BasisAmount.StringFixed(2),
+			Percent:         ca.CalculationPercent.String(),
+		}
+		details.ChargeAllowances = append(details.ChargeAllowances, caInfo)
+	}
 	details.TermWidth = detectTerminalWidth()
 	info.Invoice = details
 

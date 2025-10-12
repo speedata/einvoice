@@ -123,14 +123,36 @@ No tax information available.
 {{ if .Totals.RoundingAmount }}{{ padmiddle "Rounding:"  (printf "%s %s" .Totals.RoundingAmount ) $wd }}{{ end }}
 {{ padmiddle "Due Amount:"  (printf "%s %s" .Totals.DuePayableAmount .Currency) $wd }}
 
-{{if .PaymentTerms }}
+{{- /* ChargeAllowance */ -}}
+{{/*
+	ChargeIndicator bool   `json:"charge_indicator"`
+	Amount          string `json:"amount"`
+	Reason          string `json:"reason,omitempty"`
+	Type            string `json:"type,omitempty"`
+	Category        string `json:"category,omitempty"`
+	Percent         string `json:"percent,omitempty"`
+	BasisAmount     string `json:"basis_amount,omitempty"`
+}
+*/ -}}
+{{ if .ChargeAllowances }}
+
+{{ underline "Charge / Allowance Details" }}
+  {{ padright "Type" 10 }}{{ padright "Category" 10 }}{{ padright "Percent" 8 }}{{ padright "Basis" 15 }}{{ padright "Amount" 15 }}Reason
+{{- range .ChargeAllowances }}
+{{if .ChargeIndicator }}C{{ else }}A{{ end }} {{ padright .Type 9 }} {{ padright .Category 10 }}{{ padright (printf "%s%%" .Percent) 8 }}{{ padright (printf "%s %s" .BasisAmount $.Currency) 15 }}{{ padright (printf "%s %s" .Amount $.Currency) 15 }}{{ if .Reason }}{{ .Reason }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if .PaymentTerms }}
+
 {{ underline "Payment Terms" }}
 {{- range .PaymentTerms }}
 {{ wrap . $w 0}}
 {{- end }}
 {{- end }}
 
-{{ if .Notes }}
+{{- if .Notes }}
+
 {{ underline "Notes" }}
 {{- range $i, $n := .Notes }}
 Note {{ add $i 1 }}: {{if $n.SubjectQualifier }}{{ $n.SubjectQualifier }}{{ else }}General{{ end }}
