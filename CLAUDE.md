@@ -130,10 +130,10 @@ Rule naming: `BR-01` → `rules.BR1`, `BR-S-08` → `rules.BRS8`, `BR-CO-14` →
 **Writing**
 - `Invoice.Write(io.Writer)`: Outputs XML in the format specified by `SchemaType` field
 - Uses `github.com/beevik/etree` for XML generation
-- **CII Writer (`writer.go`)**: ZUGFeRD/Factur-X format
+- **CII Writer (`writer_cii.go`)**: ZUGFeRD/Factur-X format
   - Profile-aware: outputs fields based on `ProfileLevel()` method
   - Level constants: `levelMinimum`=1, `levelBasicWL`=2, `levelBasic`=3, `levelEN16931`=4, `levelExtended`=5
-  - Helper functions: `formatPercent()`, `addTimeUDT()`, `addTimeQDT()`
+  - Helper functions: `formatPercent()`, `addTimeCIIUDT()`, `addTimeCIIQDT()`
   - Date format: YYYYMMDD (20060102)
 - **UBL Writer (`writer_ubl.go`)**: UBL 2.1 Invoice and CreditNote
   - Document type detection: InvoiceTypeCode 381 → CreditNote, 380 → Invoice

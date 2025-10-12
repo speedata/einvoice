@@ -8,15 +8,15 @@ import (
 	"github.com/beevik/etree"
 )
 
-// addTimeQDT adds a date in QDT format (YYYYMMDD) to the parent element.
-func addTimeQDT(parent *etree.Element, date time.Time) {
+// addTimeCIIQDT adds a date in CII QDT format (YYYYMMDD) to the parent element.
+func addTimeCIIQDT(parent *etree.Element, date time.Time) {
 	udtdts := parent.CreateElement("qdt:DateTimeString")
 	udtdts.CreateAttr("format", "102")
 	udtdts.CreateText(date.Format("20060102"))
 }
 
-// addTimeUDT adds a date in UDT format (YYYYMMDD) to the parent element.
-func addTimeUDT(parent *etree.Element, date time.Time) {
+// addTimeCIIUDT adds a date in CII UDT format (YYYYMMDD) to the parent element.
+func addTimeCIIUDT(parent *etree.Element, date time.Time) {
 	udtdts := parent.CreateElement("udt:DateTimeString")
 	udtdts.CreateAttr("format", "102")
 	udtdts.CreateText(date.Format("20060102"))
@@ -96,10 +96,10 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	if !invoiceLine.BillingSpecifiedPeriodStart.IsZero() || !invoiceLine.BillingSpecifiedPeriodEnd.IsZero() {
 		bsp := slts.CreateElement("ram:BillingSpecifiedPeriod")
 		if !invoiceLine.BillingSpecifiedPeriodStart.IsZero() {
-			addTimeUDT(bsp.CreateElement("ram:StartDateTime"), invoiceLine.BillingSpecifiedPeriodStart)
+			addTimeCIIUDT(bsp.CreateElement("ram:StartDateTime"), invoiceLine.BillingSpecifiedPeriodStart)
 		}
 		if !invoiceLine.BillingSpecifiedPeriodEnd.IsZero() {
-			addTimeUDT(bsp.CreateElement("ram:EndDateTime"), invoiceLine.BillingSpecifiedPeriodEnd)
+			addTimeCIIUDT(bsp.CreateElement("ram:EndDateTime"), invoiceLine.BillingSpecifiedPeriodEnd)
 		}
 	}
 
@@ -297,7 +297,7 @@ func writeCIIramApplicableHeaderTradeDelivery(inv *Invoice, parent *etree.Elemen
 	if is(levelBasic, inv) && !inv.OccurrenceDateTime.IsZero() {
 		// BT-72
 		odt := elt.CreateElement("ram:ActualDeliverySupplyChainEvent").CreateElement("ram:OccurrenceDateTime")
-		addTimeUDT(odt, inv.OccurrenceDateTime)
+		addTimeCIIUDT(odt, inv.OccurrenceDateTime)
 	}
 }
 
@@ -432,11 +432,11 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		// Only write non-zero dates to avoid invalid XML dates like "00010101"
 		if !inv.BillingSpecifiedPeriodStart.IsZero() {
 			dt := bsp.CreateElement("ram:StartDateTime")
-			addTimeUDT(dt, inv.BillingSpecifiedPeriodStart)
+			addTimeCIIUDT(dt, inv.BillingSpecifiedPeriodStart)
 		}
 		if !inv.BillingSpecifiedPeriodEnd.IsZero() {
 			dt := bsp.CreateElement("ram:EndDateTime")
-			addTimeUDT(dt, inv.BillingSpecifiedPeriodEnd)
+			addTimeCIIUDT(dt, inv.BillingSpecifiedPeriodEnd)
 		}
 	}
 	// BT-20
@@ -447,7 +447,7 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		}
 		// BT-9
 		if !paymentTerm.DueDate.IsZero() {
-			addTimeUDT(spt.CreateElement("ram:DueDateDateTime"), paymentTerm.DueDate)
+			addTimeCIIUDT(spt.CreateElement("ram:DueDateDateTime"), paymentTerm.DueDate)
 		}
 	}
 
@@ -456,7 +456,7 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	for _, v := range inv.InvoiceReferencedDocument {
 		refdoc := elt.CreateElement("ram:InvoiceReferencedDocument")
 		refdoc.CreateElement("ram:IssuerAssignedID").SetText(v.ID)
-		addTimeQDT(refdoc.CreateElement("ram:FormattedIssueDateTime"), v.Date)
+		addTimeCIIQDT(refdoc.CreateElement("ram:FormattedIssueDateTime"), v.Date)
 	}
 }
 
@@ -487,7 +487,7 @@ func writeCIIrsmExchangedDocument(inv *Invoice, root *etree.Element) {
 	exchangedDoc := root.CreateElement("rsm:ExchangedDocument")
 	exchangedDoc.CreateElement("ram:ID").SetText(inv.InvoiceNumber)
 	exchangedDoc.CreateElement("ram:TypeCode").SetText(inv.InvoiceTypeCode.String())
-	addTimeUDT(exchangedDoc.CreateElement("ram:IssueDateTime"), inv.InvoiceDate)
+	addTimeCIIUDT(exchangedDoc.CreateElement("ram:IssueDateTime"), inv.InvoiceDate)
 
 	for _, note := range inv.Notes {
 		in := exchangedDoc.CreateElement("ram:IncludedNote")
