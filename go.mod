@@ -9,6 +9,7 @@ require (
 	github.com/pdfcpu/pdfcpu v0.11.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/speedata/cxpath v0.0.4
+	golang.org/x/term v0.35.0
 )
 
 require (
