@@ -4,7 +4,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 ## Prerequisites
 
-- **Go 1.22 or later** (check with `go version`)
+- **Go 1.24 or later** (check with `go version`)
 - **golangci-lint** for linting (optional but recommended)
   ```bash
   # Install golangci-lint
@@ -168,7 +168,7 @@ func TestParseInvoice(t *testing.T) {
 ## Continuous Integration
 
 All pull requests must pass:
-- ✅ Tests on Go 1.22 and 1.23
+- ✅ Tests on Go 1.24 and 1.25
 - ✅ 80% code coverage threshold
 - ✅ golangci-lint checks
 
