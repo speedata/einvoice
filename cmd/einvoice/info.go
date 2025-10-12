@@ -283,6 +283,24 @@ func formatUnitCode(code string, showCodes bool, verbose bool) string {
 	return description
 }
 
+// formatTextSubjectQualifier formats a text subject qualifier code based on display flags.
+// - showCodes=true: returns only the code (e.g., "AAI")
+// - verbose=true: returns code with description (e.g., "AAI (Additional information)")
+// - default: returns description only, or "Unknown (code)" if not found
+func formatTextSubjectQualifier(code string, showCodes bool, verbose bool) string {
+	if showCodes {
+		return code
+	}
+	if code == "" {
+		return ""
+	}
+	description := codelists.TextSubjectQualifier(code)
+	if verbose {
+		return code + " (" + description + ")"
+	}
+	return description
+}
+
 func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	info := InvoiceInfo{
 		File: filename,
@@ -439,7 +457,7 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 
 		details.Notes = append(details.Notes, NoteInfo{
 			Text:             n.Text,
-			SubjectQualifier: n.SubjectCode,
+			SubjectQualifier: formatTextSubjectQualifier(n.SubjectCode, showCodes, verbose),
 		})
 	}
 
