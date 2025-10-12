@@ -43,15 +43,14 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 		return nil, fmt.Errorf("empty root element namespace")
 
 	// CII format (ZUGFeRD/Factur-X)
-	case "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100":
+	case nsCIIRootInvoice:
 		inv, err = parseCII(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("parse CII: %w", err)
 		}
 
 	// UBL format (Invoice or CreditNote)
-	case "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
-		"urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2":
+	case nsUBLInvoice, nsUBLCreditNote:
 		inv, err = parseUBL(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("parse UBL: %w", err)

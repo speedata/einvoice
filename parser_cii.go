@@ -8,6 +8,9 @@ import (
 	"github.com/speedata/cxpath"
 )
 
+// CII (ZUGFeRD/Factur-X) namespace URN for root element
+const nsCIIRootInvoice = "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
+
 // parseCIITime parses CII format dates (YYYYMMDD) into time.Time.
 func parseCIITime(ctx *cxpath.Context, path string) (time.Time, error) {
 	timestring := ctx.Eval(path).String()
@@ -80,7 +83,7 @@ func parseCIIParty(tradeParty *cxpath.Context) Party {
 // It sets up CII-specific namespaces and parses the document structure.
 func parseCII(ctx *cxpath.Context) (*Invoice, error) {
 	// Setup CII namespaces
-	ctx.SetNamespace("rsm", "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100")
+	ctx.SetNamespace("rsm", nsCIIRootInvoice)
 	ctx.SetNamespace("ram", "urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100")
 	ctx.SetNamespace("udt", "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100")
 	ctx.SetNamespace("qdt", "urn:un:unece:uncefact:data:standard:QualifiedDataType:100")
