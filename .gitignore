@@ -13,9 +13,6 @@ coverage.html
 bench.txt
 *.test
 
-# Fuzz corpus (auto-generated, not needed in repo)
-testdata/fuzz/
-
 # Downloaded test suites (temporary, fixtures are organized in testdata/)
 testdata/en16931-testsuite/
 testdata/peppol-testsuite/
