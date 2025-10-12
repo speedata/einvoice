@@ -55,7 +55,7 @@ go tool cover -html=coverage.out
 
 ### Coverage Requirements
 
-- **Minimum coverage: 80%** (enforced in CI)
+- **Target coverage: 80%** (goal - currently not enforced in CI)
 - **Current coverage: 63.2%**
 - **Priority gaps:** UBL writer functions
 
@@ -101,7 +101,6 @@ einvoice/
 │   └── codelists/    # EN 16931 code lists
 ├── rules/            # Business rule definitions (auto-generated)
 ├── testdata/         # Test fixtures (see testdata/README.md)
-├── scripts/          # Development helper scripts
 └── .github/          # CI/CD workflows
 ```
 
@@ -168,9 +167,10 @@ func TestParseInvoice(t *testing.T) {
 ## Continuous Integration
 
 All pull requests must pass:
-- ✅ Tests on Go 1.24 and 1.25
-- ✅ 80% code coverage threshold
+- ✅ Tests on Go 1.24 and 1.25 (3 OS: ubuntu, macos, windows)
 - ✅ golangci-lint checks
+
+Coverage is tracked but not currently enforced. Goal: 80%.
 
 Run the same checks locally before pushing:
 ```bash
