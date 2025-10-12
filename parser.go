@@ -510,36 +510,51 @@ func parseCII(cii *cxpath.Context) (*Invoice, error) {
 	return inv, nil
 }
 
-// ParseReader reads the XML from the reader.
+// ParseReader reads the XML from the reader and auto-detects the format (CII or UBL).
 func ParseReader(r io.Reader) (*Invoice, error) {
 	ctx, err := cxpath.NewFromReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read from reader: %w", err)
 	}
 
-	ctx.SetNamespace("rsm", "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100")
-	ctx.SetNamespace("ram", "urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100")
-	ctx.SetNamespace("udt", "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100")
-	ctx.SetNamespace("qdt", "urn:un:unece:uncefact:data:standard:QualifiedDataType:100")
+	root := ctx.Root()
+	rootns := root.Eval("namespace-uri()").String()
 
 	var inv *Invoice
 
-	cii := ctx.Root()
-	rootns := cii.Eval("namespace-uri()").String()
 	switch rootns {
 	case "":
 		return nil, fmt.Errorf("empty root element namespace")
+
+	// CII format (ZUGFeRD/Factur-X)
 	case "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100":
-		inv, err = parseCII(cii)
+		// Setup CII namespaces
+		ctx.SetNamespace("rsm", "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100")
+		ctx.SetNamespace("ram", "urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100")
+		ctx.SetNamespace("udt", "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100")
+		ctx.SetNamespace("qdt", "urn:un:unece:uncefact:data:standard:QualifiedDataType:100")
+
+		inv, err = parseCII(root)
+		if err != nil {
+			return nil, fmt.Errorf("parse CII: %w", err)
+		}
+		inv.SchemaType = CII
+
+	// UBL format (Invoice or CreditNote)
+	case "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+		"urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2":
+		// Setup UBL namespaces
+		setupUBLNamespaces(ctx)
+
+		inv, err = parseUBL(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("parse UBL: %w", err)
+		}
+		// SchemaType is already set to UBL by parseUBL()
+
 	default:
 		return nil, fmt.Errorf("unknown root element namespace: %s", rootns)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	inv.SchemaType = CII
 
 	return inv, nil
 }
