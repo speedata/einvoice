@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -115,7 +116,10 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BT-72: Actual delivery date (optional, in cac:Delivery)
-	inv.OccurrenceDateTime, _ = parseTimeUBL(root, prefix+"cac:Delivery/cbc:ActualDeliveryDate")
+	inv.OccurrenceDateTime, err = parseTimeUBL(root, prefix+"cac:Delivery/cbc:ActualDeliveryDate")
+	if err != nil {
+		return fmt.Errorf("invalid occurrence date time: %w", err)
+	}
 
 	// BT-5: Invoice currency
 	inv.InvoiceCurrencyCode = root.Eval(prefix + "cbc:DocumentCurrencyCode").String()
@@ -161,15 +165,24 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 			ID: ref.Eval("cbc:ID").String(),
 		}
 
-		refDoc.Date, _ = parseTimeUBL(ref, "cbc:IssueDate")
+		refDoc.Date, err = parseTimeUBL(ref, "cbc:IssueDate")
+		if err != nil {
+			return fmt.Errorf("invalid referenced document date: %w", err)
+		}
 
 		inv.InvoiceReferencedDocument = append(inv.InvoiceReferencedDocument, refDoc)
 	}
 
 	// BG-14: Invoice period (document level)
 	if root.Eval(fmt.Sprintf("count(%scac:InvoicePeriod)", prefix)).Int() > 0 {
-		inv.BillingSpecifiedPeriodStart, _ = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:StartDate")
-		inv.BillingSpecifiedPeriodEnd, _ = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:EndDate")
+		inv.BillingSpecifiedPeriodStart, err = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:StartDate")
+		if err != nil {
+			return fmt.Errorf("invalid billing period start date: %w", err)
+		}
+		inv.BillingSpecifiedPeriodEnd, err = parseTimeUBL(root, prefix+"cac:InvoicePeriod/cbc:EndDate")
+		if err != nil {
+			return fmt.Errorf("invalid billing period end date: %w", err)
+		}
 	}
 
 	// BG-24: Additional supporting documents
@@ -184,10 +197,15 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 		// Handle embedded binary object
 		binaryData := doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject").String()
 		if binaryData != "" {
-			// Binary data would need base64 decoding, similar to CII parser
 			addDoc.AttachmentMimeCode = doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@mimeCode").String()
 			addDoc.AttachmentFilename = doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@filename").String()
-			// TODO: Decode base64 if needed
+
+			// Decode base64-encoded attachment data
+			data, err := base64.StdEncoding.DecodeString(binaryData)
+			if err != nil {
+				return fmt.Errorf("cannot decode attachment: %w", err)
+			}
+			addDoc.AttachmentBinaryObject = data
 		}
 
 		inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, addDoc)
@@ -555,6 +573,7 @@ func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) err
 func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 	for lineItem := range root.Each(prefix + "cac:InvoiceLine") {
 		invoiceLine := InvoiceLine{}
+		var err error
 
 		// BT-126: Invoice line identifier
 		invoiceLine.LineID = lineItem.Eval("cbc:ID").String()
@@ -564,8 +583,14 @@ func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 
 		// BG-26: Invoice line period
 		if lineItem.Eval("count(cac:InvoicePeriod)").Int() > 0 {
-			invoiceLine.BillingSpecifiedPeriodStart, _ = parseTimeUBL(lineItem, "cac:InvoicePeriod/cbc:StartDate")
-			invoiceLine.BillingSpecifiedPeriodEnd, _ = parseTimeUBL(lineItem, "cac:InvoicePeriod/cbc:EndDate")
+			invoiceLine.BillingSpecifiedPeriodStart, err = parseTimeUBL(lineItem, "cac:InvoicePeriod/cbc:StartDate")
+			if err != nil {
+				return fmt.Errorf("invalid line billing period start date for line %s: %w", invoiceLine.LineID, err)
+			}
+			invoiceLine.BillingSpecifiedPeriodEnd, err = parseTimeUBL(lineItem, "cac:InvoicePeriod/cbc:EndDate")
+			if err != nil {
+				return fmt.Errorf("invalid line billing period end date for line %s: %w", invoiceLine.LineID, err)
+			}
 		}
 
 		// BT-128: Invoice line object identifier
@@ -579,7 +604,6 @@ func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 		invoiceLine.ReceivableSpecifiedTradeAccountingAccount = lineItem.Eval("cac:AccountingCost").String()
 
 		// BT-129: Invoiced quantity
-		var err error
 		invoiceLine.BilledQuantity, err = getDecimal(lineItem, "cbc:InvoicedQuantity")
 		if err != nil {
 			return err
