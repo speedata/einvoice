@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ['1.24']
+        go-version: ['1.24', '1.25']
 
     steps:
     - name: Checkout code
@@ -35,12 +35,27 @@ jobs:
       shell: bash
       run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-    - name: Upload coverage
-      if: matrix.os == 'ubuntu-latest'
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./coverage.txt
-        fail_ci_if_error: false
+    # - name: Check coverage threshold
+    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.25'
+    #   shell: bash
+    #   run: |
+    #     COVERAGE=$(go tool cover -func=coverage.txt | grep total | awk '{print $3}' | sed 's/%//')
+    #     echo "Coverage: ${COVERAGE}%"
+    #     if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+    #       echo "❌ Coverage ${COVERAGE}% is below 80% threshold"
+    #       exit 1
+    #     else
+    #       echo "✅ Coverage ${COVERAGE}% meets 80% threshold"
+    #     fi
+
+    # - name: Upload coverage
+    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.25'
+    #   uses: codecov/codecov-action@v4
+    #   with:
+    #     files: ./coverage.txt
+    #     fail_ci_if_error: false
+    #   env:
+    #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     name: Lint
@@ -53,7 +68,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.25'
 
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v8
@@ -61,8 +76,8 @@ jobs:
         version: latest
         args: --timeout=5m
 
-  build:
-    name: Build
+  fuzz:
+    name: Fuzz Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -72,14 +87,40 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.25'
         cache: true
 
     - name: Download dependencies
       run: go mod download
 
-    - name: Build
-      run: go build -v ./...
+    - name: Run FuzzParseCII
+      run: go test -fuzz=FuzzParseCII -fuzztime=30s
 
-    - name: Run go vet
-      run: go vet ./...
+    - name: Run FuzzParseUBL
+      run: go test -fuzz=FuzzParseUBL -fuzztime=30s
+
+    - name: Run FuzzValidate
+      run: go test -fuzz=FuzzValidate -fuzztime=30s
+
+    - name: Run FuzzRoundTrip
+      run: go test -fuzz=FuzzRoundTrip -fuzztime=30s
+
+  benchmark:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run benchmarks
+      run: go test -bench=. -benchmem -benchtime=100ms -run=^$ ./...

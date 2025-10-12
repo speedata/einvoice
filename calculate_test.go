@@ -1,6 +1,8 @@
 package einvoice
 
 import (
+	"bytes"
+	"os"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -114,8 +116,8 @@ func TestUpdateTotals_WithRoundingAmount(t *testing.T) {
 		TradeTaxes: []TradeTax{
 			{CalculatedAmount: decimal.NewFromFloat(19.00)},
 		},
-		TotalPrepaid:   decimal.NewFromFloat(50.00),  // BT-113
-		RoundingAmount: decimal.NewFromFloat(-0.14),  // BT-114
+		TotalPrepaid:   decimal.NewFromFloat(50.00), // BT-113
+		RoundingAmount: decimal.NewFromFloat(-0.14), // BT-114
 	}
 
 	inv.UpdateTotals()
@@ -181,9 +183,9 @@ func TestUpdateTotals_Idempotent(t *testing.T) {
 func TestUpdateTotals_ComprehensiveScenario(t *testing.T) {
 	inv := &Invoice{
 		InvoiceLines: []InvoiceLine{
-			{Total: decimal.NewFromFloat(500.00)},  // Line 1
-			{Total: decimal.NewFromFloat(300.00)},  // Line 2
-			{Total: decimal.NewFromFloat(200.00)},  // Line 3
+			{Total: decimal.NewFromFloat(500.00)}, // Line 1
+			{Total: decimal.NewFromFloat(300.00)}, // Line 2
+			{Total: decimal.NewFromFloat(200.00)}, // Line 3
 		},
 		TradeTaxes: []TradeTax{
 			{CalculatedAmount: decimal.NewFromFloat(152.00)}, // 19% VAT on 800 basis
@@ -989,5 +991,204 @@ func TestRoundHalfUp(t *testing.T) {
 					tt.value, tt.places, result.String(), tt.expected)
 			}
 		})
+	}
+}
+
+// TestUpdateTotals_BRCORules is a comprehensive table-driven test that validates
+// all BR-CO business rules for total calculations
+func TestUpdateTotals_BRCORules(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                  string
+		lines                 []InvoiceLine
+		allowancesCharges     []AllowanceCharge
+		tradeTaxes            []TradeTax
+		totalPrepaid          decimal.Decimal
+		roundingAmount        decimal.Decimal
+		expectedLineTotal     decimal.Decimal
+		expectedTaxBasisTotal decimal.Decimal
+		expectedGrandTotal    decimal.Decimal
+		expectedDuePayable    decimal.Decimal
+	}{
+		{
+			name: "BR-CO-10: Simple line total",
+			lines: []InvoiceLine{
+				{Total: decimal.NewFromInt(100)},
+				{Total: decimal.NewFromInt(200)},
+			},
+			tradeTaxes: []TradeTax{
+				{CalculatedAmount: decimal.NewFromInt(57)},
+			},
+			expectedLineTotal:     decimal.NewFromInt(300),
+			expectedTaxBasisTotal: decimal.NewFromInt(300),
+			expectedGrandTotal:    decimal.NewFromInt(357),
+			expectedDuePayable:    decimal.NewFromInt(357),
+		},
+		{
+			name: "BR-CO-13: With allowances and charges",
+			lines: []InvoiceLine{
+				{Total: decimal.NewFromInt(1000)},
+			},
+			allowancesCharges: []AllowanceCharge{
+				{ChargeIndicator: false, ActualAmount: decimal.NewFromInt(100)}, // Allowance
+				{ChargeIndicator: true, ActualAmount: decimal.NewFromInt(50)},   // Charge
+			},
+			tradeTaxes: []TradeTax{
+				{CalculatedAmount: decimal.RequireFromString("180.50")}, // 19% of 950
+			},
+			expectedLineTotal:     decimal.NewFromInt(1000),
+			expectedTaxBasisTotal: decimal.NewFromInt(950), // 1000 - 100 + 50
+			expectedGrandTotal:    decimal.RequireFromString("1130.50"),
+			expectedDuePayable:    decimal.RequireFromString("1130.50"),
+		},
+		{
+			name: "BR-CO-15: GrandTotal calculation",
+			lines: []InvoiceLine{
+				{Total: decimal.NewFromInt(500)},
+			},
+			tradeTaxes: []TradeTax{
+				{CalculatedAmount: decimal.NewFromInt(95)},
+			},
+			expectedLineTotal:     decimal.NewFromInt(500),
+			expectedTaxBasisTotal: decimal.NewFromInt(500),
+			expectedGrandTotal:    decimal.NewFromInt(595), // TaxBasisTotal + TaxTotal
+			expectedDuePayable:    decimal.NewFromInt(595),
+		},
+		{
+			name: "BR-CO-16: With prepaid and rounding",
+			lines: []InvoiceLine{
+				{Total: decimal.NewFromInt(100)},
+			},
+			tradeTaxes: []TradeTax{
+				{CalculatedAmount: decimal.NewFromInt(19)},
+			},
+			totalPrepaid:          decimal.NewFromInt(50),
+			roundingAmount:        decimal.RequireFromString("-0.14"),
+			expectedLineTotal:     decimal.NewFromInt(100),
+			expectedTaxBasisTotal: decimal.NewFromInt(100),
+			expectedGrandTotal:    decimal.NewFromInt(119),
+			expectedDuePayable:    decimal.RequireFromString("68.86"), // 119 - 50 - 0.14
+		},
+		{
+			name: "All BR-CO rules combined",
+			lines: []InvoiceLine{
+				{Total: decimal.NewFromInt(500)},
+				{Total: decimal.NewFromInt(300)},
+			},
+			allowancesCharges: []AllowanceCharge{
+				{ChargeIndicator: false, ActualAmount: decimal.NewFromInt(50)},
+				{ChargeIndicator: true, ActualAmount: decimal.NewFromInt(25)},
+			},
+			tradeTaxes: []TradeTax{
+				{CalculatedAmount: decimal.RequireFromString("147.25")}, // 19% of 775
+			},
+			totalPrepaid:          decimal.NewFromInt(200),
+			roundingAmount:        decimal.RequireFromString("0.05"),
+			expectedLineTotal:     decimal.NewFromInt(800),
+			expectedTaxBasisTotal: decimal.NewFromInt(775), // 800 - 50 + 25
+			expectedGrandTotal:    decimal.RequireFromString("922.25"),
+			expectedDuePayable:    decimal.RequireFromString("722.30"), // 922.25 - 200 + 0.05
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := &Invoice{
+				InvoiceLines:                  tt.lines,
+				SpecifiedTradeAllowanceCharge: tt.allowancesCharges,
+				TradeTaxes:                    tt.tradeTaxes,
+				TotalPrepaid:                  tt.totalPrepaid,
+				RoundingAmount:                tt.roundingAmount,
+			}
+
+			inv.UpdateTotals()
+
+			// BR-CO-10: LineTotal
+			if !inv.LineTotal.Equal(tt.expectedLineTotal) {
+				t.Errorf("LineTotal = %s, want %s (BR-CO-10)", inv.LineTotal, tt.expectedLineTotal)
+			}
+
+			// BR-CO-13: TaxBasisTotal
+			if !inv.TaxBasisTotal.Equal(tt.expectedTaxBasisTotal) {
+				t.Errorf("TaxBasisTotal = %s, want %s (BR-CO-13)", inv.TaxBasisTotal, tt.expectedTaxBasisTotal)
+			}
+
+			// BR-CO-15: GrandTotal
+			if !inv.GrandTotal.Equal(tt.expectedGrandTotal) {
+				t.Errorf("GrandTotal = %s, want %s (BR-CO-15)", inv.GrandTotal, tt.expectedGrandTotal)
+			}
+
+			// BR-CO-16: DuePayableAmount
+			if !inv.DuePayableAmount.Equal(tt.expectedDuePayable) {
+				t.Errorf("DuePayableAmount = %s, want %s (BR-CO-16)", inv.DuePayableAmount, tt.expectedDuePayable)
+			}
+		})
+	}
+}
+
+// Benchmark tests for calculation performance
+
+// BenchmarkUpdateApplicableTradeTax benchmarks VAT calculation performance
+func BenchmarkUpdateApplicableTradeTax(b *testing.B) {
+	// Load a sample invoice
+	data, err := os.ReadFile("testdata/cii/en16931/CII_example1.xml")
+	if err != nil {
+		b.Skipf("File not found: %v", err)
+	}
+
+	inv, err := ParseReader(bytes.NewReader(data))
+	if err != nil {
+		b.Fatalf("Failed to parse: %v", err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		inv.UpdateApplicableTradeTax(nil)
+	}
+}
+
+// BenchmarkUpdateTotals benchmarks totals calculation performance
+func BenchmarkUpdateTotals(b *testing.B) {
+	// Load a sample invoice
+	data, err := os.ReadFile("testdata/cii/en16931/CII_example1.xml")
+	if err != nil {
+		b.Skipf("File not found: %v", err)
+	}
+
+	inv, err := ParseReader(bytes.NewReader(data))
+	if err != nil {
+		b.Fatalf("Failed to parse: %v", err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		inv.UpdateTotals()
+	}
+}
+
+// BenchmarkCalculateBoth benchmarks both calculation functions together
+func BenchmarkCalculateBoth(b *testing.B) {
+	// Load a sample invoice
+	data, err := os.ReadFile("testdata/cii/en16931/CII_example1.xml")
+	if err != nil {
+		b.Skipf("File not found: %v", err)
+	}
+
+	inv, err := ParseReader(bytes.NewReader(data))
+	if err != nil {
+		b.Fatalf("Failed to parse: %v", err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		inv.UpdateApplicableTradeTax(nil)
+		inv.UpdateTotals()
 	}
 }

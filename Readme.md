@@ -126,8 +126,8 @@ einvoice validate --format json invoice.xml
 ### Exit Codes
 
 - `0` - Invoice is valid (no violations)
-- `1` - Invoice has validation violations
-- `2` - Error occurred (file not found, parse error, etc.)
+- `1` - Error occurred (file not found, parse error, etc.)
+- `2` - Invoice has validation violations
 
 These exit codes make it easy to integrate the validator into shell scripts and CI/CD pipelines:
 
@@ -154,4 +154,21 @@ fi
 * Profile detection based on specification identifier URN (BT-24)
 * Format auto-detection when parsing (automatically recognizes CII or UBL)
 * Round-trip support: parse and write back in the same format
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup and prerequisites
+- Running tests and checking coverage
+- Code style and conventions
+- Pull request process
+- How to work with test fixtures
+
+## Test Fixtures
+
+Test fixtures are organized by profile and format in the [testdata/](testdata/) directory. See [testdata/README.md](testdata/README.md) for:
+- Directory structure and organization
+- Fixture sources and provenance (from official EN 16931 and PEPPOL test suites)
+- How to add new fixtures
+- Usage patterns in tests
 
