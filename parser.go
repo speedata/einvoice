@@ -517,8 +517,10 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 		return nil, fmt.Errorf("cannot read from reader: %w", err)
 	}
 
-	root := ctx.Root()
-	rootns := root.Eval("namespace-uri()").String()
+	// Detect format by checking root element namespace
+	// We need to get root temporarily just to detect the namespace
+	tempRoot := ctx.Root()
+	rootns := tempRoot.Eval("namespace-uri()").String()
 
 	var inv *Invoice
 
@@ -534,6 +536,8 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 		ctx.SetNamespace("udt", "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100")
 		ctx.SetNamespace("qdt", "urn:un:unece:uncefact:data:standard:QualifiedDataType:100")
 
+		// Get root again after setting up namespaces
+		root := ctx.Root()
 		inv, err = parseCII(root)
 		if err != nil {
 			return nil, fmt.Errorf("parse CII: %w", err)
