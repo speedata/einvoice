@@ -243,7 +243,7 @@ func TestValidatePEPPOL_DecimalPrecisionViolations(t *testing.T) {
 			{
 				CalculatedAmount: decimal.NewFromInt(19),
 				BasisAmount:      decimal.RequireFromString("100.123"), // Invalid: 3 decimals (BR-DEC-19)
-				Typ:              "VAT",
+				TypeCode:         "VAT",
 				CategoryCode:     "S",
 				Percent:          decimal.NewFromInt(19),
 			},

@@ -427,7 +427,7 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		att := elt.CreateElement("ram:ApplicableTradeTax")
 		att.CreateElement("ram:CalculatedAmount").SetText(tradeTax.CalculatedAmount.StringFixed(2))
 
-		att.CreateElement("ram:TypeCode").SetText(tradeTax.Typ)
+		att.CreateElement("ram:TypeCode").SetText(tradeTax.TypeCode)
 
 		if er := tradeTax.ExemptionReason; er != "" {
 			att.CreateElement("ram:ExemptionReason").SetText(er)

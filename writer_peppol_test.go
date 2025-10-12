@@ -58,7 +58,7 @@ func TestWriter_NoEmptyElements(t *testing.T) {
 			{
 				CalculatedAmount: decimal.NewFromInt(19),
 				BasisAmount:      decimal.NewFromInt(100),
-				Typ:              "VAT",
+				TypeCode:         "VAT",
 				CategoryCode:     "S",
 				Percent:          decimal.NewFromInt(19),
 			},
@@ -187,7 +187,7 @@ func TestWriter_PostcodeOptional(t *testing.T) {
 					{
 						CalculatedAmount: decimal.NewFromInt(19),
 						BasisAmount:      decimal.NewFromInt(100),
-						Typ:              "VAT",
+						TypeCode:         "VAT",
 						CategoryCode:     "S",
 						Percent:          decimal.NewFromInt(19),
 					},
@@ -269,7 +269,7 @@ func TestWriter_AllowanceReasonOptional(t *testing.T) {
 			{
 				CalculatedAmount: decimal.RequireFromString("17.10"),
 				BasisAmount:      decimal.NewFromInt(90),
-				Typ:              "VAT",
+				TypeCode:         "VAT",
 				CategoryCode:     "S",
 				Percent:          decimal.NewFromInt(19),
 			},

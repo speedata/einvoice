@@ -174,7 +174,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		if err != nil {
 			return err
 		}
-		tradeTax.Typ = att.Eval("ram:TypeCode").String()
+		tradeTax.TypeCode = att.Eval("ram:TypeCode").String()
 		tradeTax.ExemptionReason = att.Eval("ram:ExemptionReason").String()
 		tradeTax.CategoryCode = att.Eval("ram:CategoryCode").String()
 		tradeTax.Percent, err = getDecimal(att, "ram:RateApplicablePercent") // BT-119
