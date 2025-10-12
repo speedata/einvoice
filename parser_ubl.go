@@ -304,9 +304,10 @@ func parseUBLParty(ctx *cxpath.Context, partyPath string) Party {
 		taxID := taxScheme.Eval("cbc:CompanyID").String()
 		scheme := taxScheme.Eval("cac:TaxScheme/cbc:ID").String()
 
-		if scheme == "VAT" {
+		switch scheme {
+		case "VAT":
 			party.VATaxRegistration = taxID
-		} else if scheme == "FC" {
+		case "FC":
 			party.FCTaxRegistration = taxID
 		}
 	}
