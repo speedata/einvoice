@@ -9,19 +9,11 @@ import (
 
 // UBL 2.1 namespace URNs for Invoice and CreditNote documents
 const (
-	nsUBLInvoice      = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-	nsUBLCreditNote   = "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"
-	nsUBLCAC          = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-	nsUBLCBC          = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+	nsUBLInvoice    = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+	nsUBLCreditNote = "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"
+	nsUBLCAC        = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+	nsUBLCBC        = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
 )
-
-// setupUBLNamespaces registers UBL 2.1 namespaces for XPath queries.
-func setupUBLNamespaces(ctx *cxpath.Context) {
-	ctx.SetNamespace("inv", nsUBLInvoice)
-	ctx.SetNamespace("cn", nsUBLCreditNote)
-	ctx.SetNamespace("cac", nsUBLCAC)
-	ctx.SetNamespace("cbc", nsUBLCBC)
-}
 
 // parseTimeUBL parses ISO 8601 date format (YYYY-MM-DD) used in UBL documents.
 func parseTimeUBL(ctx *cxpath.Context, path string) (time.Time, error) {
@@ -43,6 +35,13 @@ func parseTimeUBL(ctx *cxpath.Context, path string) (time.Time, error) {
 func parseUBL(ctx *cxpath.Context) (*Invoice, error) {
 	inv := &Invoice{SchemaType: UBL}
 
+	// Setup UBL namespaces
+	ctx.SetNamespace("inv", nsUBLInvoice)
+	ctx.SetNamespace("cn", nsUBLCreditNote)
+	ctx.SetNamespace("cac", nsUBLCAC)
+	ctx.SetNamespace("cbc", nsUBLCBC)
+
+	// Get root element after namespace setup
 	root := ctx.Root()
 
 	// Determine document type (Invoice vs CreditNote)
