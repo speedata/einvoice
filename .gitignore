@@ -2,3 +2,6 @@
 /einvoice
 cmd/einvoice/einvoice
 /gencodelists
+
+# UBL research/progress documentation (local only)
+UBL_*.md
