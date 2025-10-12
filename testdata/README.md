@@ -9,24 +9,24 @@ testdata/
 ├── README.md              # This file
 ├── SOURCES.md            # Provenance tracking for all fixtures
 ├── cii/                  # Cross Industry Invoice (ZUGFeRD/Factur-X) fixtures
-│   ├── minimum/          # Minimum profile (Level 1)
-│   ├── basicwl/          # Basic WL profile (Level 2)
-│   ├── basic/            # Basic profile (Level 3)
-│   ├── en16931/          # EN 16931 profile (Level 4) - 10 files
-│   ├── extended/         # Extended profile (Level 5)
-│   └── xrechnung/        # XRechnung profile (Level 4) - 1 file
+│   ├── minimum/          # Minimum profile (Level 1) - 2 files
+│   ├── basicwl/          # Basic WL profile (Level 2) - 2 files
+│   ├── basic/            # Basic profile (Level 3) - 4 files
+│   ├── en16931/          # EN 16931 profile (Level 4) - 16 files
+│   ├── extended/         # Extended profile (Level 5) - 6 files
+│   └── xrechnung/        # XRechnung profile (Level 4) - 4 files
 ├── ubl/                  # Universal Business Language 2.1 fixtures
-│   ├── invoice/          # UBL Invoice documents - 11 files
-│   └── creditnote/       # UBL CreditNote documents - 2 files
+│   ├── invoice/          # UBL Invoice documents - 12 files
+│   └── creditnote/       # UBL CreditNote documents - 3 files
 ├── peppol/               # PEPPOL BIS Billing 3.0 fixtures
 │   ├── valid/            # Valid PEPPOL invoices - 11 files
 │   └── invalid/          # Invalid examples for negative testing
 └── negative/             # Negative test cases
-    ├── malformed/        # Malformed XML
+    ├── malformed/        # Malformed XML - 2 files
     └── missing_fields/   # Missing required fields
 ```
 
-**Total: 35 test fixtures** (organized from official test suites)
+**Total: 62 test fixtures** (organized from official test suites and standards)
 
 ## Fixture Organization
 
@@ -171,14 +171,24 @@ Areas needing more tests (UBL writer has most gaps):
 
 ## Fixture Sources
 
-All fixtures are sourced from official test suites:
+All fixtures are sourced from official standards and test suites:
+
+- **ZUGFeRD 2.3.3 Official Examples**: https://www.ferd-net.de/download-zugferd
+  - All profiles: Minimum (2), BasicWL (2), Basic (3), EN16931 (6), Extended (4), XRechnung (3)
+  - Total: 20 files covering complete ZUGFeRD/Factur-X profile range
 
 - **EN 16931 Test Suite**: https://github.com/ConnectingEurope/eInvoicing-EN16931
-  - CII examples (10 files in `cii/en16931/`)
+  - CII examples (10 files in `cii/en16931/`, 1 file in `cii/xrechnung/`)
   - UBL examples (10 invoices + 1 credit note in `ubl/`)
+
+- **UBL 2.1 OASIS Specification**: https://docs.oasis-open.org/ubl/
+  - Official UBL 2.1 Invoice and CreditNote examples (2 files)
 
 - **PEPPOL BIS Billing 3.0**: https://github.com/OpenPEPPOL/peppol-bis-invoice-3
   - Base examples, VAT categories, national examples (11 files in `peppol/valid/`)
+
+- **horstoeko/zugferd**: https://github.com/horstoeko/zugferd
+  - Additional test files (3 files) and invalid examples for negative testing (2 files)
 
 See [SOURCES.md](SOURCES.md) for detailed provenance tracking with commit hashes.
 
@@ -212,7 +222,8 @@ go tool cover -html=coverage.out
 
 ## Notes
 
-- **Negative tests**: `negative/` directory for malformed/invalid invoices
-- **Missing profiles**: Some profiles (Minimum, BasicWL, Basic, Extended) have limited official examples
+- **Profile coverage**: All ZUGFeRD profiles (Minimum, BasicWL, Basic, EN16931, Extended, XRechnung) now have official test fixtures
+- **Negative tests**: `negative/malformed/` directory contains invalid XML examples for error handling tests
 - **Parser robustness**: Parser should handle fixtures gracefully even if they have validation violations
 - **Format auto-detection**: Parser automatically detects CII vs UBL format
+- **Total fixtures**: 62 XML files across all profiles, formats, and document types
