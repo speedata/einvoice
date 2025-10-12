@@ -1,7 +1,9 @@
 package einvoice
 
 import (
+	"bytes"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/speedata/einvoice/rules"
@@ -246,5 +248,70 @@ func TestValidationError_AsError(t *testing.T) {
 		if !valErr.HasRuleCode("BR-01") {
 			t.Error("HasRuleCode(BR-1) = false, want true")
 		}
+	})
+}
+
+// Benchmark tests for validation performance
+
+// BenchmarkValidate benchmarks validation performance across different profile types
+func BenchmarkValidate(b *testing.B) {
+	benchmarks := []struct {
+		name string
+		file string
+	}{
+		{"EN16931_CII", "testdata/cii/en16931/zugferd_2p3_EN16931_1.xml"},
+		{"PEPPOL_UBL", "testdata/ubl/invoice/UBL-Invoice-2.1-Example.xml"},
+		{"Extended_CII", "testdata/cii/extended/zugferd-extended-rechnung.xml"},
+	}
+
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			data, err := os.ReadFile(bm.file)
+			if err != nil {
+				b.Skipf("File not found: %s", bm.file)
+			}
+
+			inv, err := ParseReader(bytes.NewReader(data))
+			if err != nil {
+				b.Fatalf("Failed to parse: %v", err)
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+
+			for b.Loop() {
+				err := inv.Validate()
+				_ = err // Validation may or may not return errors
+			}
+		})
+	}
+}
+
+// FuzzValidate fuzzes the validation logic to ensure it never panics
+func FuzzValidate(f *testing.F) {
+	// Seed corpus with valid invoices that should validate successfully
+	seeds := []string{
+		"testdata/cii/minimum/zugferd-minimum-rechnung.xml",
+		"testdata/cii/en16931/zugferd_2p3_EN16931_1.xml",
+		"testdata/ubl/invoice/UBL-Invoice-2.1-Example.xml",
+	}
+
+	for _, seed := range seeds {
+		data, err := os.ReadFile(seed)
+		if err == nil {
+			f.Add(data)
+		}
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		// Parse the data first (may fail, which is fine)
+		inv, err := ParseReader(bytes.NewReader(data))
+		if err != nil {
+			return // Skip invalid XML
+		}
+
+		// Validation should never panic, even with invalid/malformed data
+		err = inv.Validate()
+		_ = err // Validation errors are expected for malformed invoices
 	})
 }

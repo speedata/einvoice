@@ -2,6 +2,7 @@ package einvoice
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,8 +18,8 @@ func TestWrite_PayeeTradeParty(t *testing.T) {
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "TEST-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "TEST-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR",
@@ -123,8 +124,8 @@ func TestWrite_MultiCurrencyTaxTotal(t *testing.T) {
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "MULTI-CURR-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "MULTI-CURR-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "USD", // BT-5: Invoice in USD
@@ -210,8 +211,8 @@ func TestWrite_SingleCurrencyTaxTotal(t *testing.T) {
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "SINGLE-CURR-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "SINGLE-CURR-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR", // BT-5
@@ -280,8 +281,8 @@ func TestWrite_NoTaxCurrencyCode(t *testing.T) {
 	fixedDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "NO-TAX-CURR-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "NO-TAX-CURR-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         fixedDate,
 		InvoiceCurrencyCode: "EUR",
@@ -348,8 +349,8 @@ func TestWrite_BillingPeriod_OnlyEndDate(t *testing.T) {
 	periodEnd, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "PERIOD-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "PERIOD-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
@@ -436,8 +437,8 @@ func TestWrite_BillingPeriod_OnlyStartDate(t *testing.T) {
 	periodStart, _ := time.Parse("02.01.2006", "01.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "PERIOD-002",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "PERIOD-002",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
@@ -524,8 +525,8 @@ func TestWrite_BillingPeriod_BothDates(t *testing.T) {
 	periodEnd, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "PERIOD-003",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "PERIOD-003",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
@@ -606,8 +607,8 @@ func TestWrite_InvoiceLineAllowances(t *testing.T) {
 	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "LINE-ALLOW-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "LINE-ALLOW-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
@@ -714,8 +715,8 @@ func TestWrite_InvoiceLineCharges(t *testing.T) {
 	invoiceDate, _ := time.Parse("02.01.2006", "31.12.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "LINE-CHARGE-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "LINE-CHARGE-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
@@ -814,8 +815,8 @@ func TestWrite_InvoiceLineBillingPeriod(t *testing.T) {
 	linePeriodEnd, _ := time.Parse("02.01.2006", "30.11.2025")
 
 	inv := Invoice{
-		InvoiceNumber:       "LINE-PERIOD-001",
-		InvoiceTypeCode:     380,
+		InvoiceNumber:   "LINE-PERIOD-001",
+		InvoiceTypeCode: 380,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceDate:         invoiceDate,
 		InvoiceCurrencyCode: "EUR",
@@ -840,15 +841,15 @@ func TestWrite_InvoiceLineBillingPeriod(t *testing.T) {
 		},
 		InvoiceLines: []InvoiceLine{
 			{
-				LineID:                      "1",
-				ItemName:                    "Monthly Service",
-				BilledQuantity:              decimal.NewFromInt(1),
-				BilledQuantityUnit:          "C62",
-				NetPrice:                    decimal.NewFromInt(100),
-				TaxRateApplicablePercent:    decimal.NewFromInt(19),
-				Total:                       decimal.NewFromInt(100),
-				TaxTypeCode:                 "VAT",
-				TaxCategoryCode:             "S",
+				LineID:                   "1",
+				ItemName:                 "Monthly Service",
+				BilledQuantity:           decimal.NewFromInt(1),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(100),
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+				Total:                    decimal.NewFromInt(100),
+				TaxTypeCode:              "VAT",
+				TaxCategoryCode:          "S",
 				// BT-134, BT-135: Invoice line billing period
 				BillingSpecifiedPeriodStart: linePeriodStart,
 				BillingSpecifiedPeriodEnd:   linePeriodEnd,
@@ -895,5 +896,90 @@ func TestWrite_InvoiceLineBillingPeriod(t *testing.T) {
 	}
 	if !strings.Contains(settlementSection, "20251130") {
 		t.Error("EndDateTime should contain 20251130")
+	}
+}
+
+// TestFormatPercent tests the formatPercent function with various percentage values
+func TestFormatPercent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    decimal.Decimal
+		expected string
+	}{
+		{
+			name:     "integer percentage",
+			input:    decimal.NewFromInt(19),
+			expected: "19",
+		},
+		{
+			name:     "decimal percentage with trailing zeros",
+			input:    decimal.NewFromFloat(19.5000),
+			expected: "19.5",
+		},
+		{
+			name:     "zero percentage",
+			input:    decimal.NewFromInt(0),
+			expected: "0",
+		},
+		{
+			name:     "high precision percentage",
+			input:    decimal.NewFromFloat(7.7),
+			expected: "7.7",
+		},
+		{
+			name:     "percentage with four decimals",
+			input:    decimal.NewFromFloat(19.2345),
+			expected: "19.2345",
+		},
+		{
+			name:     "percentage with two decimals",
+			input:    decimal.NewFromFloat(5.25),
+			expected: "5.25",
+		},
+		{
+			name:     "small percentage",
+			input:    decimal.NewFromFloat(0.5),
+			expected: "0.5",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatPercent(tt.input)
+			if result != tt.expected {
+				t.Errorf("formatPercent(%v) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+// BenchmarkWriteCII benchmarks CII XML writing performance
+func BenchmarkWriteCII(b *testing.B) {
+	// Load a sample invoice to write
+	data, err := os.ReadFile("testdata/cii/en16931/zugferd_2p3_EN16931_1.xml")
+	if err != nil {
+		b.Skipf("Test fixture not found: %v", err)
+	}
+
+	inv, err := ParseReader(bytes.NewReader(data))
+	if err != nil {
+		b.Fatalf("Failed to parse fixture: %v", err)
+	}
+
+	// Pre-allocate buffer outside the benchmark loop
+	var buf bytes.Buffer
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		buf.Reset()
+		err := inv.Write(&buf)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.SetBytes(int64(buf.Len()))
 	}
 }

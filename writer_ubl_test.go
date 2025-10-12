@@ -2,6 +2,7 @@ package einvoice
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -12,7 +13,7 @@ import (
 // TestWriteUBL_BasicInvoice tests writing a basic UBL invoice
 func TestWriteUBL_BasicInvoice(t *testing.T) {
 	inv := &Invoice{
-		SchemaType:                                 UBL,
+		SchemaType: UBL,
 		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
 		BPSpecifiedDocumentContextParameter:        "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
 		InvoiceNumber:                              "INV-001",
@@ -114,12 +115,12 @@ func TestWriteUBL_BasicInvoice(t *testing.T) {
 // TestWriteUBL_CreditNote tests writing a UBL CreditNote (type code 381)
 func TestWriteUBL_CreditNote(t *testing.T) {
 	inv := &Invoice{
-		SchemaType:                                 UBL,
+		SchemaType: UBL,
 		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
-		InvoiceNumber:                              "CN-001",
-		InvoiceTypeCode:                            381, // Credit Note
-		InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-		InvoiceCurrencyCode:                        "EUR",
+		InvoiceNumber:       "CN-001",
+		InvoiceTypeCode:     381, // Credit Note
+		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
 			Name: "Seller Inc",
 			PostalAddress: &PostalAddress{
@@ -191,13 +192,13 @@ func TestWriteUBL_CreditNote(t *testing.T) {
 // TestWriteUBL_RoundTrip tests that we can write and then parse back a UBL invoice
 func TestWriteUBL_RoundTrip(t *testing.T) {
 	original := &Invoice{
-		SchemaType:                                 UBL,
+		SchemaType: UBL,
 		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
-		InvoiceNumber:                              "INV-RoundTrip",
-		InvoiceTypeCode:                            380,
-		InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-		InvoiceCurrencyCode:                        "EUR",
-		BuyerReference:                             "REF-123",
+		InvoiceNumber:       "INV-RoundTrip",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceCurrencyCode: "EUR",
+		BuyerReference:      "REF-123",
 		Seller: Party{
 			Name: "Test Seller",
 			PostalAddress: &PostalAddress{
@@ -293,12 +294,12 @@ func TestWriteUBL_RoundTrip(t *testing.T) {
 // TestWriteUBL_WithAllowancesAndCharges tests writing UBL with document-level allowances and charges
 func TestWriteUBL_WithAllowancesAndCharges(t *testing.T) {
 	inv := &Invoice{
-		SchemaType:                                 UBL,
+		SchemaType: UBL,
 		GuidelineSpecifiedDocumentContextParameter: "urn:cen.eu:en16931:2017",
-		InvoiceNumber:                              "INV-AC-001",
-		InvoiceTypeCode:                            380,
-		InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-		InvoiceCurrencyCode:                        "EUR",
+		InvoiceNumber:       "INV-AC-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
 			Name: "Seller Inc",
 			PostalAddress: &PostalAddress{
@@ -394,5 +395,34 @@ func TestWriteUBL_WithAllowancesAndCharges(t *testing.T) {
 
 	if !strings.Contains(xmlOutput, "Packaging fee") {
 		t.Error("Expected charge reason in XML")
+	}
+}
+
+// BenchmarkWriteUBL benchmarks UBL XML writing performance
+func BenchmarkWriteUBL(b *testing.B) {
+	// Load a sample UBL invoice to write
+	data, err := os.ReadFile("testdata/ubl/invoice/UBL-Invoice-2.1-Example.xml")
+	if err != nil {
+		b.Skipf("Test fixture not found: %v", err)
+	}
+
+	inv, err := ParseReader(bytes.NewReader(data))
+	if err != nil {
+		b.Fatalf("Failed to parse fixture: %v", err)
+	}
+
+	// Pre-allocate buffer outside the benchmark loop
+	var buf bytes.Buffer
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		buf.Reset()
+		err := inv.Write(&buf)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.SetBytes(int64(buf.Len()))
 	}
 }
