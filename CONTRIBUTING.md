@@ -307,15 +307,12 @@ go test -fuzz=FuzzParseCII -fuzztime=100000x
 
 **Corpus management:**
 Fuzz tests automatically build a corpus of interesting inputs in `testdata/fuzz/`. The corpus is:
-- Committed to git (configured in `.gitattributes` as binary files)
-- Seeded with valid fixtures from `testdata/cii/` and `testdata/ubl/`
-- Automatically updated when fuzzing finds new interesting inputs
+- **Local only** - Not committed to git (see `.gitignore`)
+- **Auto-generated** - Created when you run fuzz tests
+- **Optional** - Used to optimize subsequent fuzz runs, but not required
+- **Seeded** - Valid fixtures from `testdata/cii/` and `testdata/ubl/` are used as initial seeds
 
-**Important:** The fuzz corpus files are marked as binary in `.gitattributes`:
-```gitattributes
-testdata/fuzz/**/* binary merge=binary
-testdata/fuzz/**/* -text -diff
-```
+The corpus is gitignored because it's temporary data that can be regenerated anytime. CI runs generate their own corpus during the 30-second fuzz runs.
 
 **Writing fuzz tests:**
 ```go
@@ -346,7 +343,6 @@ func FuzzParseCII(f *testing.F) {
 - Test that functions never panic (even with invalid input)
 - Keep fuzz functions simple - focus on "no crash" rather than correctness
 - Use `FuzzRoundTrip` pattern to test parse→write→parse integrity
-- Run locally before committing to build initial corpus
 
 **Critical fuzz test - FuzzRoundTrip:**
 The most important fuzz test is `FuzzRoundTrip` in `einvoice_test.go`, which ensures:
