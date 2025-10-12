@@ -15,10 +15,20 @@ func underline(s string) string {
 // word boundaries (spaces) where possible. If a single word exceeds the width n,
 // it will be placed on its own line without breaking it. Lines are separated by
 // newline characters. If n is less than 1, the original text is returned.
-// indentation is added to each line except the first.
+// indentation is added to each line except the first. Whitespace at the beginning
+// is significant and preserved.
 func wrapTextIndent(text string, n int, indent int) string {
 	if n < 1 {
 		return text
+	}
+	// get the whitespace prefix
+	prefix := ""
+	for _, r := range text {
+		if r == ' ' || r == '\t' {
+			prefix += string(r)
+		} else {
+			break
+		}
 	}
 	words := strings.Fields(text)
 	if len(words) == 0 {
@@ -27,7 +37,7 @@ func wrapTextIndent(text string, n int, indent int) string {
 
 	var wrappedLines []string
 	var currentLine strings.Builder
-
+	currentLine.WriteString(prefix)
 	for _, word := range words {
 		if currentLine.Len() == 0 {
 			// Start a new line with the current word

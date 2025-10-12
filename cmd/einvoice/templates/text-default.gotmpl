@@ -3,6 +3,7 @@
 
   FuncMap required:
     - add(int,int)->int
+    - sub(int,int)->int
     - wrap(string,int,int)->string        // wrap(text, width, indent)
     - padright(string,int)->string
     - padmiddle(string,string,int)->string
@@ -84,7 +85,8 @@ VAT: {{ padright .Seller.VATNumber 35 -}} {{ .Buyer.VATNumber }}
 
 {{- /* ==========================================
        PARTIES: SELLER / BUYER (NARROW < 60 cols)
-     ========================================== */ -}}
+     ========================================== */}}
+
 Seller:
   {{ .Seller.Name }}
   {{- with .Seller.Address }}
@@ -101,6 +103,12 @@ Seller:
   {{- if (nonempty $.Seller.VATNumber) }}
   VAT: {{ $.Seller.VATNumber }}
   {{- end }}
+{{- if (nonempty .Seller.ID) }}
+  ID: {{ .Seller.ID }}
+{{- end }}
+{{- if (nonempty .Seller.GlobalID) }}
+  Global ID: {{ .Seller.GlobalID }}
+{{- end }}
 
 Buyer:
   {{ .Buyer.Name }}
@@ -118,6 +126,12 @@ Buyer:
   {{- if (nonempty $.Buyer.VATNumber) }}
   VAT: {{ $.Buyer.VATNumber }}
   {{- end }}
+{{- if (nonempty .Buyer.ID) }}
+  ID: {{ .Buyer.ID }}
+  {{- end }}
+{{- if (nonempty .Buyer.GlobalID) }}
+  Global ID: {{ .Buyer.GlobalID }}
+  {{ end -}}
 {{- end }}
 
 {{- /* ===========================
@@ -129,18 +143,23 @@ Buyer:
 
   {{- /* Wide line layout (>= 80 cols) */ -}}
   {{- if ge $w 80 }}
-{{ padright (printf "Line %s" .ID) 10 -}}
-{{- if (nonempty .Description) }}{{ wrap .Description (max (min $w 60) 30) 10 }}{{ end -}}
+{{ padright (printf "Line %s" .ID) 10 -}}Qty: {{ .Quantity }} · Unit Price: {{ .NetPrice }} {{ $.Currency }} · Total: {{ .NetAmount }} {{ $.Currency }}
+{{ if (nonempty .Name) }}{{ padright "" 10}}{{ wrap .Name (max (min $w 60) 30) 10 }}{{ end -}}
 {{- with .Note }}
-          {{ wrap . (max (min $w 60) 30) 10 }}
+{{ wrap (printf "         Note: %s" . ) $w 10 }}
 {{- end }}
-{{ padright "" 10 }}Qty: {{ .Quantity }} · Unit Price: {{ .NetPrice }} {{ $.Currency }} · Total: {{ .NetAmount }} {{ $.Currency }}
+{{- if (nonempty .GrossPrice) }}
+          Gross Price: {{ .GrossPrice }} {{ $.Currency }}
+{{- end }}
+{{- with .Description }}
+{{ wrap (printf "         Description: %s" . ) $w 10 }}
+{{- end }}
 
-  {{- /* Narrow line layout (< 80 cols) */ -}}
-  {{- else -}}
+{{- /* Narrow line layout (< 80 cols) */ -}}
+{{- else }}
 Line {{ .ID }}:
-{{- if (nonempty .Description) }}
-  Description: {{ wrap .Description (max (min $w 60) 30) 2 }}
+{{- if (nonempty .Name) }}
+  Name: {{ wrap .Name (max (min $w 60) 30) 2 }}
 {{- end }}
 {{- if .Quantity }}
   Quantity: {{ .Quantity }}
@@ -149,7 +168,17 @@ Line {{ .ID }}:
   Unit Price: {{ .NetPrice }} {{ $.Currency }}
 {{- end }}
   Net Amount: {{ .NetAmount }} {{ $.Currency }}
-  {{- end }}
+{{- if (nonempty .Note) }}
+{{ wrap (printf " Note: %s" .Note ) $w 2 }}
+{{- end }}
+{{- if (nonempty .Description) }}
+{{ wrap (printf " Description: %s" .Description ) $w 2 }}
+{{- end }}
+{{- if (nonempty .GrossPrice) }}
+  Gross Price: {{ .GrossPrice }} {{ $.Currency }}
+{{- end }}
+{{- end }}
+
 
 {{- end }}
 
@@ -174,13 +203,17 @@ No tax information available.
 {{ underline "Totals" }}
 {{ $wd := 30 -}}
 {{ padmiddle "Line Total:" (printf "%s %s" .Totals.LineTotal .Currency) $wd }}
-{{- if (nonempty .Totals.AllowanceTotal) }}{{ padmiddle "Allowances:" (printf "-%s %s" .Totals.AllowanceTotal .Currency) $wd }}{{ end }}
-{{- if (nonempty .Totals.ChargeTotal) }}{{ padmiddle "Charges:"  (printf "+%s %s" .Totals.ChargeTotal .Currency ) $wd }}{{ end }}
+{{- if (nonempty .Totals.AllowanceTotal) }}
+{{ padmiddle "Allowances:" (printf "-%s %s" .Totals.AllowanceTotal .Currency) $wd }}{{ end }}
+{{- if (nonempty .Totals.ChargeTotal) }}
+{{ padmiddle "Charges:"  (printf "+%s %s" .Totals.ChargeTotal .Currency ) $wd }}{{ end }}
 {{ padmiddle "Tax Basis:"   (printf "%s %s" .Totals.TaxBasisTotal .Currency) $wd }}
 {{ padmiddle "Tax Total:"   (printf "%s %s" .Totals.TaxTotal      .Currency) $wd }}
 {{ padmiddle "Grand Total:" (printf "%s %s" .Totals.GrandTotal    .Currency) $wd }}
-{{- if (nonempty .Totals.TotalPrepaid) }}{{ padmiddle "Prepaid:" (printf "-%s %s" .Totals.TotalPrepaid .Currency ) $wd }}{{ end }}
-{{- if (nonempty .Totals.RoundingAmount) }}{{ padmiddle "Rounding:" (printf "%s %s" .Totals.RoundingAmount .Currency) $wd }}{{ end }}
+{{- if (nonempty .Totals.TotalPrepaid) }}
+{{ padmiddle "Prepaid:" (printf "-%s %s" .Totals.TotalPrepaid .Currency ) $wd }}{{ end }}
+{{- if (nonempty .Totals.RoundingAmount) }}
+{{ padmiddle "Rounding:" (printf "%s %s" .Totals.RoundingAmount .Currency) $wd }}{{ end }}
 {{ padmiddle "Due Amount:"  (printf "%s %s" .Totals.DuePayableAmount .Currency) $wd }}
 
 {{- /* =====================================

@@ -77,6 +77,7 @@ type AddressInfo struct {
 // LineInfo contains invoice line details
 type LineInfo struct {
 	ID          string `json:"id"`
+	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	Note        string `json:"note,omitempty"`
 	Quantity    string `json:"quantity"`
@@ -207,6 +208,7 @@ func outputInfoTextTemplate(info InvoiceInfo, templatePath string) error {
 
 	funcMap := template.FuncMap{
 		"add":       func(a, b int) int { return a + b },
+		"sub":       func(a, b int) int { return a - b },
 		"wrap":      wrapTextIndent,
 		"padright":  padRight,
 		"padmiddle": padMiddle,
@@ -376,13 +378,12 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	details.Lines = make([]LineInfo, 0, len(invoice.InvoiceLines))
 	for _, line := range invoice.InvoiceLines {
 		lineInfo := LineInfo{
-			ID:        line.LineID,
-			NetAmount: line.Total.String(),
+			ID:          line.LineID,
+			NetAmount:   line.Total.String(),
+			Description: line.Description,
+			Name:        line.ItemName,
 		}
 
-		if line.ItemName != "" {
-			lineInfo.Description = line.ItemName
-		}
 		if !line.BilledQuantity.IsZero() {
 			lineInfo.Quantity = line.BilledQuantity.String()
 			if line.BilledQuantityUnit != "" {
