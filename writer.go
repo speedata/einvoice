@@ -554,7 +554,7 @@ var ErrUnsupportedSchema = errors.New("unsupported schema")
 func (inv *Invoice) Write(w io.Writer) error {
 	switch inv.SchemaType {
 	case UBL:
-		return fmt.Errorf("unknown schema UBL %w", ErrUnsupportedSchema)
+		return writeUBL(inv, w)
 	case CII, SchemaTypeUnknown:
 		// Programmatically created invoices have SchemaTypeUnknown (zero value)
 		// Treat them the same as CII for writing
