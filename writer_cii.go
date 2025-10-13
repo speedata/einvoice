@@ -519,12 +519,18 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		att.CreateElement("ram:CalculatedAmount").SetText(tradeTax.CalculatedAmount.StringFixed(2))
 
 		att.CreateElement("ram:TypeCode").SetText(tradeTax.TypeCode)
+
+		// BT-120: ExemptionReason must come after TypeCode and before BasisAmount
+		if er := tradeTax.ExemptionReason; er != "" {
+			att.CreateElement("ram:ExemptionReason").SetText(er)
+		}
+
 		att.CreateElement("ram:BasisAmount").SetText(tradeTax.BasisAmount.StringFixed(2))
 		att.CreateElement("ram:CategoryCode").SetText(tradeTax.CategoryCode)
 
-		// ExemptionReason must come AFTER CategoryCode per CII specification
-		if er := tradeTax.ExemptionReason; er != "" {
-			att.CreateElement("ram:ExemptionReason").SetText(er)
+		// BT-121: ExemptionReasonCode must come after CategoryCode
+		if erc := tradeTax.ExemptionReasonCode; erc != "" {
+			att.CreateElement("ram:ExemptionReasonCode").SetText(erc)
 		}
 
 		att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(tradeTax.Percent))
