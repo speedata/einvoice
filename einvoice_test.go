@@ -831,11 +831,11 @@ func TestAllValidFixtures(t *testing.T) {
 			assertInvoiceEqual(t, inv1, inv2)
 
 			// Step 6: Update totals on round-tripped invoice (calculates from line items)
+			// UpdateTotals() safely handles profiles without line items (Minimum, BasicWL)
 			inv2.UpdateTotals()
 
 			// Step 7: Verify calculated totals match fixture totals
 			// This validates fixture correctness AND UpdateTotals() logic
-			// Note: Minimum/BasicWL profiles may not have line items, so this will fail for them
 			assertInvoiceEqual(t, inv1, inv2)
 		})
 	}
