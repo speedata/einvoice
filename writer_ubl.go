@@ -293,7 +293,10 @@ func writeUBLParty(parent *etree.Element, party Party, isSeller bool) {
 	// Legal organization
 	if party.SpecifiedLegalOrganization != nil {
 		legalEntity := parent.CreateElement("cac:PartyLegalEntity")
-		legalEntity.CreateElement("cbc:RegistrationName").SetText(party.Name)
+		// BT-27: Seller legal registration name (TradingBusinessName)
+		if party.SpecifiedLegalOrganization.TradingBusinessName != "" {
+			legalEntity.CreateElement("cbc:RegistrationName").SetText(party.SpecifiedLegalOrganization.TradingBusinessName)
+		}
 
 		if party.SpecifiedLegalOrganization.ID != "" {
 			companyID := legalEntity.CreateElement("cbc:CompanyID")
