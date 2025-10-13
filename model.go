@@ -208,6 +208,7 @@ type InvoiceLine struct {
 	ReceivableSpecifiedTradeAccountingAccount string            // BT-133
 	GrossPrice                                decimal.Decimal   // BT-148
 	BasisQuantity                             decimal.Decimal   // BT-149
+	BasisQuantityUnit                         string            // BT-149
 	InvoiceLineAllowances                     []AllowanceCharge // BG-27
 	InvoiceLineCharges                        []AllowanceCharge // BG-28
 	AppliedTradeAllowanceCharge               []AllowanceCharge // BT-147

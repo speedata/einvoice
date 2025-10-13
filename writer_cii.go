@@ -90,7 +90,13 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 
 	slta := lineItem.CreateElement("ram:SpecifiedLineTradeAgreement")
 
-	// BT-148
+	// BT-132: Referenced purchase order line reference
+	if invoiceLine.BuyerOrderReferencedDocument != "" {
+		bord := slta.CreateElement("ram:BuyerOrderReferencedDocument")
+		bord.CreateElement("ram:LineID").SetText(invoiceLine.BuyerOrderReferencedDocument)
+	}
+
+	// BT-148: Gross price (with allowances/charges)
 	if !invoiceLine.GrossPrice.IsZero() {
 		gpptp := slta.CreateElement("ram:GrossPriceProductTradePrice")
 		gpptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.GrossPrice.StringFixed(2))
@@ -114,7 +120,19 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 			}
 		}
 	}
-	slta.CreateElement("ram:NetPriceProductTradePrice").CreateElement("ram:ChargeAmount").SetText(invoiceLine.NetPrice.StringFixed(2))
+
+	// BT-146: Net price
+	npptp := slta.CreateElement("ram:NetPriceProductTradePrice")
+	npptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.NetPrice.StringFixed(2))
+
+	// BT-149: Item price base quantity with unit code (goes with NetPrice)
+	if !invoiceLine.BasisQuantity.IsZero() {
+		bq := npptp.CreateElement("ram:BasisQuantity")
+		if invoiceLine.BasisQuantityUnit != "" {
+			bq.CreateAttr("unitCode", invoiceLine.BasisQuantityUnit)
+		}
+		bq.SetText(invoiceLine.BasisQuantity.StringFixed(4))
+	}
 	bq := lineItem.CreateElement("ram:SpecifiedLineTradeDelivery").CreateElement("ram:BilledQuantity")
 	bq.CreateAttr("unitCode", invoiceLine.BilledQuantityUnit)
 	bq.SetText(invoiceLine.BilledQuantity.StringFixed(4))
@@ -238,7 +256,13 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 
 	for _, dtc := range party.DefinedTradeContact {
 		dtcElt := parent.CreateElement("ram:DefinedTradeContact")
-		dtcElt.CreateElement("ram:PersonName").SetText(dtc.PersonName)
+		if dtc.PersonName != "" {
+			dtcElt.CreateElement("ram:PersonName").SetText(dtc.PersonName)
+		}
+
+		if dtc.DepartmentName != "" {
+			dtcElt.CreateElement("ram:DepartmentName").SetText(dtc.DepartmentName)
+		}
 
 		if dtc.PhoneNumber != "" {
 			dtcElt.CreateElement("ram:TelephoneUniversalCommunication").CreateElement("ram:CompleteNumber").SetText(dtc.PhoneNumber)
@@ -249,6 +273,16 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 			// email.CreateAttr("schemeID", "SMTP")
 			email.SetText(dtc.EMail)
 		}
+	}
+
+	// BT-34, BT-49: Electronic address (URI Universal Communication)
+	if party.URIUniversalCommunication != "" {
+		uuc := parent.CreateElement("ram:URIUniversalCommunication")
+		uriID := uuc.CreateElement("ram:URIID")
+		if party.URIUniversalCommunicationScheme != "" {
+			uriID.CreateAttr("schemeID", party.URIUniversalCommunicationScheme)
+		}
+		uriID.SetText(party.URIUniversalCommunication)
 	}
 
 	if ppa := party.PostalAddress; ppa != nil {
@@ -369,9 +403,14 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 	elt := parent.CreateElement("ram:SpecifiedTradeSettlementHeaderMonetarySummation")
 	elt.CreateElement("ram:LineTotalAmount").SetText(inv.LineTotal.StringFixed(2))
 
+	// Only write charge/allowance totals if non-zero to avoid unnecessary elements
 	if is(levelBasicWL, inv) {
-		elt.CreateElement("ram:ChargeTotalAmount").SetText(inv.ChargeTotal.StringFixed(2))
-		elt.CreateElement("ram:AllowanceTotalAmount").SetText(inv.AllowanceTotal.StringFixed(2))
+		if !inv.ChargeTotal.IsZero() {
+			elt.CreateElement("ram:ChargeTotalAmount").SetText(inv.ChargeTotal.StringFixed(2))
+		}
+		if !inv.AllowanceTotal.IsZero() {
+			elt.CreateElement("ram:AllowanceTotalAmount").SetText(inv.AllowanceTotal.StringFixed(2))
+		}
 	}
 
 	elt.CreateElement("ram:TaxBasisTotalAmount").SetText(inv.TaxBasisTotal.StringFixed(2))
@@ -397,7 +436,8 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 
 	elt.CreateElement("ram:GrandTotalAmount").CreateText(inv.GrandTotal.StringFixed(2))
 
-	if is(levelBasicWL, inv) {
+	// Only write prepaid amount if non-zero to avoid unnecessary elements
+	if is(levelBasicWL, inv) && !inv.TotalPrepaid.IsZero() {
 		elt.CreateElement("ram:TotalPrepaidAmount").CreateText(inv.TotalPrepaid.StringFixed(2))
 	}
 
@@ -480,12 +520,19 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 
 		att.CreateElement("ram:TypeCode").SetText(tradeTax.TypeCode)
 
+		// BT-120: ExemptionReason must come after TypeCode and before BasisAmount
 		if er := tradeTax.ExemptionReason; er != "" {
 			att.CreateElement("ram:ExemptionReason").SetText(er)
 		}
 
 		att.CreateElement("ram:BasisAmount").SetText(tradeTax.BasisAmount.StringFixed(2))
 		att.CreateElement("ram:CategoryCode").SetText(tradeTax.CategoryCode)
+
+		// BT-121: ExemptionReasonCode must come after CategoryCode
+		if erc := tradeTax.ExemptionReasonCode; erc != "" {
+			att.CreateElement("ram:ExemptionReasonCode").SetText(erc)
+		}
+
 		att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(tradeTax.Percent))
 	}
 	for _, stac := range inv.SpecifiedTradeAllowanceCharge {

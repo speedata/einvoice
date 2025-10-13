@@ -242,12 +242,9 @@ func ExampleInvoice_Write() {
 	//       </ram:SpecifiedTradePaymentTerms>
 	//       <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
 	//         <ram:LineTotalAmount>1650.00</ram:LineTotalAmount>
-	//         <ram:ChargeTotalAmount>0.00</ram:ChargeTotalAmount>
-	//         <ram:AllowanceTotalAmount>0.00</ram:AllowanceTotalAmount>
 	//         <ram:TaxBasisTotalAmount>1650.00</ram:TaxBasisTotalAmount>
 	//         <ram:TaxTotalAmount currencyID="EUR">237.50</ram:TaxTotalAmount>
 	//         <ram:GrandTotalAmount>1887.50</ram:GrandTotalAmount>
-	//         <ram:TotalPrepaidAmount>0.00</ram:TotalPrepaidAmount>
 	//         <ram:DuePayableAmount>1887.50</ram:DuePayableAmount>
 	//       </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
 	//     </ram:ApplicableHeaderTradeSettlement>

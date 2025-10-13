@@ -331,6 +331,9 @@ func writeUBLParty(parent *etree.Element, party Party, isSeller bool) {
 		if contact.PersonName != "" {
 			contactElt.CreateElement("cbc:Name").SetText(contact.PersonName)
 		}
+		if contact.DepartmentName != "" {
+			contactElt.CreateElement("cbc:Department").SetText(contact.DepartmentName)
+		}
 		if contact.PhoneNumber != "" {
 			contactElt.CreateElement("cbc:Telephone").SetText(contact.PhoneNumber)
 		}
@@ -704,10 +707,15 @@ func writeUBLLinePrice(parent *etree.Element, line InvoiceLine) {
 	// BT-146: Item net price
 	price.CreateElement("cbc:PriceAmount").SetText(line.NetPrice.StringFixed(2))
 
-	// BT-149: Item price base quantity
+	// BT-149: Item price base quantity with unit code
 	if !line.BasisQuantity.IsZero() {
 		baseQty := price.CreateElement("cbc:BaseQuantity")
-		baseQty.CreateAttr("unitCode", line.BilledQuantityUnit)
+		// Use BasisQuantityUnit if available, otherwise fallback to BilledQuantityUnit
+		unitCode := line.BasisQuantityUnit
+		if unitCode == "" {
+			unitCode = line.BilledQuantityUnit
+		}
+		baseQty.CreateAttr("unitCode", unitCode)
 		baseQty.SetText(line.BasisQuantity.StringFixed(4))
 	}
 
