@@ -148,23 +148,29 @@ func (inv *Invoice) Validate() error {
 	// Always clear previous violations to ensure idempotency
 	inv.violations = []SemanticError{}
 
-	// Always run EN 16931 core validation
-	inv.validateCore()
-	inv.validateCalculations()
-	inv.validateDecimals()
+	// Determine if we should validate:
+	// - For parsed invoices (CII/UBL): Only validate if they claim EN 16931 compliance via BT-24
+	// - For programmatically built invoices (SchemaTypeUnknown): Always validate
+	shouldValidate := inv.SchemaType == SchemaTypeUnknown || inv.isEN16931Compliant()
 
-	// Auto-detect and run PEPPOL validation based on specification identifier
-	if inv.isPEPPOL() {
-		inv.validatePEPPOL()
+	if shouldValidate {
+		inv.validateCore()
+		inv.validateCalculations()
+		inv.validateDecimals()
+
+		// Auto-detect and run PEPPOL validation based on specification identifier
+		if inv.isPEPPOL() {
+			inv.validatePEPPOL()
+		}
+
+		// Auto-detect country-specific rules based on seller location
+		// TODO: Implement country-specific validation rules for:
+		//   - Denmark (isDanish)
+		//   - Italy (isItalian)
+		//   - Netherlands (isDutch)
+		//   - Norway (isNorwegian)
+		//   - Sweden (isSwedish)
 	}
-
-	// Auto-detect country-specific rules based on seller location
-	// TODO: Implement country-specific validation rules for:
-	//   - Denmark (isDanish)
-	//   - Italy (isItalian)
-	//   - Netherlands (isDutch)
-	//   - Norway (isNorwegian)
-	//   - Sweden (isSwedish)
 
 	// Return error if violations exist
 	if len(inv.violations) > 0 {
@@ -172,6 +178,39 @@ func (inv *Invoice) Validate() error {
 	}
 
 	return nil
+}
+
+// isEN16931Compliant checks if the invoice claims to be EN 16931 compliant
+// based on the specification identifier (BT-24).
+//
+// Returns true if the CustomizationID (BT-24) contains any of the following:
+// - "en16931" (EN 16931 core, PEPPOL, XRechnung, etc.)
+// - "factur-x" (Factur-X/ZUGFeRD profiles)
+// - "zugferd" (ZUGFeRD profiles)
+//
+// Pure UBL 2.1 or CII documents without BT-24 are NOT EN 16931 compliant and
+// will not be validated against EN 16931 business rules.
+func (inv *Invoice) isEN16931Compliant() bool {
+	if inv.GuidelineSpecifiedDocumentContextParameter == "" {
+		// Empty BT-24: Document does not claim EN 16931 compliance
+		return false
+	}
+
+	urn := inv.GuidelineSpecifiedDocumentContextParameter
+	// Check for EN 16931 compliance indicators
+	return contains(urn, "en16931") || contains(urn, "factur-x") || contains(urn, "zugferd")
+}
+
+// contains checks if a string contains a substring (case-sensitive).
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || func() bool {
+		for i := 0; i <= len(s)-len(substr); i++ {
+			if s[i:i+len(substr)] == substr {
+				return true
+			}
+		}
+		return false
+	}())
 }
 
 // isPEPPOL checks if the invoice is a PEPPOL BIS Billing 3.0 invoice
