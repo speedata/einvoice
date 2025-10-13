@@ -368,6 +368,9 @@ type Invoice struct {
 	hasGrandTotalInXML       bool
 	hasDuePayableAmountInXML bool
 
+	// Private field for tracking unexpected TaxTotalAmount currencies during parsing
+	unexpectedTaxCurrencies []string
+
 	violations []SemanticError // Private field - use Validate() and check error instead
 }
 

@@ -657,6 +657,17 @@ func (inv *Invoice) validateCore() {
 		inv.addViolation(rules.BR53, "Tax total in accounting currency must be specified when tax currency code is provided")
 	}
 
+	// Validate TaxTotalAmount currency consistency
+	// EN 16931 specifies only BT-110 (invoice currency) and BT-111 (accounting currency) are allowed
+	for _, unexpectedCurrency := range inv.unexpectedTaxCurrencies {
+		expectedCurrencies := inv.InvoiceCurrencyCode
+		if inv.TaxCurrencyCode != "" {
+			expectedCurrencies += " or " + inv.TaxCurrencyCode
+		}
+		inv.addViolation(rules.UNEXPECTED_TAX_CURRENCY,
+			fmt.Sprintf("TaxTotalAmount with unexpected currency %s (expected %s)", unexpectedCurrency, expectedCurrencies))
+	}
+
 	// BR-54 Artikelattribute
 	// Jede Eigenschaft eines in Rechnung gestellten Postens "ITEM ATTRIBUTES"
 	// (BG-32) muss eine Bezeichnung "Item attribute name" (BT-160) und einen
