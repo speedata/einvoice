@@ -298,6 +298,8 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	var err error
 
 	inv.InvoiceCurrencyCode = applicableHeaderTradeSettlement.Eval("ram:InvoiceCurrencyCode").String()
+	// BT-6: Tax currency code (accounting currency, if different from invoice currency)
+	inv.TaxCurrencyCode = applicableHeaderTradeSettlement.Eval("ram:TaxCurrencyCode").String()
 	// BT-90
 	inv.CreditorReferenceID = applicableHeaderTradeSettlement.Eval("ram:CreditorReferenceID").String()
 	// BG-10
@@ -421,11 +423,30 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	if err != nil {
 		return err
 	}
-	inv.TaxTotalCurrency = summation.Eval("ram:TaxTotalAmount/@currencyID").String()
-	inv.TaxTotal, err = getDecimal(summation, "ram:TaxTotalAmount")
-	if err != nil {
-		return err
+
+	// BT-110 and BT-111: Parse TaxTotalAmount by matching currencyID (not position)
+	// EN 16931 specifies which currency each total must be in, regardless of XML order
+	for taxTotal := range summation.Each("ram:TaxTotalAmount") {
+		currency := taxTotal.Eval("@currencyID").String()
+		amount, err := getDecimal(taxTotal, ".")
+		if err != nil {
+			return fmt.Errorf("invalid TaxTotalAmount with currency %s: %w", currency, err)
+		}
+
+		// BT-110: Tax total in invoice currency (must match BT-5)
+		if currency == inv.InvoiceCurrencyCode {
+			inv.TaxTotalCurrency = currency
+			inv.TaxTotal = amount
+		} else if inv.TaxCurrencyCode != "" && currency == inv.TaxCurrencyCode {
+			// BT-111: Tax total in accounting currency (must match BT-6)
+			inv.TaxTotalAccountingCurrency = currency
+			inv.TaxTotalAccounting = amount
+		} else {
+			// Track unexpected TaxTotalAmount currencies for validation
+			inv.unexpectedTaxCurrencies = append(inv.unexpectedTaxCurrencies, currency)
+		}
 	}
+
 	inv.GrandTotal, err = getDecimal(summation, "ram:GrandTotalAmount")
 	if err != nil {
 		return err

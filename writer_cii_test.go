@@ -166,8 +166,8 @@ func TestWrite_MultiCurrencyTaxTotal(t *testing.T) {
 		TaxTotal:         decimal.NewFromInt(19),
 		TaxTotalCurrency: "USD",
 		// BT-111: Tax total in accounting currency (EUR) - at exchange rate
-		TaxTotalVAT:         decimal.NewFromFloat(17.50),
-		TaxTotalVATCurrency: "EUR",
+		TaxTotalAccounting:         decimal.NewFromFloat(17.50),
+		TaxTotalAccountingCurrency: "EUR",
 	}
 
 	inv.UpdateApplicableTradeTax(nil)

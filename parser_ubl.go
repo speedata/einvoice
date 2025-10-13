@@ -413,28 +413,32 @@ func parseUBLAllowanceCharge(root *cxpath.Context, inv *Invoice, prefix string) 
 
 // parseUBLTaxTotal parses the tax breakdown (BG-23).
 func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
-	// BT-110: Total tax amount (document currency)
-	inv.TaxTotalCurrency = root.Eval("cac:TaxTotal/cbc:TaxAmount/@currencyID").String()
-	if inv.TaxTotalCurrency == "" {
-		inv.TaxTotalCurrency = inv.InvoiceCurrencyCode
-	}
-
 	var err error
-	inv.TaxTotal, err = getDecimal(root, "cac:TaxTotal/cbc:TaxAmount")
-	if err != nil {
-		return err
-	}
 
-	// BT-111: Tax total in accounting currency (if different)
-	if inv.TaxCurrencyCode != "" && inv.TaxCurrencyCode != inv.InvoiceCurrencyCode {
-		// Find TaxTotal with accounting currency
-		for taxTotal := range root.Each("cac:TaxTotal") {
-			currency := taxTotal.Eval("cbc:TaxAmount/@currencyID").String()
-			if currency == inv.TaxCurrencyCode {
-				inv.TaxTotalVAT, _ = getDecimal(taxTotal, "cbc:TaxAmount")
-				inv.TaxTotalVATCurrency = currency
-				break
-			}
+	// BT-110 and BT-111: Parse TaxTotal by matching currencyID (not position)
+	// EN 16931 specifies which currency each total must be in, regardless of XML order
+	for taxTotal := range root.Each("cac:TaxTotal") {
+		currency := taxTotal.Eval("cbc:TaxAmount/@currencyID").String()
+		if currency == "" {
+			currency = inv.InvoiceCurrencyCode // Default if missing
+		}
+
+		amount, err := getDecimal(taxTotal, "cbc:TaxAmount")
+		if err != nil {
+			return fmt.Errorf("invalid TaxAmount with currency %s: %w", currency, err)
+		}
+
+		// BT-110: Tax total in invoice currency (must match BT-5)
+		if currency == inv.InvoiceCurrencyCode {
+			inv.TaxTotalCurrency = currency
+			inv.TaxTotal = amount
+		} else if inv.TaxCurrencyCode != "" && currency == inv.TaxCurrencyCode {
+			// BT-111: Tax total in accounting currency (must match BT-6)
+			inv.TaxTotalAccountingCurrency = currency
+			inv.TaxTotalAccounting = amount
+		} else {
+			// Track unexpected TaxTotal currencies for validation
+			inv.unexpectedTaxCurrencies = append(inv.unexpectedTaxCurrencies, currency)
 		}
 	}
 

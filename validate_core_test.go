@@ -1320,7 +1320,7 @@ func TestBR53_TaxAccountingCurrencyRequiresTotalVAT(t *testing.T) {
 		InvoiceTypeCode:     380,
 		InvoiceDate:         time.Now(),
 		InvoiceCurrencyCode: "EUR",
-		TaxCurrencyCode:     "USD", // Specified but TaxTotalVAT is zero
+		TaxCurrencyCode:     "USD", // Specified but TaxTotalAccounting is zero
 		LineTotal:           decimal.NewFromInt(100),
 		TaxBasisTotal:       decimal.NewFromInt(100),
 		GrandTotal:          decimal.NewFromInt(119),

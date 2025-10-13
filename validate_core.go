@@ -665,8 +665,19 @@ func (inv *Invoice) validateCore() {
 	// Wenn eine Währung für die Umsatzsteuerabrechnung angegeben wurde, muss
 	// der Umsatzsteuergesamtbetrag in der Abrechnungswährung "Invoice total VAT
 	// amount in accounting currency" (BT-111) angegeben werden.
-	if inv.TaxCurrencyCode != "" && inv.TaxTotalVAT.IsZero() {
+	if inv.TaxCurrencyCode != "" && inv.TaxTotalAccounting.IsZero() {
 		inv.addViolation(rules.BR53, "Tax total in accounting currency must be specified when tax currency code is provided")
+	}
+
+	// Validate TaxTotalAmount currency consistency
+	// EN 16931 specifies only BT-110 (invoice currency) and BT-111 (accounting currency) are allowed
+	for _, unexpectedCurrency := range inv.unexpectedTaxCurrencies {
+		expectedCurrencies := inv.InvoiceCurrencyCode
+		if inv.TaxCurrencyCode != "" {
+			expectedCurrencies += " or " + inv.TaxCurrencyCode
+		}
+		inv.addViolation(rules.UNEXPECTED_TAX_CURRENCY,
+			fmt.Sprintf("TaxTotalAmount with unexpected currency %s (expected %s)", unexpectedCurrency, expectedCurrencies))
 	}
 
 	// BR-54 Artikelattribute
@@ -870,7 +881,7 @@ func (inv *Invoice) validateDecimals() {
 	checkDecimalPrecision(inv.GrandTotal, "Invoice total amount with VAT", "BT-112", rules.BRDEC14)
 
 	// BR-DEC-15: Invoice total VAT amount in accounting currency (BT-111)
-	checkDecimalPrecision(inv.TaxTotalVAT, "Invoice total VAT amount in accounting currency", "BT-111", rules.BRDEC15)
+	checkDecimalPrecision(inv.TaxTotalAccounting, "Invoice total VAT amount in accounting currency", "BT-111", rules.BRDEC15)
 
 	// BR-DEC-16: Paid amount (BT-113)
 	checkDecimalPrecision(inv.TotalPrepaid, "Paid amount", "BT-113", rules.BRDEC16)

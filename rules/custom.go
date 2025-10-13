@@ -26,4 +26,13 @@ var (
 		Fields:      []string{"BT-100"},
 		Description: `Document level charge base amount (BT-100) must not be negative.`,
 	}
+
+	// UNEXPECTED_TAX_CURRENCY: Validates that TaxTotalAmount elements use only
+	// the invoice currency (BT-5) and optionally the accounting currency (BT-6).
+	// EN 16931 only defines BT-110 and BT-111, no additional currencies are allowed.
+	UNEXPECTED_TAX_CURRENCY = Rule{
+		Code:        "UNEXPECTED-TAX-CURRENCY",
+		Fields:      []string{"BT-110", "BT-111"},
+		Description: `TaxTotalAmount with unexpected currency (expected invoice currency BT-5 or accounting currency BT-6).`,
+	}
 )

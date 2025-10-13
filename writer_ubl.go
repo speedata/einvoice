@@ -412,7 +412,7 @@ func writeUBLTaxTotal(inv *Invoice, root *etree.Element, prefix string) {
 		taxTotalVAT := root.CreateElement("cac:TaxTotal")
 		taxAmountVAT := taxTotalVAT.CreateElement("cbc:TaxAmount")
 		taxAmountVAT.CreateAttr("currencyID", inv.TaxCurrencyCode)
-		taxAmountVAT.SetText(inv.TaxTotalVAT.StringFixed(2))
+		taxAmountVAT.SetText(inv.TaxTotalAccounting.StringFixed(2))
 	}
 }
 

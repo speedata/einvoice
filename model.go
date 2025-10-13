@@ -333,8 +333,8 @@ type Invoice struct {
 	TaxBasisTotal                             decimal.Decimal              // BT-109
 	TaxTotalCurrency                          string                       // BT-110
 	TaxTotal                                  decimal.Decimal              // BT-110
-	TaxTotalVATCurrency                       string                       // BT-111
-	TaxTotalVAT                               decimal.Decimal              // BT-111
+	TaxTotalAccountingCurrency                string                       // BT-111
+	TaxTotalAccounting                        decimal.Decimal              // BT-111
 	GrandTotal                                decimal.Decimal              // BT-112
 	TotalPrepaid                              decimal.Decimal              // BT-113
 	RoundingAmount                            decimal.Decimal              // BT-114
@@ -367,6 +367,9 @@ type Invoice struct {
 	hasTaxBasisTotalInXML    bool
 	hasGrandTotalInXML       bool
 	hasDuePayableAmountInXML bool
+
+	// Private field for tracking unexpected TaxTotalAmount currencies during parsing
+	unexpectedTaxCurrencies []string
 
 	violations []SemanticError // Private field - use Validate() and check error instead
 }
