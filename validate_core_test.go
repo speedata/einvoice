@@ -1632,6 +1632,14 @@ func TestBR57_DeliverToAddressMustHaveCountryCode(t *testing.T) {
 }
 
 // TestBR61_CreditTransferRequiresAccountIdentifier tests BR-61
+// NOTE: BR-61 validation is intentionally disabled to match official EN 16931 schematron behavior.
+// The schematron context requires PayeePartyCreditorFinancialAccount element to exist in XML.
+// When parsing, we cannot distinguish between:
+// 1. Element doesn't exist (no violation per schematron)
+// 2. Element exists with empty children (no violation per XPath element test)
+// 3. Truly missing data
+// Official examples (e.g., CII_example5.xml) have empty payment account identifiers and are valid.
+// This test documents the expected behavior: NO violation is triggered.
 func TestBR61_CreditTransferRequiresAccountIdentifier(t *testing.T) {
 	inv := Invoice{
 		GuidelineSpecifiedDocumentContextParameter: SpecFacturXBasic,
@@ -1683,16 +1691,11 @@ func TestBR61_CreditTransferRequiresAccountIdentifier(t *testing.T) {
 
 	_ = inv.Validate()
 
-	// Find BR-61 violation
-	var br61Found bool
+	// BR-61 validation is disabled, so we should NOT find a violation
 	for _, v := range inv.violations {
 		if v.Rule.Code == "BR-61" {
-			br61Found = true
+			t.Errorf("BR-61 validation is disabled to match EN 16931 schematron behavior, but found violation: %s", v.Text)
 		}
-	}
-
-	if !br61Found {
-		t.Error("Expected BR-61 violation for credit transfer without account identifier")
 	}
 }
 

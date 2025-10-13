@@ -239,6 +239,15 @@ type PaymentMeans struct {
 	PayerPartyDebtorFinancialAccountIBAN                 string // BT-91
 	ApplicableTradeSettlementFinancialCardID             string // BT-87
 	ApplicableTradeSettlementFinancialCardCardholderName string // BT-88
+
+	// Private fields for tracking XML element presence (BR-61)
+	// Set during parsing to distinguish between missing elements and empty elements.
+	// Per EN 16931 schematron, BR-61 test is "(ram:IBANID) or (ram:ProprietaryID)" which
+	// checks for element PRESENCE, not value. An empty element <ram:IBANID/> satisfies
+	// the test because the element exists.
+	hasPayeeAccountInXML      bool // Set when PayeePartyCreditorFinancialAccount element exists
+	hasPayeeIBANInXML         bool // Set when IBANID element exists (even if empty)
+	hasPayeeProprietaryIDInXML bool // Set when ProprietaryID element exists (even if empty)
 }
 
 // AllowanceCharge specifies charges and deductions.

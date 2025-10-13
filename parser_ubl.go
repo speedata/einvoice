@@ -565,6 +565,13 @@ func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) err
 				paymentMeans.PayeePartyCreditorFinancialAccountName = pm.Eval("cac:PayeeFinancialAccount/cbc:Name").String()
 				paymentMeans.PayeePartyCreditorFinancialAccountProprietaryID = pm.Eval("cac:PayeeFinancialAccount/cac:ID").String()
 				paymentMeans.PayeeSpecifiedCreditorFinancialInstitutionBIC = pm.Eval("cac:PayeeFinancialAccount/cac:FinancialInstitutionBranch/cbc:ID").String()
+				// BR-61: Track XML element presence to validate later.
+				// Per EN 16931 schematron, BR-61 test is "(ram:IBANID) or (ram:ProprietaryID)"
+				// which checks for element PRESENCE, not value. An empty element <cbc:ID/>
+				// satisfies the test because the element exists.
+				paymentMeans.hasPayeeAccountInXML = true
+				paymentMeans.hasPayeeIBANInXML = pm.Eval("count(cac:PayeeFinancialAccount/cbc:ID)").Int() > 0
+				paymentMeans.hasPayeeProprietaryIDInXML = pm.Eval("count(cac:PayeeFinancialAccount/cac:ID)").Int() > 0
 			}
 
 			// BG-18: Payment card information

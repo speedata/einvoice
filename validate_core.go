@@ -198,16 +198,20 @@ func (inv *Invoice) validateCalculations() {
 		inv.addViolation(rules.BRCO26, "At least one seller identifier must be present: Seller ID (BT-29), Legal registration (BT-30), or VAT ID (BT-31)")
 	}
 
-	// BR-CO-27 Zahlungsanweisungen
+	// BR-CO-27 Zahlungsanweisungen (CII-specific rule)
 	// Either the IBAN or a Proprietary ID (BT-84) shall be used for payment account identifier.
-	// Note: BT-84 can be either IBAN or Proprietary ID; this rule ensures at least one is specified
-	// when payment account information is provided.
-	for _, pm := range inv.PaymentMeans {
-		if pm.PayeePartyCreditorFinancialAccountIBAN == "" && pm.PayeePartyCreditorFinancialAccountProprietaryID == "" {
-			// Only validate if TypeCode indicates a payment method that requires account info
-			// TypeCodes 30, 58 = credit transfer, which need account identifiers (already validated by BR-61)
-			if pm.TypeCode == 30 || pm.TypeCode == 58 {
-				inv.addViolation(rules.BRCO27, "Payment account identifier (BT-84) must be provided as either IBAN or Proprietary ID")
+	// Note: This rule only exists in the CII schematron, not in UBL schematron.
+	// Per EN 16931 CII schematron, this rule applies to payment type codes 49 (Direct debit)
+	// and 59 (SEPA direct debit), NOT to credit transfer codes (30, 58).
+	// BR-61 handles credit transfers.
+	// However, per issue #423, this rule may be too strict and is under review.
+	if inv.SchemaType == CII {
+		for _, pm := range inv.PaymentMeans {
+			// TypeCodes 49, 59 = direct debit per EN 16931 CII schematron
+			if pm.TypeCode == 49 || pm.TypeCode == 59 {
+				if pm.PayeePartyCreditorFinancialAccountIBAN == "" && pm.PayeePartyCreditorFinancialAccountProprietaryID == "" {
+					inv.addViolation(rules.BRCO27, "Payment account identifier (BT-84) must be provided as either IBAN or Proprietary ID")
+				}
 			}
 		}
 	}
@@ -678,14 +682,15 @@ func (inv *Invoice) validateCore() {
 		inv.addViolation(rules.BR57, "Deliver-to address must have country code")
 	}
 
-	// BR-61 Zahlungsanweisungen
-	// Wenn der Zahlungsmittel-Typ SEPA, lokale Überweisung oder
-	// Nicht-SEPA-Überweisung ist, muss der "Payment account identifier" (BT-84)
-	// des Zahlungsempfängers angegeben werden.
+	// BR-61: Payment account identifier (BT-84) required for credit transfers (codes 30, 58).
+	// Note: Validates element presence per EN 16931 schematron, not value. Empty elements
+	// like <ram:IBANID/> are valid. Only triggers when PayeePartyCreditorFinancialAccount
+	// exists but neither IBANID nor ProprietaryID elements are present.
 	for _, pm := range inv.PaymentMeans {
-		// TypeCode 30 = Credit transfer, 58 = SEPA credit transfer
-		if (pm.TypeCode == 30 || pm.TypeCode == 58) && pm.PayeePartyCreditorFinancialAccountIBAN == "" && pm.PayeePartyCreditorFinancialAccountProprietaryID == "" {
-			inv.addViolation(rules.BR61, "Payment account identifier required for credit transfer payment types")
+		if (pm.TypeCode == 30 || pm.TypeCode == 58) && pm.hasPayeeAccountInXML {
+			if !pm.hasPayeeIBANInXML && !pm.hasPayeeProprietaryIDInXML {
+				inv.addViolation(rules.BR61, "Payment account identifier required for credit transfer payment types")
+			}
 		}
 	}
 
