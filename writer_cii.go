@@ -88,6 +88,33 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		otc.CreateElement("ram:ID").SetText(invoiceLine.OriginTradeCountry)
 	}
 
+	// Extended profile: IncludedReferencedProduct (composite products)
+	if is(levelExtended, inv) {
+		for _, refProd := range invoiceLine.IncludedReferencedProducts {
+			irp := stp.CreateElement("ram:IncludedReferencedProduct")
+			if refProd.GlobalID != "" {
+				gid := irp.CreateElement("ram:GlobalID")
+				if refProd.GlobalIDScheme != "" {
+					gid.CreateAttr("schemeID", refProd.GlobalIDScheme)
+				}
+				gid.SetText(refProd.GlobalID)
+			}
+			if refProd.SellerAssignedID != "" {
+				irp.CreateElement("ram:SellerAssignedID").SetText(refProd.SellerAssignedID)
+			}
+			if refProd.Name != "" {
+				irp.CreateElement("ram:Name").SetText(refProd.Name)
+			}
+			if !refProd.UnitQuantity.IsZero() {
+				uq := irp.CreateElement("ram:UnitQuantity")
+				if refProd.UnitQuantityCode != "" {
+					uq.CreateAttr("unitCode", refProd.UnitQuantityCode)
+				}
+				uq.SetText(refProd.UnitQuantity.String())
+			}
+		}
+	}
+
 	slta := lineItem.CreateElement("ram:SpecifiedLineTradeAgreement")
 
 	// BT-132: Referenced purchase order line reference
@@ -97,7 +124,8 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	}
 
 	// BT-148: Gross price (no decimal restriction per EN 16931)
-	if !invoiceLine.GrossPrice.IsZero() {
+	// Extended profile writes GrossPrice even if zero
+	if !invoiceLine.GrossPrice.IsZero() || (is(levelExtended, inv) && len(invoiceLine.AppliedTradeAllowanceCharge) > 0) {
 		gpptp := slta.CreateElement("ram:GrossPriceProductTradePrice")
 		gpptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.GrossPrice.String())
 
@@ -135,7 +163,19 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		// BT-149: Item price base quantity (no decimal restriction per EN 16931)
 		bq.SetText(invoiceLine.BasisQuantity.String())
 	}
-	bq := lineItem.CreateElement("ram:SpecifiedLineTradeDelivery").CreateElement("ram:BilledQuantity")
+
+	sltd := lineItem.CreateElement("ram:SpecifiedLineTradeDelivery")
+
+	// Extended profile: PackageQuantity
+	if is(levelExtended, inv) && !invoiceLine.PackageQuantity.IsZero() {
+		pq := sltd.CreateElement("ram:PackageQuantity")
+		if invoiceLine.PackageQuantityUnit != "" {
+			pq.CreateAttr("unitCode", invoiceLine.PackageQuantityUnit)
+		}
+		pq.SetText(invoiceLine.PackageQuantity.String())
+	}
+
+	bq := sltd.CreateElement("ram:BilledQuantity")
 	bq.CreateAttr("unitCode", invoiceLine.BilledQuantityUnit)
 	bq.SetText(invoiceLine.BilledQuantity.StringFixed(4))
 
@@ -400,6 +440,10 @@ func writeCIIramApplicableHeaderTradeDelivery(inv *Invoice, parent *etree.Elemen
 	if inv.ReceivingAdviceReferencedDocument != "" {
 		elt.CreateElement("ram:ReceivingAdviceReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.ReceivingAdviceReferencedDocument)
 	}
+	// Extended profile: Delivery note reference
+	if is(levelExtended, inv) && inv.DeliveryNoteReferencedDocument != "" {
+		elt.CreateElement("ram:DeliveryNoteReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.DeliveryNoteReferencedDocument)
+	}
 }
 
 func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, parent *etree.Element) {
@@ -439,8 +483,8 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 
 	elt.CreateElement("ram:GrandTotalAmount").CreateText(inv.GrandTotal.StringFixed(2))
 
-	// Only write prepaid amount if non-zero to avoid unnecessary elements
-	if is(levelBasicWL, inv) && !inv.TotalPrepaid.IsZero() {
+	// Extended profile writes prepaid amount even if zero, lower profiles only if non-zero
+	if is(levelExtended, inv) || (is(levelBasicWL, inv) && !inv.TotalPrepaid.IsZero()) {
 		elt.CreateElement("ram:TotalPrepaidAmount").CreateText(inv.TotalPrepaid.StringFixed(2))
 	}
 
@@ -471,6 +515,11 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	// PayeeTradeParty BG-10
 	if pt := inv.PayeeTradeParty; pt != nil {
 		writeCIIParty(inv, *pt, elt.CreateElement("ram:PayeeTradeParty"), CPayeeParty)
+	}
+
+	// Extended profile: InvoiceeTradeParty
+	if is(levelExtended, inv) && inv.InvoiceeTradeParty != nil {
+		writeCIIParty(inv, *inv.InvoiceeTradeParty, elt.CreateElement("ram:InvoiceeTradeParty"), CBuyerParty)
 	}
 
 	if is(levelBasicWL, inv) {
@@ -528,6 +577,21 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 			att.CreateElement("ram:ExemptionReason").SetText(er)
 		}
 
+		// Extended profile: CalculationPercent must come before BasisAmount
+		if is(levelExtended, inv) && !tradeTax.Percent.IsZero() {
+			att.CreateElement("ram:CalculationPercent").SetText(formatPercent(tradeTax.Percent))
+		}
+
+		// Extended profile: LineTotalBasisAmount
+		if is(levelExtended, inv) && !tradeTax.LineTotalBasisAmount.IsZero() {
+			att.CreateElement("ram:LineTotalBasisAmount").SetText(tradeTax.LineTotalBasisAmount.StringFixed(2))
+		}
+
+		// Extended profile: AllowanceChargeBasisAmount
+		if is(levelExtended, inv) && !tradeTax.AllowanceChargeBasisAmount.IsZero() {
+			att.CreateElement("ram:AllowanceChargeBasisAmount").SetText(tradeTax.AllowanceChargeBasisAmount.StringFixed(2))
+		}
+
 		att.CreateElement("ram:BasisAmount").SetText(tradeTax.BasisAmount.StringFixed(2))
 		att.CreateElement("ram:CategoryCode").SetText(tradeTax.CategoryCode)
 
@@ -539,7 +603,14 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(tradeTax.Percent))
 	}
 	for _, stac := range inv.SpecifiedTradeAllowanceCharge {
-		stacElt := elt.CreateElement("ram:SpecifiedTradeAllowanceCharge")
+		// Extended profile: Use SpecifiedLogisticsServiceCharge for logistics charges
+		var stacElt *etree.Element
+		if is(levelExtended, inv) && stac.IsLogisticsServiceCharge {
+			stacElt = elt.CreateElement("ram:SpecifiedLogisticsServiceCharge")
+		} else {
+			stacElt = elt.CreateElement("ram:SpecifiedTradeAllowanceCharge")
+		}
+
 		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", stac.ChargeIndicator))
 		// BT-93, BT-100: BasisAmount is optional - only create if non-zero (PEPPOL-EN16931-R008)
 		if !stac.BasisAmount.IsZero() {
@@ -592,6 +663,21 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		if paymentTerm.DirectDebitMandateID != "" {
 			spt.CreateElement("ram:DirectDebitMandateID").SetText(paymentTerm.DirectDebitMandateID)
 		}
+		// Extended profile: Payment discount terms
+		if is(levelExtended, inv) && paymentTerm.DiscountTerms != nil {
+			dt := paymentTerm.DiscountTerms
+			apdt := spt.CreateElement("ram:ApplicableTradePaymentDiscountTerms")
+			if !dt.BasisPeriodMeasure.IsZero() {
+				bpm := apdt.CreateElement("ram:BasisPeriodMeasure")
+				if dt.BasisPeriodMeasureUnit != "" {
+					bpm.CreateAttr("unitCode", dt.BasisPeriodMeasureUnit)
+				}
+				bpm.SetText(dt.BasisPeriodMeasure.String())
+			}
+			if !dt.CalculationPercent.IsZero() {
+				apdt.CreateElement("ram:CalculationPercent").SetText(formatPercent(dt.CalculationPercent))
+			}
+		}
 	}
 
 	writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv, elt)
@@ -616,6 +702,13 @@ func writeCIIrsmSupplyChainTradeTransaction(inv *Invoice, parent *etree.Element)
 
 func writeCIIrsmExchangedDocumentContext(inv *Invoice, root *etree.Element) {
 	documentContext := root.CreateElement("rsm:ExchangedDocumentContext")
+
+	// Extended profile: TestIndicator (must come before GuidelineSpecifiedDocumentContextParameter)
+	if is(levelExtended, inv) && inv.TestIndicator {
+		ti := documentContext.CreateElement("ram:TestIndicator")
+		ti.CreateElement("udt:Indicator").SetText("true")
+	}
+
 	// BusinessProcessSpecifiedDocumentContextParameter BT-23 is mandatory in extended
 	if inv.BPSpecifiedDocumentContextParameter != "" || is(levelExtended, inv) {
 		documentContext.CreateElement("ram:BusinessProcessSpecifiedDocumentContextParameter").CreateElement("ram:ID").CreateText(inv.BPSpecifiedDocumentContextParameter)
@@ -632,8 +725,17 @@ func writeCIIrsmExchangedDocument(inv *Invoice, root *etree.Element) {
 	exchangedDoc.CreateElement("ram:TypeCode").SetText(inv.InvoiceTypeCode.String())
 	addTimeCIIUDT(exchangedDoc.CreateElement("ram:IssueDateTime"), inv.InvoiceDate)
 
+	// Extended profile: Invoice name
+	if is(levelExtended, inv) && inv.InvoiceName != "" {
+		exchangedDoc.CreateElement("ram:Name").SetText(inv.InvoiceName)
+	}
+
 	for _, note := range inv.Notes {
 		in := exchangedDoc.CreateElement("ram:IncludedNote")
+		// Extended profile: ContentCode must come before Content
+		if is(levelExtended, inv) && note.ContentCode != "" {
+			in.CreateElement("ram:ContentCode").SetText(note.ContentCode)
+		}
 		rc := in.CreateElement("ram:Content")
 		rc.SetText(note.Text)
 		if note.SubjectCode != "" {

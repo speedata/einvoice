@@ -115,6 +115,9 @@ func parseCII(ctx *cxpath.Context) (*Invoice, error) {
 }
 
 func parseCIIExchangedDocumentContext(ctx *cxpath.Context, inv *Invoice) error {
+	// Extended profile: Test indicator
+	inv.TestIndicator = ctx.Eval("string(ram:TestIndicator/udt:Indicator) = 'true'").Bool()
+
 	// Store the raw URN value (BT-24 - Specification identifier)
 	nc := ctx.Eval("ram:GuidelineSpecifiedDocumentContextParameter").Eval("ram:ID")
 	inv.GuidelineSpecifiedDocumentContextParameter = nc.String()
@@ -127,6 +130,8 @@ func parseCIIExchangedDocumentContext(ctx *cxpath.Context, inv *Invoice) error {
 
 func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, inv *Invoice) error {
 	inv.InvoiceNumber = exchangedDocument.Eval("ram:ID/text()").String()
+	// Extended profile: Invoice name/document type
+	inv.InvoiceName = exchangedDocument.Eval("ram:Name").String()
 	inv.InvoiceTypeCode = CodeDocument(exchangedDocument.Eval("ram:TypeCode").Int())
 
 	invoiceDate, err := parseCIITime(exchangedDocument, "ram:IssueDateTime/udt:DateTimeString")
@@ -138,6 +143,7 @@ func parseCIIExchangedDocument(exchangedDocument *cxpath.Context, inv *Invoice) 
 
 	for note := range exchangedDocument.Each("ram:IncludedNote") {
 		n := Note{}
+		n.ContentCode = note.Eval("ram:ContentCode").String() // Extended profile
 		n.SubjectCode = note.Eval("ram:SubjectCode").String()
 		n.Text = note.Eval("ram:Content").String()
 		inv.Notes = append(inv.Notes, n)
@@ -165,6 +171,13 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 			return err
 		}
 		invoiceLine.BilledQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode").String()
+
+		// Extended profile: Package quantity
+		invoiceLine.PackageQuantity, err = getDecimal(lineItem, "ram:SpecifiedLineTradeDelivery/ram:PackageQuantity")
+		if err != nil {
+			return err
+		}
+		invoiceLine.PackageQuantityUnit = lineItem.Eval("ram:SpecifiedLineTradeDelivery/ram:PackageQuantity/@unitCode").String()
 		// BR-24: Track XML element presence to validate later
 		invoiceLine.hasLineTotalInXML = lineItem.Eval("count(ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount)").Int() > 0
 		invoiceLine.Total, err = getDecimal(lineItem, "ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount")
@@ -288,6 +301,8 @@ func parseCIIApplicableHeaderTradeDelivery(applicableHeaderTradeDelivery *cxpath
 	inv.DespatchAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:DespatchAdviceReferencedDocument/ram:IssuerAssignedID").String()
 	// BT-15: Receiving advice reference
 	inv.ReceivingAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:ReceivingAdviceReferencedDocument/ram:IssuerAssignedID").String()
+	// Extended profile: Delivery note reference
+	inv.DeliveryNoteReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:DeliveryNoteReferencedDocument/ram:IssuerAssignedID").String()
 	// BT-72
 	var err error
 	inv.OccurrenceDateTime, err = parseCIITime(applicableHeaderTradeDelivery, "ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString")
@@ -316,6 +331,12 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	if applicableHeaderTradeSettlement.Eval("count(ram:PayeeTradeParty)").Int() > 0 {
 		ptp := parseCIIParty(applicableHeaderTradeSettlement.Eval("ram:PayeeTradeParty"))
 		inv.PayeeTradeParty = &ptp
+	}
+
+	// Extended profile: Invoicee trade party
+	if applicableHeaderTradeSettlement.Eval("count(ram:InvoiceeTradeParty)").Int() > 0 {
+		itp := parseCIIParty(applicableHeaderTradeSettlement.Eval("ram:InvoiceeTradeParty"))
+		inv.InvoiceeTradeParty = &itp
 	}
 
 	for paymentMeans := range applicableHeaderTradeSettlement.Each("ram:SpecifiedTradeSettlementPaymentMeans") {
@@ -375,6 +396,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 
 	// Parse SpecifiedLogisticsServiceCharge and convert to document-level charges
 	// Per EN 16931, logistics service charges are document-level charges (BT-99)
+	// Extended profile: Mark these with IsLogisticsServiceCharge flag to preserve structure
 	for logisticsCharge := range applicableHeaderTradeSettlement.Each("ram:SpecifiedLogisticsServiceCharge") {
 		appliedAmount, err := getDecimal(logisticsCharge, "ram:AppliedAmount")
 		if err != nil {
@@ -392,6 +414,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 			CategoryTradeTaxType:                  logisticsCharge.Eval("ram:AppliedTradeTax/ram:TypeCode").String(),
 			CategoryTradeTaxCategoryCode:          logisticsCharge.Eval("ram:AppliedTradeTax/ram:CategoryCode").String(),
 			CategoryTradeTaxRateApplicablePercent: categoryTaxRate,
+			IsLogisticsServiceCharge:              true, // Extended profile flag
 		}
 		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, charge)
 	}
@@ -416,6 +439,22 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		}
 
 		spt.DirectDebitMandateID = paymentTerm.Eval("ram:DirectDebitMandateID").String()
+
+		// Extended profile: Payment discount terms
+		if paymentTerm.Eval("count(ram:ApplicableTradePaymentDiscountTerms)").Int() > 0 {
+			dt := &PaymentDiscountTerms{}
+			dt.BasisPeriodMeasure, err = getDecimal(paymentTerm, "ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure")
+			if err != nil {
+				return err
+			}
+			dt.BasisPeriodMeasureUnit = paymentTerm.Eval("ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure/@unitCode").String()
+			dt.CalculationPercent, err = getDecimal(paymentTerm, "ram:ApplicableTradePaymentDiscountTerms/ram:CalculationPercent")
+			if err != nil {
+				return err
+			}
+			spt.DiscountTerms = dt
+		}
+
 		inv.SpecifiedTradePaymentTerms = append(inv.SpecifiedTradePaymentTerms, spt)
 	}
 
@@ -426,6 +465,15 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 			return err
 		}
 		tradeTax.BasisAmount, err = getDecimal(att, "ram:BasisAmount")
+		if err != nil {
+			return err
+		}
+		// Extended profile: Line total and allowance/charge basis amounts
+		tradeTax.LineTotalBasisAmount, err = getDecimal(att, "ram:LineTotalBasisAmount")
+		if err != nil {
+			return err
+		}
+		tradeTax.AllowanceChargeBasisAmount, err = getDecimal(att, "ram:AllowanceChargeBasisAmount")
 		if err != nil {
 			return err
 		}
@@ -600,4 +648,20 @@ func parseSpecifiedTradeProduct(specifiedTradeProduct *cxpath.Context, invoiceLi
 	}
 
 	invoiceLine.OriginTradeCountry = specifiedTradeProduct.Eval("ram:OriginTradeCountry/ram:ID").String()
+
+	// Extended profile: Included referenced products (composite products)
+	for refProd := range specifiedTradeProduct.Each("ram:IncludedReferencedProduct") {
+		rp := ReferencedProduct{
+			GlobalID:         refProd.Eval("ram:GlobalID").String(),
+			GlobalIDScheme:   refProd.Eval("ram:GlobalID/@schemeID").String(),
+			SellerAssignedID: refProd.Eval("ram:SellerAssignedID").String(),
+			Name:             refProd.Eval("ram:Name").String(),
+			UnitQuantityCode: refProd.Eval("ram:UnitQuantity/@unitCode").String(),
+		}
+		var err error
+		rp.UnitQuantity, err = getDecimal(refProd, "ram:UnitQuantity")
+		if err == nil { // Ignore errors for optional quantity
+			invoiceLine.IncludedReferencedProducts = append(invoiceLine.IncludedReferencedProducts, rp)
+		}
+	}
 }

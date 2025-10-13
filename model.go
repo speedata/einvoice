@@ -118,10 +118,30 @@ const (
 type Note struct {
 	Text        string // BT-22
 	SubjectCode string // BT-21
+	ContentCode string // Extended profile - content classification code
 }
 
 func (n Note) String() string {
 	return fmt.Sprintf("Notiz %s - %q", n.SubjectCode, n.Text)
+}
+
+// ReferencedProduct represents a product included in a bundle (Extended profile).
+// Used in composite products to list individual components.
+type ReferencedProduct struct {
+	GlobalID         string          // Product identifier
+	GlobalIDScheme   string          // Identification scheme (e.g., "0160" for GTIN)
+	SellerAssignedID string          // Seller's article number
+	Name             string          // Product name
+	UnitQuantity     decimal.Decimal // Quantity of this component
+	UnitQuantityCode string          // Unit of measure code
+}
+
+// PaymentDiscountTerms represents early payment discount terms (Extended profile).
+// Specifies the discount percentage and period for early payment.
+type PaymentDiscountTerms struct {
+	BasisPeriodMeasure     decimal.Decimal // Period value (e.g., 14)
+	BasisPeriodMeasureUnit string          // Unit of measure (e.g., "DAY")
+	CalculationPercent     decimal.Decimal // Discount percentage (e.g., 2.00)
 }
 
 // GlobalID stores a ISO/EIC 6523 encoded ID.
@@ -203,10 +223,11 @@ type InvoiceLine struct {
 	GlobalIDType                              string            // BT-157
 	Characteristics                           []Characteristic  // BG-32
 	ProductClassification                     []Classification  // BT-158, UNTDID 7143
-	Description                               string            // BT-154 (optional)
-	OriginTradeCountry                        string            // BT-159 (optional) alpha-2 code ISO 3166-1 such as DE, US,...
-	ReceivableSpecifiedTradeAccountingAccount string            // BT-133
-	GrossPrice                                decimal.Decimal   // BT-148
+	Description                               string              // BT-154 (optional)
+	OriginTradeCountry                        string              // BT-159 (optional) alpha-2 code ISO 3166-1 such as DE, US,...
+	IncludedReferencedProducts                []ReferencedProduct // Extended profile - composite product components
+	ReceivableSpecifiedTradeAccountingAccount string              // BT-133
+	GrossPrice                                decimal.Decimal     // BT-148
 	BasisQuantity                             decimal.Decimal   // BT-149
 	BasisQuantityUnit                         string            // BT-149
 	InvoiceLineAllowances                     []AllowanceCharge // BG-27
@@ -217,6 +238,8 @@ type InvoiceLine struct {
 	NetBilledQuantityUnit                     string            // BT-150
 	BilledQuantity                            decimal.Decimal   // BT-129
 	BilledQuantityUnit                        string            // BT-130
+	PackageQuantity                           decimal.Decimal   // Extended profile - package quantity
+	PackageQuantityUnit                       string            // Extended profile - package unit code
 	TaxTypeCode                               string            // BT-151 must be VAT
 	TaxCategoryCode                           string            // BT-151
 	TaxRateApplicablePercent                  decimal.Decimal   // BT-152
@@ -261,19 +284,22 @@ type AllowanceCharge struct {
 	CategoryTradeTaxType                  string          // BT-95, BT-102
 	CategoryTradeTaxCategoryCode          string          // BT-95, BT-102
 	CategoryTradeTaxRateApplicablePercent decimal.Decimal // BT-96, BT-103
+	IsLogisticsServiceCharge              bool            // Extended profile - writes as SpecifiedLogisticsServiceCharge
 }
 
 // TradeTax is the VAT breakdown for each percentage.
 type TradeTax struct {
-	CalculatedAmount    decimal.Decimal // BT-117
-	BasisAmount         decimal.Decimal // BT-116
-	TypeCode            string          // BT-118-0
-	CategoryCode        string          // BT-118
-	Percent             decimal.Decimal // BT-119
-	ExemptionReason     string          // BT-120
-	ExemptionReasonCode string          // BT-121
-	TaxPointDate        time.Time       // BT-7
-	DueDateTypeCode     string          // BT-8
+	CalculatedAmount           decimal.Decimal // BT-117
+	BasisAmount                decimal.Decimal // BT-116
+	LineTotalBasisAmount       decimal.Decimal // Extended profile - sum of line net amounts for this tax rate
+	AllowanceChargeBasisAmount decimal.Decimal // Extended profile - sum of allowances/charges for this tax rate
+	TypeCode                   string          // BT-118-0
+	CategoryCode               string          // BT-118
+	Percent                    decimal.Decimal // BT-119
+	ExemptionReason            string          // BT-120
+	ExemptionReasonCode        string          // BT-121
+	TaxPointDate               time.Time       // BT-7
+	DueDateTypeCode            string          // BT-8
 }
 
 func (tt TradeTax) String() string {
@@ -308,10 +334,10 @@ type Document struct {
 
 // SpecifiedTradePaymentTerms is unbounded in extended.
 type SpecifiedTradePaymentTerms struct {
-	Description          string    // BT-20
-	DueDate              time.Time // BT-9
-	DirectDebitMandateID string    // BT-89
-
+	Description          string                    // BT-20
+	DueDate              time.Time                 // BT-9
+	DirectDebitMandateID string                    // BT-89
+	DiscountTerms        *PaymentDiscountTerms     // Extended profile - early payment discount terms
 }
 
 // ReferencedDocument links to a previous invoice BG-3.
@@ -324,11 +350,15 @@ type ReferencedDocument struct {
 // Invoice is the main element of the e-invoice.
 type Invoice struct {
 	GuidelineSpecifiedDocumentContextParameter string                       // BT-24 (Specification identifier URN)
+	TestIndicator                             bool                         // Extended profile - marks test invoice
+	InvoiceName                               string                       // Extended profile - document name/type
 	DespatchAdviceReferencedDocument          string                       // BT-16
+	DeliveryNoteReferencedDocument            string                       // Extended profile - delivery note reference
 	ReceivingAdviceReferencedDocument         string                       // BT-15
 	BuyerReference                            string                       // BT-10
 	BPSpecifiedDocumentContextParameter       string                       // BT-23
 	PayeeTradeParty                           *Party                       // BG-10
+	InvoiceeTradeParty                        *Party                       // Extended profile - invoicee party (different from buyer)
 	PaymentMeans                              []PaymentMeans               // BG-16
 	BillingSpecifiedPeriodStart               time.Time                    // BT-73
 	BillingSpecifiedPeriodEnd                 time.Time                    // BT-74
