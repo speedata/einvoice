@@ -212,17 +212,69 @@ func (inv *Invoice) validateCalculations() {
 		}
 	}
 
-	// BR-CO-5, BR-CO-6, BR-CO-7, BR-CO-8: Reason code/text consistency
-	// These rules state that IF both reason text and reason code are provided,
-	// they "shall indicate the same type". This is a semantic consistency check
-	// that cannot be validated without a code-to-text mapping table.
-	//
-	// The actual requirement for at least ONE of text or code is already
-	// enforced by BR-33 (allowances), BR-38 (charges), BR-42 (line allowances),
-	// and BR-44 (line charges).
-	//
-	// Note: We do NOT validate that both text and code must be present together.
-	// Per EN 16931, providing text alone or code alone is perfectly valid.
+	// BR-CO-5 Document level allowance reason consistency
+	// Document level allowance reason code (BT-98) and Document level allowance reason (BT-97)
+	// shall indicate the same type of allowance.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if !ac.ChargeIndicator { // This is an allowance
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO5, "Document level allowance reason code (BT-98) is provided but reason text (BT-97) is missing")
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO5, "Document level allowance reason text (BT-97) is provided but reason code (BT-98) is missing")
+			}
+		}
+	}
+
+	// BR-CO-6 Document level charge reason consistency
+	// Document level charge reason code (BT-105) and Document level charge reason (BT-104)
+	// shall indicate the same type of charge.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+		if ac.ChargeIndicator { // This is a charge
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO6, "Document level charge reason code (BT-105) is provided but reason text (BT-104) is missing")
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO6, "Document level charge reason text (BT-104) is provided but reason code (BT-105) is missing")
+			}
+		}
+	}
+
+	// BR-CO-7 Invoice line allowance reason consistency
+	// Invoice line allowance reason code (BT-140) and Invoice line allowance reason (BT-139)
+	// shall indicate the same type of allowance reason.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for i, line := range inv.InvoiceLines {
+		for _, ac := range line.InvoiceLineAllowances {
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO7, fmt.Sprintf("Line %d: allowance reason code (BT-140) is provided but reason text (BT-139) is missing", i+1))
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO7, fmt.Sprintf("Line %d: allowance reason text (BT-139) is provided but reason code (BT-140) is missing", i+1))
+			}
+		}
+	}
+
+	// BR-CO-8 Invoice line charge reason consistency
+	// Invoice line charge reason code (BT-145) and Invoice line charge reason (BT-144)
+	// shall indicate the same type of charge reason.
+	// Implementation: If one is provided, the other should also be provided for consistency.
+	for i, line := range inv.InvoiceLines {
+		for _, ac := range line.InvoiceLineCharges {
+			hasReasonCode := ac.ReasonCode != 0
+			hasReason := ac.Reason != ""
+			if hasReasonCode && !hasReason {
+				inv.addViolation(rules.BRCO8, fmt.Sprintf("Line %d: charge reason code (BT-145) is provided but reason text (BT-144) is missing", i+1))
+			} else if !hasReasonCode && hasReason {
+				inv.addViolation(rules.BRCO8, fmt.Sprintf("Line %d: charge reason text (BT-144) is provided but reason code (BT-145) is missing", i+1))
+			}
+		}
+	}
 
 }
 
