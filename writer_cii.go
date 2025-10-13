@@ -282,17 +282,6 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		}
 	}
 
-	// BT-34, BT-49: Electronic address (URI Universal Communication)
-	// Write element if either value or scheme is present
-	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
-		uuc := parent.CreateElement("ram:URIUniversalCommunication")
-		uriID := uuc.CreateElement("ram:URIID")
-		if party.URIUniversalCommunicationScheme != "" {
-			uriID.CreateAttr("schemeID", party.URIUniversalCommunicationScheme)
-		}
-		uriID.SetText(party.URIUniversalCommunication)
-	}
-
 	if ppa := party.PostalAddress; ppa != nil {
 		// profile minimum has no postal address for the buyer (BG-8), but BasicWL and above do
 		if partyType == CSellerParty || is(levelBasicWL, inv) {
@@ -322,6 +311,17 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 				postalAddress.CreateElement("ram:CountrySubDivisionName").SetText(csd)
 			}
 		}
+	}
+
+	// BT-34, BT-49: Electronic address (URI Universal Communication)
+	// Write element if either value or scheme is present
+	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
+		uuc := parent.CreateElement("ram:URIUniversalCommunication")
+		uriID := uuc.CreateElement("ram:URIID")
+		if party.URIUniversalCommunicationScheme != "" {
+			uriID.CreateAttr("schemeID", party.URIUniversalCommunicationScheme)
+		}
+		uriID.SetText(party.URIUniversalCommunication)
 	}
 
 	if fc := party.FCTaxRegistration; fc != "" {
