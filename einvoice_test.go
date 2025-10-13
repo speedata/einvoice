@@ -709,21 +709,21 @@ func TestAllValidFixtures(t *testing.T) {
 
 	// Explicit list of 60 fixtures to test (deterministic, not auto-discovery)
 	fixtures := []string{
-		// CII Minimum (2 fixtures)
+		// CII Minimum
 		"testdata/cii/minimum/zugferd-minimum-buchungshilfe.xml",
 		"testdata/cii/minimum/zugferd-minimum-rechnung.xml",
 
-		// CII BasicWL (2 fixtures)
+		// CII BasicWL
 		"testdata/cii/basicwl/zugferd-basicwl-buchungshilfe.xml",
 		"testdata/cii/basicwl/zugferd-basicwl-einfach.xml",
 
-		// CII Basic (4 fixtures)
+		// CII Basic
 		"testdata/cii/basic/zugferd-basic-1.xml",
 		"testdata/cii/basic/zugferd-basic-einfach.xml",
 		"testdata/cii/basic/zugferd-basic-rechnungskorrektur.xml",
 		"testdata/cii/basic/zugferd-basic-taxifahrt.xml",
 
-		// CII EN16931 (15 fixtures)
+		// CII EN16931
 		"testdata/cii/en16931/CII_example1.xml",
 		"testdata/cii/en16931/CII_example2.xml",
 		"testdata/cii/en16931/CII_example3.xml",
@@ -741,7 +741,7 @@ func TestAllValidFixtures(t *testing.T) {
 		"testdata/cii/en16931/zugferd-en16931-rabatte.xml",
 		"testdata/cii/en16931/zugferd-en16931-rechnungskorrektur.xml",
 
-		// CII Extended (6 fixtures)
+		// CII Extended
 		"testdata/cii/extended/zugferd-extended-1.xml",
 		"testdata/cii/extended/zugferd-extended-2.xml",
 		"testdata/cii/extended/zugferd-extended-fremdwaehrung.xml", // Multi-currency
@@ -749,13 +749,13 @@ func TestAllValidFixtures(t *testing.T) {
 		"testdata/cii/extended/zugferd-extended-rechnungskorrektur.xml",
 		"testdata/cii/extended/zugferd-extended-warenrechnung.xml",
 
-		// CII XRechnung (4 fixtures)
+		// CII XRechnung
 		"testdata/cii/xrechnung/XRechnung-O.xml",
 		"testdata/cii/xrechnung/zugferd-xrechnung-betriebskosten.xml", // XRechnung 2.1
 		"testdata/cii/xrechnung/zugferd-xrechnung-einfach.xml",
 		"testdata/cii/xrechnung/zugferd-xrechnung-elektron.xml",
 
-		// UBL Invoice (11 fixtures)
+		// UBL Invoice
 		"testdata/ubl/invoice/UBL-Invoice-2.1-Example.xml",
 		"testdata/ubl/invoice/ubl-tc434-example1.xml",
 		"testdata/ubl/invoice/ubl-tc434-example2.xml",
@@ -768,11 +768,11 @@ func TestAllValidFixtures(t *testing.T) {
 		"testdata/ubl/invoice/ubl-tc434-example9.xml",
 		"testdata/ubl/invoice/ubl-tc434-example10.xml",
 
-		// UBL CreditNote (2 fixtures)
+		// UBL CreditNote
 		"testdata/ubl/creditnote/UBL-CreditNote-2.1-Example.xml",
 		"testdata/ubl/creditnote/ubl-tc434-creditnote1.xml",
 
-		// PEPPOL Valid (11 fixtures)
+		// PEPPOL Valid
 		"testdata/peppol/valid/Allowance-example.xml",
 		"testdata/peppol/valid/GR-base-example-TaxRepresentative.xml",
 		"testdata/peppol/valid/GR-base-example-correct.xml",
