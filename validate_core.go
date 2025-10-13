@@ -168,7 +168,9 @@ func (inv *Invoice) validateCalculations() {
 	// Im Falle eines positiven Zahlbetrags "Amount due for payment" (BT-115) muss entweder das Element Fälligkeitsdatum "Payment due date" (BT-9)
 	// oder das Element Zahlungsbedingungen "Payment terms" (BT-20) vorhanden sein.
 	// Note: This rule only applies to profiles >= BasicWL (Minimum profile doesn't require payment details)
-	if inv.ProfileLevel() >= levelBasicWL && inv.DuePayableAmount.GreaterThan(decimal.Zero) {
+	// Note: This rule does not apply to credit notes (type 381), as payment terms have different semantics
+	// (seller owes buyer rather than buyer owes seller)
+	if inv.ProfileLevel() >= levelBasicWL && inv.InvoiceTypeCode != 381 && inv.DuePayableAmount.GreaterThan(decimal.Zero) {
 		hasPaymentDueDate := false
 		hasPaymentTerms := false
 
@@ -232,8 +234,17 @@ func (inv *Invoice) validateCore() {
 	// Helper function to check if this invoice allows negative amounts.
 	// Credit notes (381) and correction invoices (384) may have negative amounts throughout
 	// as per EN 16931 support for negative grand totals in correction scenarios.
+	// Additionally, correction invoices with type 380 that reference other invoices
+	// (via BillingReference/InvoiceReferencedDocument) may also have negative amounts.
 	allowsNegativeAmounts := func() bool {
-		return inv.InvoiceTypeCode == 381 || inv.InvoiceTypeCode == 384
+		if inv.InvoiceTypeCode == 381 || inv.InvoiceTypeCode == 384 {
+			return true
+		}
+		// Allow negative amounts for correction invoices (type 380) with billing references
+		if inv.InvoiceTypeCode == 380 && len(inv.InvoiceReferencedDocument) > 0 {
+			return true
+		}
+		return false
 	}
 
 	// BR-1
