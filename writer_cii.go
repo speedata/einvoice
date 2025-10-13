@@ -137,6 +137,10 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		acElt := slts.CreateElement("ram:SpecifiedTradeAllowanceCharge")
 		acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText("false")
 
+		if !allowance.CalculationPercent.IsZero() {
+			acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(allowance.CalculationPercent))
+		}
+
 		if !allowance.BasisAmount.IsZero() {
 			acElt.CreateElement("ram:BasisAmount").SetText(allowance.BasisAmount.StringFixed(2))
 		}
@@ -166,6 +170,10 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	for _, charge := range invoiceLine.InvoiceLineCharges {
 		acElt := slts.CreateElement("ram:SpecifiedTradeAllowanceCharge")
 		acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText("true")
+
+		if !charge.CalculationPercent.IsZero() {
+			acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(charge.CalculationPercent))
+		}
 
 		if !charge.BasisAmount.IsZero() {
 			acElt.CreateElement("ram:BasisAmount").SetText(charge.BasisAmount.StringFixed(2))
@@ -244,8 +252,8 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 	}
 
 	if ppa := party.PostalAddress; ppa != nil {
-		// profile minimum has no postal address for the buyer (BG-8)
-		if partyType == CSellerParty || is(levelBasic, inv) {
+		// profile minimum has no postal address for the buyer (BG-8), but BasicWL and above do
+		if partyType == CSellerParty || is(levelBasicWL, inv) {
 			postalAddress := parent.CreateElement("ram:PostalTradeAddress")
 
 			// BT-38, BT-53: Postcode is optional - only create if non-empty (PEPPOL-EN16931-R008)
@@ -341,10 +349,19 @@ func writeCIIramApplicableHeaderTradeDelivery(inv *Invoice, parent *etree.Elemen
 		writeCIIParty(inv, *inv.ShipTo, elt.CreateElement("ram:ShipToTradeParty"), CShipToParty)
 	}
 
-	if is(levelBasic, inv) && !inv.OccurrenceDateTime.IsZero() {
-		// BT-72
+	// BT-72: Actual delivery date (BasicWL and above)
+	if is(levelBasicWL, inv) && !inv.OccurrenceDateTime.IsZero() {
 		odt := elt.CreateElement("ram:ActualDeliverySupplyChainEvent").CreateElement("ram:OccurrenceDateTime")
 		addTimeCIIUDT(odt, inv.OccurrenceDateTime)
+	}
+
+	// BT-16: Despatch advice reference
+	if inv.DespatchAdviceReferencedDocument != "" {
+		elt.CreateElement("ram:DespatchAdviceReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.DespatchAdviceReferencedDocument)
+	}
+	// BT-15: Receiving advice reference
+	if inv.ReceivingAdviceReferencedDocument != "" {
+		elt.CreateElement("ram:ReceivingAdviceReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.ReceivingAdviceReferencedDocument)
 	}
 }
 
@@ -389,8 +406,16 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 
 func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Element) {
 	elt := parent.CreateElement("ram:ApplicableHeaderTradeSettlement")
-	// CreditorReferenceID BT-90
-	// PaymentReference BT-83
+
+	// BT-90: Creditor reference ID
+	if inv.CreditorReferenceID != "" {
+		elt.CreateElement("ram:CreditorReferenceID").SetText(inv.CreditorReferenceID)
+	}
+
+	// BT-83: Payment reference (remittance information)
+	if inv.PaymentReference != "" {
+		elt.CreateElement("ram:PaymentReference").SetText(inv.PaymentReference)
+	}
 
 	// BT-6: VAT accounting currency code (optional, when different from invoice currency)
 	if inv.TaxCurrencyCode != "" && inv.TaxCurrencyCode != inv.InvoiceCurrencyCode {
@@ -512,6 +537,10 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		// BT-9
 		if !paymentTerm.DueDate.IsZero() {
 			addTimeCIIUDT(spt.CreateElement("ram:DueDateDateTime"), paymentTerm.DueDate)
+		}
+		// BT-89: Direct debit mandate reference identifier
+		if paymentTerm.DirectDebitMandateID != "" {
+			spt.CreateElement("ram:DirectDebitMandateID").SetText(paymentTerm.DirectDebitMandateID)
 		}
 	}
 

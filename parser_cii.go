@@ -279,7 +279,10 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 }
 
 func parseCIIApplicableHeaderTradeDelivery(applicableHeaderTradeDelivery *cxpath.Context, inv *Invoice) error {
-	inv.DespatchAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:DespatchAdviceReferencedDocument").String()
+	// BT-16: Despatch advice reference
+	inv.DespatchAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:DespatchAdviceReferencedDocument/ram:IssuerAssignedID").String()
+	// BT-15: Receiving advice reference
+	inv.ReceivingAdviceReferencedDocument = applicableHeaderTradeDelivery.Eval("ram:ReceivingAdviceReferencedDocument/ram:IssuerAssignedID").String()
 	// BT-72
 	var err error
 	inv.OccurrenceDateTime, err = parseCIITime(applicableHeaderTradeDelivery, "ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString")
@@ -300,8 +303,10 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	inv.InvoiceCurrencyCode = applicableHeaderTradeSettlement.Eval("ram:InvoiceCurrencyCode").String()
 	// BT-6: Tax currency code (accounting currency, if different from invoice currency)
 	inv.TaxCurrencyCode = applicableHeaderTradeSettlement.Eval("ram:TaxCurrencyCode").String()
-	// BT-90
+	// BT-90: Creditor reference ID
 	inv.CreditorReferenceID = applicableHeaderTradeSettlement.Eval("ram:CreditorReferenceID").String()
+	// BT-83: Payment reference (remittance information)
+	inv.PaymentReference = applicableHeaderTradeSettlement.Eval("ram:PaymentReference").String()
 	// BG-10
 	if applicableHeaderTradeSettlement.Eval("count(ram:PayeeTradeParty)").Int() > 0 {
 		ptp := parseCIIParty(applicableHeaderTradeSettlement.Eval("ram:PayeeTradeParty"))
