@@ -278,7 +278,8 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 	}
 
 	// BT-34, BT-49: Electronic address (URI Universal Communication)
-	if party.URIUniversalCommunication != "" {
+	// Write element if either value or scheme is present
+	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
 		uuc := parent.CreateElement("ram:URIUniversalCommunication")
 		uriID := uuc.CreateElement("ram:URIID")
 		if party.URIUniversalCommunicationScheme != "" {
