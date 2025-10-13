@@ -96,10 +96,10 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		bord.CreateElement("ram:LineID").SetText(invoiceLine.BuyerOrderReferencedDocument)
 	}
 
-	// BT-148: Gross price (with allowances/charges)
+	// BT-148: Gross price (no decimal restriction per EN 16931)
 	if !invoiceLine.GrossPrice.IsZero() {
 		gpptp := slta.CreateElement("ram:GrossPriceProductTradePrice")
-		gpptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.GrossPrice.StringFixed(2))
+		gpptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.GrossPrice.String())
 
 		for _, allowanceCharge := range invoiceLine.AppliedTradeAllowanceCharge {
 			acElt := gpptp.CreateElement("ram:AppliedTradeAllowanceCharge")
@@ -114,16 +114,17 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 				acElt.CreateElement("ram:BasisAmount").SetText(ba.StringFixed(2))
 			}
 
-			acElt.CreateElement("ram:ActualAmount").SetText(allowanceCharge.ActualAmount.StringFixed(2))
+			// BT-147: Item price discount (no decimal restriction per EN 16931)
+			acElt.CreateElement("ram:ActualAmount").SetText(allowanceCharge.ActualAmount.String())
 			if r := allowanceCharge.Reason; r != "" {
 				acElt.CreateElement("ram:Reason").SetText(r)
 			}
 		}
 	}
 
-	// BT-146: Net price
+	// BT-146: Net price (no decimal restriction per EN 16931)
 	npptp := slta.CreateElement("ram:NetPriceProductTradePrice")
-	npptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.NetPrice.StringFixed(2))
+	npptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.NetPrice.String())
 
 	// BT-149: Item price base quantity with unit code (goes with NetPrice)
 	if !invoiceLine.BasisQuantity.IsZero() {
@@ -131,7 +132,8 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		if invoiceLine.BasisQuantityUnit != "" {
 			bq.CreateAttr("unitCode", invoiceLine.BasisQuantityUnit)
 		}
-		bq.SetText(invoiceLine.BasisQuantity.StringFixed(4))
+		// BT-149: Item price base quantity (no decimal restriction per EN 16931)
+		bq.SetText(invoiceLine.BasisQuantity.String())
 	}
 	bq := lineItem.CreateElement("ram:SpecifiedLineTradeDelivery").CreateElement("ram:BilledQuantity")
 	bq.CreateAttr("unitCode", invoiceLine.BilledQuantityUnit)

@@ -121,7 +121,7 @@ func ExampleInvoice_Write() {
 	//       </ram:SpecifiedTradeProduct>
 	//       <ram:SpecifiedLineTradeAgreement>
 	//         <ram:NetPriceProductTradePrice>
-	//           <ram:ChargeAmount>100.00</ram:ChargeAmount>
+	//           <ram:ChargeAmount>100</ram:ChargeAmount>
 	//         </ram:NetPriceProductTradePrice>
 	//       </ram:SpecifiedLineTradeAgreement>
 	//       <ram:SpecifiedLineTradeDelivery>
@@ -147,7 +147,7 @@ func ExampleInvoice_Write() {
 	//       </ram:SpecifiedTradeProduct>
 	//       <ram:SpecifiedLineTradeAgreement>
 	//         <ram:NetPriceProductTradePrice>
-	//           <ram:ChargeAmount>200.00</ram:ChargeAmount>
+	//           <ram:ChargeAmount>200</ram:ChargeAmount>
 	//         </ram:NetPriceProductTradePrice>
 	//       </ram:SpecifiedLineTradeAgreement>
 	//       <ram:SpecifiedLineTradeDelivery>
