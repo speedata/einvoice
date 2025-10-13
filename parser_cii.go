@@ -439,8 +439,8 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 			inv.TaxTotal = amount
 		} else if inv.TaxCurrencyCode != "" && currency == inv.TaxCurrencyCode {
 			// BT-111: Tax total in accounting currency (must match BT-6)
-			inv.TaxTotalVATCurrency = currency
-			inv.TaxTotalVAT = amount
+			inv.TaxTotalAccountingCurrency = currency
+			inv.TaxTotalAccounting = amount
 		}
 		// Ignore TaxTotalAmount with unexpected currency (XML might have extras)
 	}

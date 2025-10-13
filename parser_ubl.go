@@ -408,8 +408,8 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 			inv.TaxTotal = amount
 		} else if inv.TaxCurrencyCode != "" && currency == inv.TaxCurrencyCode {
 			// BT-111: Tax total in accounting currency (must match BT-6)
-			inv.TaxTotalVATCurrency = currency
-			inv.TaxTotalVAT = amount
+			inv.TaxTotalAccountingCurrency = currency
+			inv.TaxTotalAccounting = amount
 		}
 		// Ignore TaxTotal with unexpected currency (XML might have extras)
 	}

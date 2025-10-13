@@ -335,7 +335,7 @@ func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, pa
 	if inv.TaxCurrencyCode != "" && inv.TaxCurrencyCode != inv.InvoiceCurrencyCode {
 		ttaVAT := elt.CreateElement("ram:TaxTotalAmount")
 		ttaVAT.CreateAttr("currencyID", inv.TaxCurrencyCode)
-		ttaVAT.SetText(inv.TaxTotalVAT.StringFixed(2))
+		ttaVAT.SetText(inv.TaxTotalAccounting.StringFixed(2))
 	}
 	if is(levelEN16931, inv) && !inv.RoundingAmount.IsZero() {
 		elt.CreateElement("ram:RoundingAmount").CreateText(inv.RoundingAmount.StringFixed(2))
