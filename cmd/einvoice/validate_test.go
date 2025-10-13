@@ -302,12 +302,12 @@ func TestIntegration_ValidateCommand(t *testing.T) {
 		{
 			name:     "validate with text output",
 			args:     []string{testFile},
-			wantExit: exitViolations, // We know this file has violations
+			wantExit: exitOK, // File is valid after fixing BR-CO-05/06/07/08
 		},
 		{
 			name:     "validate with json output",
 			args:     []string{"--format", "json", testFile},
-			wantExit: exitViolations,
+			wantExit: exitOK,
 		},
 	}
 
