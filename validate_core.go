@@ -122,7 +122,9 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-15 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Invoice total amount with VAT" (BT-112) entspricht der Summe aus "Invoice total amount without VAT"
 	// (BT-109) und "Invoice total VAT amount" (BT-110).
-	expectedGrandTotal := inv.TaxBasisTotal.Add(inv.TaxTotal)
+	// Per EN 16931 schematron: TaxInclusiveAmount = round((TaxExclusiveAmount + TaxAmount) * 100) / 100
+	// This applies 2-decimal rounding to the calculated side to account for rounding during invoice generation
+	expectedGrandTotal := roundHalfUp(inv.TaxBasisTotal.Add(inv.TaxTotal), 2)
 	if !inv.GrandTotal.Equal(expectedGrandTotal) {
 		inv.addViolation(rules.BRCO15, fmt.Sprintf("Grand total %s does not match TaxBasisTotal + TaxTotal = %s", inv.GrandTotal.String(), expectedGrandTotal.String()))
 	}
@@ -130,9 +132,36 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-16 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Amount due for payment" (BT-115) entspricht der Summe aus "Invoice total amount with VAT" (BT-112)
 	// abzüglich "Paid amount" (BT-113) zuzüglich "Rounding amount" (BT-114).
-	expectedDuePayableAmount := inv.GrandTotal.Sub(inv.TotalPrepaid).Add(inv.RoundingAmount)
-	if !inv.DuePayableAmount.Equal(expectedDuePayableAmount) {
-		inv.addViolation(rules.BRCO16, fmt.Sprintf("Due payable amount %s does not match GrandTotal - TotalPrepaid + RoundingAmount = %s", inv.DuePayableAmount.String(), expectedDuePayableAmount.String()))
+	// Per EN 16931 schematron, this rule has different cases based on which fields are present:
+	// 1. If PrepaidAmount exists but not RoundingAmount: round((TaxInclusiveAmount - PrepaidAmount) * 100) / 100 = PayableAmount
+	// 2. If neither exists: PayableAmount = TaxInclusiveAmount
+	// 3. If both exist: round((PayableAmount - RoundingAmount) * 100) / 100 = round((TaxInclusiveAmount - PrepaidAmount) * 100) / 100
+	// 4. If only RoundingAmount exists: round((PayableAmount - RoundingAmount) * 100) / 100 = TaxInclusiveAmount
+	hasPrepaid := !inv.TotalPrepaid.IsZero()
+	hasRounding := !inv.RoundingAmount.IsZero()
+
+	var valid bool
+	if hasPrepaid && !hasRounding {
+		// Case 1: round((GrandTotal - PrepaidAmount) * 100) / 100 = DuePayableAmount
+		expected := roundHalfUp(inv.GrandTotal.Sub(inv.TotalPrepaid), 2)
+		valid = inv.DuePayableAmount.Equal(expected)
+	} else if !hasPrepaid && !hasRounding {
+		// Case 2: DuePayableAmount = GrandTotal
+		valid = inv.DuePayableAmount.Equal(inv.GrandTotal)
+	} else if hasPrepaid && hasRounding {
+		// Case 3: round((DuePayableAmount - RoundingAmount) * 100) / 100 = round((GrandTotal - PrepaidAmount) * 100) / 100
+		leftSide := roundHalfUp(inv.DuePayableAmount.Sub(inv.RoundingAmount), 2)
+		rightSide := roundHalfUp(inv.GrandTotal.Sub(inv.TotalPrepaid), 2)
+		valid = leftSide.Equal(rightSide)
+	} else {
+		// Case 4: !hasPrepaid && hasRounding: round((DuePayableAmount - RoundingAmount) * 100) / 100 = GrandTotal
+		leftSide := roundHalfUp(inv.DuePayableAmount.Sub(inv.RoundingAmount), 2)
+		valid = leftSide.Equal(inv.GrandTotal)
+	}
+
+	if !valid {
+		expectedDuePayableAmount := inv.GrandTotal.Sub(inv.TotalPrepaid).Add(inv.RoundingAmount)
+		inv.addViolation(rules.BRCO16, fmt.Sprintf("Due payable amount %s does not match GrandTotal - TotalPrepaid + RoundingAmount = %s (with rounding)", inv.DuePayableAmount.String(), expectedDuePayableAmount.String()))
 	}
 
 	// BR-CO-17 Umsatzsteueraufschlüsselung
@@ -436,17 +465,23 @@ func (inv *Invoice) validateCore() {
 		}
 	}
 	// BR-29 Rechnungszeitraum
-	// Wenn Start- und Enddatum des Rechnungszeitraums gegeben sind, muss das Enddatum "Invoicing period end date“ (BT-74) nach dem Startdatum
-	// "Invoicing period start date“ (BT-73) liegen oder mit diesem identisch sein.
-	if inv.BillingSpecifiedPeriodEnd.Before(inv.BillingSpecifiedPeriodStart) {
-		inv.addViolation(rules.BR29, "Billing period end must be after start")
+	// Wenn Start- und Enddatum des Rechnungszeitraums gegeben sind, muss das Enddatum "Invoicing period end date" (BT-74) nach dem Startdatum
+	// "Invoicing period start date" (BT-73) liegen oder mit diesem identisch sein.
+	// Only validate when BOTH dates are present (non-zero)
+	if !inv.BillingSpecifiedPeriodStart.IsZero() && !inv.BillingSpecifiedPeriodEnd.IsZero() {
+		if inv.BillingSpecifiedPeriodEnd.Before(inv.BillingSpecifiedPeriodStart) {
+			inv.addViolation(rules.BR29, "Billing period end must be after start")
+		}
 	}
 	for _, line := range inv.InvoiceLines {
 		// BR-30 Rechnungszeitraum auf Positionsebene
-		// Wenn Start- und Enddatum des Rechnungspositionenzeitraums gegeben sind, muss das Enddatum "Invoice line period end date“ (BT-135) nach
-		// dem Startdatum "Invoice line period start date“ (BT-134) liegen oder mit diesem identisch sein.
-		if line.BillingSpecifiedPeriodEnd.Before(line.BillingSpecifiedPeriodStart) {
-			inv.addViolation(rules.BR30, "Line item billing period end must be after or identical to start")
+		// Wenn Start- und Enddatum des Rechnungspositionenzeitraums gegeben sind, muss das Enddatum "Invoice line period end date" (BT-135) nach
+		// dem Startdatum "Invoice line period start date" (BT-134) liegen oder mit diesem identisch sein.
+		// Only validate when BOTH dates are present (non-zero)
+		if !line.BillingSpecifiedPeriodStart.IsZero() && !line.BillingSpecifiedPeriodEnd.IsZero() {
+			if line.BillingSpecifiedPeriodEnd.Before(line.BillingSpecifiedPeriodStart) {
+				inv.addViolation(rules.BR30, "Line item billing period end must be after or identical to start")
+			}
 		}
 	}
 

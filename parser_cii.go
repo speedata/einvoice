@@ -372,6 +372,30 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		}
 		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, allowanceCharge)
 	}
+
+	// Parse SpecifiedLogisticsServiceCharge and convert to document-level charges
+	// Per EN 16931, logistics service charges are document-level charges (BT-99)
+	for logisticsCharge := range applicableHeaderTradeSettlement.Each("ram:SpecifiedLogisticsServiceCharge") {
+		appliedAmount, err := getDecimal(logisticsCharge, "ram:AppliedAmount")
+		if err != nil {
+			return err
+		}
+		categoryTaxRate, err := getDecimal(logisticsCharge, "ram:AppliedTradeTax/ram:RateApplicablePercent")
+		if err != nil {
+			return err
+		}
+
+		charge := AllowanceCharge{
+			ChargeIndicator:                       true, // Logistics charges are always charges, not allowances
+			ActualAmount:                          appliedAmount,
+			Reason:                                logisticsCharge.Eval("ram:Description").String(),
+			CategoryTradeTaxType:                  logisticsCharge.Eval("ram:AppliedTradeTax/ram:TypeCode").String(),
+			CategoryTradeTaxCategoryCode:          logisticsCharge.Eval("ram:AppliedTradeTax/ram:CategoryCode").String(),
+			CategoryTradeTaxRateApplicablePercent: categoryTaxRate,
+		}
+		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, charge)
+	}
+
 	inv.BillingSpecifiedPeriodStart, err = parseCIITime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
 	if err != nil {
 		return fmt.Errorf("invalid billing period start date: %w", err)
