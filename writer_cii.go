@@ -375,11 +375,11 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 		// BT-125: Only write AttachmentBinaryObject if attachment data exists (PEPPOL-EN16931-R008)
 		if len(doc.AttachmentBinaryObject) > 0 {
 			abo := ard.CreateElement("ram:AttachmentBinaryObject")
-			if doc.AttachmentFilename != "" {
-				abo.CreateAttr("filename", doc.AttachmentFilename)
-			}
 			if doc.AttachmentMimeCode != "" {
 				abo.CreateAttr("mimeCode", doc.AttachmentMimeCode)
+			}
+			if doc.AttachmentFilename != "" {
+				abo.CreateAttr("filename", doc.AttachmentFilename)
 			}
 			abo.SetText(base64.StdEncoding.EncodeToString(doc.AttachmentBinaryObject))
 		}
