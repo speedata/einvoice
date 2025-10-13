@@ -152,25 +152,33 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	inv.ReceivingAdviceReferencedDocument = root.Eval("cac:ReceiptDocumentReference/cbc:ID").String()
 
 	// BG-1: Process notes
-	for note := range root.Each("cbc:Note") {
-		inv.Notes = append(inv.Notes, Note{
-			Text: note.String(),
-			// UBL doesn't typically have subject codes in Note elements
-		})
+	noteCount := root.Eval("count(cbc:Note)").Int()
+	if noteCount > 0 {
+		inv.Notes = make([]Note, 0, noteCount)
+		for note := range root.Each("cbc:Note") {
+			inv.Notes = append(inv.Notes, Note{
+				Text: note.String(),
+				// UBL doesn't typically have subject codes in Note elements
+			})
+		}
 	}
 
 	// BG-3: Preceding invoice references
-	for ref := range root.Each("cac:BillingReference/cac:InvoiceDocumentReference") {
-		refDoc := ReferencedDocument{
-			ID: ref.Eval("cbc:ID").String(),
-		}
+	refCount := root.Eval("count(cac:BillingReference/cac:InvoiceDocumentReference)").Int()
+	if refCount > 0 {
+		inv.InvoiceReferencedDocument = make([]ReferencedDocument, 0, refCount)
+		for ref := range root.Each("cac:BillingReference/cac:InvoiceDocumentReference") {
+			refDoc := ReferencedDocument{
+				ID: ref.Eval("cbc:ID").String(),
+			}
 
-		refDoc.Date, err = parseTimeUBL(ref, "cbc:IssueDate")
-		if err != nil {
-			return fmt.Errorf("invalid referenced document date: %w", err)
-		}
+			refDoc.Date, err = parseTimeUBL(ref, "cbc:IssueDate")
+			if err != nil {
+				return fmt.Errorf("invalid referenced document date: %w", err)
+			}
 
-		inv.InvoiceReferencedDocument = append(inv.InvoiceReferencedDocument, refDoc)
+			inv.InvoiceReferencedDocument = append(inv.InvoiceReferencedDocument, refDoc)
+		}
 	}
 
 	// BG-14: Invoice period (document level)
@@ -186,29 +194,33 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BG-24: Additional supporting documents
-	for doc := range root.Each("cac:AdditionalDocumentReference") {
-		addDoc := Document{
-			IssuerAssignedID: doc.Eval("cbc:ID").String(),
-			TypeCode:         doc.Eval("cbc:DocumentTypeCode").String(),
-			Name:             doc.Eval("cbc:DocumentDescription").String(),
-			URIID:            doc.Eval("cac:Attachment/cac:ExternalReference/cbc:URI").String(),
-		}
-
-		// Handle embedded binary object
-		binaryData := doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject").String()
-		if binaryData != "" {
-			addDoc.AttachmentMimeCode = doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@mimeCode").String()
-			addDoc.AttachmentFilename = doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@filename").String()
-
-			// Decode base64-encoded attachment data
-			data, err := base64.StdEncoding.DecodeString(binaryData)
-			if err != nil {
-				return fmt.Errorf("cannot decode attachment: %w", err)
+	docCount := root.Eval("count(cac:AdditionalDocumentReference)").Int()
+	if docCount > 0 {
+		inv.AdditionalReferencedDocument = make([]Document, 0, docCount)
+		for doc := range root.Each("cac:AdditionalDocumentReference") {
+			addDoc := Document{
+				IssuerAssignedID: doc.Eval("cbc:ID").String(),
+				TypeCode:         doc.Eval("cbc:DocumentTypeCode").String(),
+				Name:             doc.Eval("cbc:DocumentDescription").String(),
+				URIID:            doc.Eval("cac:Attachment/cac:ExternalReference/cbc:URI").String(),
 			}
-			addDoc.AttachmentBinaryObject = data
-		}
 
-		inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, addDoc)
+			// Handle embedded binary object
+			binaryData := doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject").String()
+			if binaryData != "" {
+				addDoc.AttachmentMimeCode = doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@mimeCode").String()
+				addDoc.AttachmentFilename = doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@filename").String()
+
+				// Decode base64-encoded attachment data
+				data, err := base64.StdEncoding.DecodeString(binaryData)
+				if err != nil {
+					return fmt.Errorf("cannot decode attachment: %w", err)
+				}
+				addDoc.AttachmentBinaryObject = data
+			}
+
+			inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, addDoc)
+		}
 	}
 
 	return nil
@@ -217,41 +229,41 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 // parseUBLParties parses all party elements (BG-4, BG-7, BG-10, BG-11, BG-13).
 func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BG-4: Seller (AccountingSupplierParty)
-	inv.Seller = parseUBLParty(root, "cac:AccountingSupplierParty/cac:Party")
+	inv.Seller = parseUBLParty(root.Eval("cac:AccountingSupplierParty/cac:Party"))
 
 	// BG-7: Buyer (AccountingCustomerParty)
-	inv.Buyer = parseUBLParty(root, "cac:AccountingCustomerParty/cac:Party")
+	inv.Buyer = parseUBLParty(root.Eval("cac:AccountingCustomerParty/cac:Party"))
 
 	// BG-10: Payee (optional)
 	if root.Eval("count(cac:PayeeParty)").Int() > 0 {
-		payee := parseUBLParty(root, "cac:PayeeParty")
+		payee := parseUBLParty(root.Eval("cac:PayeeParty"))
 		inv.PayeeTradeParty = &payee
 	}
 
 	// BG-11: Seller tax representative (optional)
 	if root.Eval("count(cac:TaxRepresentativeParty)").Int() > 0 {
-		taxRep := parseUBLParty(root, "cac:TaxRepresentativeParty")
+		taxRep := parseUBLParty(root.Eval("cac:TaxRepresentativeParty"))
 		inv.SellerTaxRepresentativeTradeParty = &taxRep
 	}
 
 	// BG-13: Delivery information (optional)
-	if root.Eval("count(cac:Delivery)").Int() > 0 {
+	if deliveryCtx := root.Eval("cac:Delivery"); deliveryCtx.Eval("count()").Int() > 0 {
 		// Delivery party
-		if root.Eval("count(cac:Delivery/cac:DeliveryParty)").Int() > 0 {
-			shipTo := parseUBLParty(root, "cac:Delivery/cac:DeliveryParty")
+		if deliveryPartyCtx := deliveryCtx.Eval("cac:DeliveryParty"); deliveryPartyCtx.Eval("count()").Int() > 0 {
+			shipTo := parseUBLParty(deliveryPartyCtx)
 			inv.ShipTo = &shipTo
-		} else if root.Eval("count(cac:Delivery/cac:DeliveryLocation)").Int() > 0 {
+		} else if locationCtx := deliveryCtx.Eval("cac:DeliveryLocation"); locationCtx.Eval("count()").Int() > 0 {
 			// If no DeliveryParty, create one from DeliveryLocation address
 			shipTo := Party{}
-			if root.Eval("count(cac:Delivery/cac:DeliveryLocation/cac:Address)").Int() > 0 {
+			if addrCtx := locationCtx.Eval("cac:Address"); addrCtx.Eval("count()").Int() > 0 {
 				postalAddr := &PostalAddress{
-					Line1:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:StreetName").String(),
-					Line2:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:AdditionalStreetName").String(),
-					Line3:                  root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cac:AddressLine/cbc:Line").String(),
-					City:                   root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:CityName").String(),
-					PostcodeCode:           root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:PostalZone").String(),
-					CountrySubDivisionName: root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:CountrySubentity").String(),
-					CountryID:              root.Eval("cac:Delivery/cac:DeliveryLocation/cac:Address/cac:Country/cbc:IdentificationCode").String(),
+					Line1:                  addrCtx.Eval("cbc:StreetName").String(),
+					Line2:                  addrCtx.Eval("cbc:AdditionalStreetName").String(),
+					Line3:                  addrCtx.Eval("cac:AddressLine/cbc:Line").String(),
+					City:                   addrCtx.Eval("cbc:CityName").String(),
+					PostcodeCode:           addrCtx.Eval("cbc:PostalZone").String(),
+					CountrySubDivisionName: addrCtx.Eval("cbc:CountrySubentity").String(),
+					CountryID:              addrCtx.Eval("cac:Country/cbc:IdentificationCode").String(),
 				}
 				shipTo.PostalAddress = postalAddr
 			}
@@ -263,61 +275,67 @@ func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 }
 
 // parseUBLParty parses a single party (reusable for Seller, Buyer, Payee, etc.).
-func parseUBLParty(ctx *cxpath.Context, partyPath string) Party {
+// Takes a context already positioned at the party element.
+func parseUBLParty(partyCtx *cxpath.Context) Party {
 	party := Party{}
 
 	// Electronic address (BT-34, BT-49, BT-98)
-	party.URIUniversalCommunication = ctx.Eval(partyPath + "/cbc:EndpointID").String()
-	party.URIUniversalCommunicationScheme = ctx.Eval(partyPath + "/cbc:EndpointID/@schemeID").String()
+	party.URIUniversalCommunication = partyCtx.Eval("cbc:EndpointID").String()
+	party.URIUniversalCommunicationScheme = partyCtx.Eval("cbc:EndpointID/@schemeID").String()
 
 	// Party identification (BT-29, BT-46, BT-60, BT-71)
-	for id := range ctx.Each(partyPath + "/cac:PartyIdentification") {
-		idValue := id.Eval("cbc:ID").String()
-		idScheme := id.Eval("cbc:ID/@schemeID").String()
+	idCount := partyCtx.Eval("count(cac:PartyIdentification)").Int()
+	if idCount > 0 {
+		party.GlobalID = make([]GlobalID, 0, idCount)
+		party.ID = make([]string, 0, idCount)
+		for id := range partyCtx.Each("cac:PartyIdentification") {
+			idValue := id.Eval("cbc:ID").String()
+			idScheme := id.Eval("cbc:ID/@schemeID").String()
 
-		if idScheme != "" {
-			party.GlobalID = append(party.GlobalID, GlobalID{
-				ID:     idValue,
-				Scheme: idScheme,
-			})
-		} else {
-			party.ID = append(party.ID, idValue)
+			if idScheme != "" {
+				party.GlobalID = append(party.GlobalID, GlobalID{
+					ID:     idValue,
+					Scheme: idScheme,
+				})
+			} else {
+				party.ID = append(party.ID, idValue)
+			}
 		}
 	}
 
 	// Party name (BT-27, BT-44, BT-59, BT-70)
-	party.Name = ctx.Eval(partyPath + "/cac:PartyName/cbc:Name").String()
+	party.Name = partyCtx.Eval("cac:PartyName/cbc:Name").String()
 	if party.Name == "" {
 		// Fallback to PartyLegalEntity/RegistrationName
-		party.Name = ctx.Eval(partyPath + "/cac:PartyLegalEntity/cbc:RegistrationName").String()
+		party.Name = partyCtx.Eval("cac:PartyLegalEntity/cbc:RegistrationName").String()
 	}
 
 	// Postal address (BG-5, BG-8, BG-12, BG-15)
-	if ctx.Eval(fmt.Sprintf("count(%s/cac:PostalAddress)", partyPath)).Int() > 0 {
+	if partyCtx.Eval("count(cac:PostalAddress)").Int() > 0 {
 		postalAddr := &PostalAddress{
-			Line1:                  ctx.Eval(partyPath + "/cac:PostalAddress/cbc:StreetName").String(),
-			Line2:                  ctx.Eval(partyPath + "/cac:PostalAddress/cbc:AdditionalStreetName").String(),
-			Line3:                  ctx.Eval(partyPath + "/cac:PostalAddress/cac:AddressLine/cbc:Line").String(),
-			City:                   ctx.Eval(partyPath + "/cac:PostalAddress/cbc:CityName").String(),
-			PostcodeCode:           ctx.Eval(partyPath + "/cac:PostalAddress/cbc:PostalZone").String(),
-			CountrySubDivisionName: ctx.Eval(partyPath + "/cac:PostalAddress/cbc:CountrySubentity").String(),
-			CountryID:              ctx.Eval(partyPath + "/cac:PostalAddress/cac:Country/cbc:IdentificationCode").String(),
+			Line1:                  partyCtx.Eval("cac:PostalAddress/cbc:StreetName").String(),
+			Line2:                  partyCtx.Eval("cac:PostalAddress/cbc:AdditionalStreetName").String(),
+			Line3:                  partyCtx.Eval("cac:PostalAddress/cac:AddressLine/cbc:Line").String(),
+			City:                   partyCtx.Eval("cac:PostalAddress/cbc:CityName").String(),
+			PostcodeCode:           partyCtx.Eval("cac:PostalAddress/cbc:PostalZone").String(),
+			CountrySubDivisionName: partyCtx.Eval("cac:PostalAddress/cbc:CountrySubentity").String(),
+			CountryID:              partyCtx.Eval("cac:PostalAddress/cac:Country/cbc:IdentificationCode").String(),
 		}
 		party.PostalAddress = postalAddr
 	}
 
 	// Legal organization (BT-30, BT-47, BT-61)
-	if ctx.Eval(fmt.Sprintf("count(%s/cac:PartyLegalEntity)", partyPath)).Int() > 0 {
+	if partyCtx.Eval("count(cac:PartyLegalEntity)").Int() > 0 {
 		legalOrg := &SpecifiedLegalOrganization{
-			ID:                  ctx.Eval(partyPath + "/cac:PartyLegalEntity/cbc:CompanyID").String(),
-			Scheme:              ctx.Eval(partyPath + "/cac:PartyLegalEntity/cbc:CompanyID/@schemeID").String(),
-			TradingBusinessName: ctx.Eval(partyPath + "/cac:PartyLegalEntity/cbc:RegistrationName").String(),
+			ID:                  partyCtx.Eval("cac:PartyLegalEntity/cbc:CompanyID").String(),
+			Scheme:              partyCtx.Eval("cac:PartyLegalEntity/cbc:CompanyID/@schemeID").String(),
+			TradingBusinessName: partyCtx.Eval("cac:PartyLegalEntity/cbc:RegistrationName").String(),
 		}
 		party.SpecifiedLegalOrganization = legalOrg
 	}
 
 	// Tax registration (BT-31, BT-32, BT-48, BT-63)
-	for taxScheme := range ctx.Each(partyPath + "/cac:PartyTaxScheme") {
+	for taxScheme := range partyCtx.Each("cac:PartyTaxScheme") {
 		taxID := taxScheme.Eval("cbc:CompanyID").String()
 		scheme := taxScheme.Eval("cac:TaxScheme/cbc:ID").String()
 
@@ -330,13 +348,17 @@ func parseUBLParty(ctx *cxpath.Context, partyPath string) Party {
 	}
 
 	// Contact (BG-6, BG-9)
-	for contact := range ctx.Each(partyPath + "/cac:Contact") {
-		dtc := DefinedTradeContact{
-			PersonName:  contact.Eval("cbc:Name").String(),
-			PhoneNumber: contact.Eval("cbc:Telephone").String(),
-			EMail:       contact.Eval("cbc:ElectronicMail").String(),
+	contactCount := partyCtx.Eval("count(cac:Contact)").Int()
+	if contactCount > 0 {
+		party.DefinedTradeContact = make([]DefinedTradeContact, 0, contactCount)
+		for contact := range partyCtx.Each("cac:Contact") {
+			dtc := DefinedTradeContact{
+				PersonName:  contact.Eval("cbc:Name").String(),
+				PhoneNumber: contact.Eval("cbc:Telephone").String(),
+				EMail:       contact.Eval("cbc:ElectronicMail").String(),
+			}
+			party.DefinedTradeContact = append(party.DefinedTradeContact, dtc)
 		}
-		party.DefinedTradeContact = append(party.DefinedTradeContact, dtc)
 	}
 
 	return party
@@ -344,42 +366,46 @@ func parseUBLParty(ctx *cxpath.Context, partyPath string) Party {
 
 // parseUBLAllowanceCharge parses document-level allowances and charges (BG-20, BG-21).
 func parseUBLAllowanceCharge(root *cxpath.Context, inv *Invoice, prefix string) error {
-	for ac := range root.Each("cac:AllowanceCharge") {
-		chargeIndicator := ac.Eval("string(cbc:ChargeIndicator) = 'true'").Bool()
+	acCount := root.Eval("count(cac:AllowanceCharge)").Int()
+	if acCount > 0 {
+		inv.SpecifiedTradeAllowanceCharge = make([]AllowanceCharge, 0, acCount)
+		for ac := range root.Each("cac:AllowanceCharge") {
+			chargeIndicator := ac.Eval("string(cbc:ChargeIndicator) = 'true'").Bool()
 
-		basisAmount, err := getDecimal(ac, "cbc:BaseAmount")
-		if err != nil {
-			return err
+			basisAmount, err := getDecimal(ac, "cbc:BaseAmount")
+			if err != nil {
+				return err
+			}
+
+			actualAmount, err := getDecimal(ac, "cbc:Amount")
+			if err != nil {
+				return err
+			}
+
+			calculationPercent, err := getDecimal(ac, "cbc:MultiplierFactorNumeric")
+			if err != nil {
+				return err
+			}
+
+			categoryTaxRate, err := getDecimal(ac, "cac:TaxCategory/cbc:Percent")
+			if err != nil {
+				return err
+			}
+
+			allowanceCharge := AllowanceCharge{
+				ChargeIndicator:                       chargeIndicator,
+				BasisAmount:                           basisAmount,
+				ActualAmount:                          actualAmount,
+				CalculationPercent:                    calculationPercent,
+				ReasonCode:                            ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
+				Reason:                                ac.Eval("cbc:AllowanceChargeReason").String(),
+				CategoryTradeTaxType:                  ac.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String(),
+				CategoryTradeTaxCategoryCode:          ac.Eval("cac:TaxCategory/cbc:ID").String(),
+				CategoryTradeTaxRateApplicablePercent: categoryTaxRate,
+			}
+
+			inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, allowanceCharge)
 		}
-
-		actualAmount, err := getDecimal(ac, "cbc:Amount")
-		if err != nil {
-			return err
-		}
-
-		calculationPercent, err := getDecimal(ac, "cbc:MultiplierFactorNumeric")
-		if err != nil {
-			return err
-		}
-
-		categoryTaxRate, err := getDecimal(ac, "cac:TaxCategory/cbc:Percent")
-		if err != nil {
-			return err
-		}
-
-		allowanceCharge := AllowanceCharge{
-			ChargeIndicator:                       chargeIndicator,
-			BasisAmount:                           basisAmount,
-			ActualAmount:                          actualAmount,
-			CalculationPercent:                    calculationPercent,
-			ReasonCode:                            ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
-			Reason:                                ac.Eval("cbc:AllowanceChargeReason").String(),
-			CategoryTradeTaxType:                  ac.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String(),
-			CategoryTradeTaxCategoryCode:          ac.Eval("cac:TaxCategory/cbc:ID").String(),
-			CategoryTradeTaxRateApplicablePercent: categoryTaxRate,
-		}
-
-		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, allowanceCharge)
 	}
 
 	return nil
@@ -413,35 +439,39 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BG-23: VAT breakdown (TaxSubtotal elements)
-	for subtotal := range root.Each("cac:TaxTotal/cac:TaxSubtotal") {
-		tradeTax := TradeTax{}
+	taxSubtotalCount := root.Eval("count(cac:TaxTotal/cac:TaxSubtotal)").Int()
+	if taxSubtotalCount > 0 {
+		inv.TradeTaxes = make([]TradeTax, 0, taxSubtotalCount)
+		for subtotal := range root.Each("cac:TaxTotal/cac:TaxSubtotal") {
+			tradeTax := TradeTax{}
 
-		tradeTax.BasisAmount, err = getDecimal(subtotal, "cbc:TaxableAmount")
-		if err != nil {
-			return err
+			tradeTax.BasisAmount, err = getDecimal(subtotal, "cbc:TaxableAmount")
+			if err != nil {
+				return err
+			}
+
+			tradeTax.CalculatedAmount, err = getDecimal(subtotal, "cbc:TaxAmount")
+			if err != nil {
+				return err
+			}
+
+			tradeTax.TypeCode = subtotal.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String()
+			if tradeTax.TypeCode == "" {
+				tradeTax.TypeCode = "VAT" // Default to VAT
+			}
+
+			tradeTax.CategoryCode = subtotal.Eval("cac:TaxCategory/cbc:ID").String()
+
+			tradeTax.Percent, err = getDecimal(subtotal, "cac:TaxCategory/cbc:Percent")
+			if err != nil {
+				return err
+			}
+
+			tradeTax.ExemptionReason = subtotal.Eval("cac:TaxCategory/cbc:TaxExemptionReason").String()
+			tradeTax.ExemptionReasonCode = subtotal.Eval("cac:TaxCategory/cbc:TaxExemptionReasonCode").String()
+
+			inv.TradeTaxes = append(inv.TradeTaxes, tradeTax)
 		}
-
-		tradeTax.CalculatedAmount, err = getDecimal(subtotal, "cbc:TaxAmount")
-		if err != nil {
-			return err
-		}
-
-		tradeTax.TypeCode = subtotal.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String()
-		if tradeTax.TypeCode == "" {
-			tradeTax.TypeCode = "VAT" // Default to VAT
-		}
-
-		tradeTax.CategoryCode = subtotal.Eval("cac:TaxCategory/cbc:ID").String()
-
-		tradeTax.Percent, err = getDecimal(subtotal, "cac:TaxCategory/cbc:Percent")
-		if err != nil {
-			return err
-		}
-
-		tradeTax.ExemptionReason = subtotal.Eval("cac:TaxCategory/cbc:TaxExemptionReason").String()
-		tradeTax.ExemptionReasonCode = subtotal.Eval("cac:TaxCategory/cbc:TaxExemptionReasonCode").String()
-
-		inv.TradeTaxes = append(inv.TradeTaxes, tradeTax)
 	}
 
 	return nil
@@ -512,35 +542,39 @@ func parseUBLMonetarySummation(root *cxpath.Context, inv *Invoice, prefix string
 
 // parseUBLPaymentMeans parses payment means elements (BG-16, BG-17, BG-18, BG-19).
 func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) error {
-	for pm := range root.Each("cac:PaymentMeans") {
-		paymentMeans := PaymentMeans{
-			TypeCode:    pm.Eval("cbc:PaymentMeansCode").Int(),
-			Information: pm.Eval("cbc:InstructionNote").String(),
+	pmCount := root.Eval("count(cac:PaymentMeans)").Int()
+	if pmCount > 0 {
+		inv.PaymentMeans = make([]PaymentMeans, 0, pmCount)
+		for pm := range root.Each("cac:PaymentMeans") {
+			paymentMeans := PaymentMeans{
+				TypeCode:    pm.Eval("cbc:PaymentMeansCode").Int(),
+				Information: pm.Eval("cbc:InstructionNote").String(),
+			}
+
+			// BT-83: Remittance information
+			inv.PaymentReference = pm.Eval("cbc:PaymentID").String()
+
+			// BG-17: Credit transfer (IBAN/BIC)
+			if pm.Eval("count(cac:PayeeFinancialAccount)").Int() > 0 {
+				paymentMeans.PayeePartyCreditorFinancialAccountIBAN = pm.Eval("cac:PayeeFinancialAccount/cbc:ID").String()
+				paymentMeans.PayeePartyCreditorFinancialAccountName = pm.Eval("cac:PayeeFinancialAccount/cbc:Name").String()
+				paymentMeans.PayeePartyCreditorFinancialAccountProprietaryID = pm.Eval("cac:PayeeFinancialAccount/cac:ID").String()
+				paymentMeans.PayeeSpecifiedCreditorFinancialInstitutionBIC = pm.Eval("cac:PayeeFinancialAccount/cac:FinancialInstitutionBranch/cbc:ID").String()
+			}
+
+			// BG-18: Payment card information
+			if pm.Eval("count(cac:CardAccount)").Int() > 0 {
+				paymentMeans.ApplicableTradeSettlementFinancialCardID = pm.Eval("cac:CardAccount/cbc:PrimaryAccountNumberID").String()
+				paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName = pm.Eval("cac:CardAccount/cbc:HolderName").String()
+			}
+
+			// BG-19: Direct debit
+			if pm.Eval("count(cac:PaymentMandate)").Int() > 0 {
+				paymentMeans.PayerPartyDebtorFinancialAccountIBAN = pm.Eval("cac:PaymentMandate/cac:PayerFinancialAccount/cbc:ID").String()
+			}
+
+			inv.PaymentMeans = append(inv.PaymentMeans, paymentMeans)
 		}
-
-		// BT-83: Remittance information
-		inv.PaymentReference = pm.Eval("cbc:PaymentID").String()
-
-		// BG-17: Credit transfer (IBAN/BIC)
-		if pm.Eval("count(cac:PayeeFinancialAccount)").Int() > 0 {
-			paymentMeans.PayeePartyCreditorFinancialAccountIBAN = pm.Eval("cac:PayeeFinancialAccount/cbc:ID").String()
-			paymentMeans.PayeePartyCreditorFinancialAccountName = pm.Eval("cac:PayeeFinancialAccount/cbc:Name").String()
-			paymentMeans.PayeePartyCreditorFinancialAccountProprietaryID = pm.Eval("cac:PayeeFinancialAccount/cac:ID").String()
-			paymentMeans.PayeeSpecifiedCreditorFinancialInstitutionBIC = pm.Eval("cac:PayeeFinancialAccount/cac:FinancialInstitutionBranch/cbc:ID").String()
-		}
-
-		// BG-18: Payment card information
-		if pm.Eval("count(cac:CardAccount)").Int() > 0 {
-			paymentMeans.ApplicableTradeSettlementFinancialCardID = pm.Eval("cac:CardAccount/cbc:PrimaryAccountNumberID").String()
-			paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName = pm.Eval("cac:CardAccount/cbc:HolderName").String()
-		}
-
-		// BG-19: Direct debit
-		if pm.Eval("count(cac:PaymentMandate)").Int() > 0 {
-			paymentMeans.PayerPartyDebtorFinancialAccountIBAN = pm.Eval("cac:PaymentMandate/cac:PayerFinancialAccount/cbc:ID").String()
-		}
-
-		inv.PaymentMeans = append(inv.PaymentMeans, paymentMeans)
 	}
 
 	return nil
@@ -548,22 +582,26 @@ func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) err
 
 // parseUBLPaymentTerms parses payment terms (BT-20, BT-9, BT-89).
 func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) error {
-	for pt := range root.Each("cac:PaymentTerms") {
-		paymentTerm := SpecifiedTradePaymentTerms{
-			Description: pt.Eval("cbc:Note").String(),
+	ptCount := root.Eval("count(cac:PaymentTerms)").Int()
+	if ptCount > 0 {
+		inv.SpecifiedTradePaymentTerms = make([]SpecifiedTradePaymentTerms, 0, ptCount)
+		for pt := range root.Each("cac:PaymentTerms") {
+			paymentTerm := SpecifiedTradePaymentTerms{
+				Description: pt.Eval("cbc:Note").String(),
+			}
+
+			// BT-9: Payment due date
+			var err error
+			paymentTerm.DueDate, err = parseTimeUBL(pt, "cbc:PaymentDueDate")
+			if err != nil {
+				return err
+			}
+
+			// BT-89: Direct debit mandate identifier
+			paymentTerm.DirectDebitMandateID = pt.Eval("cbc:PaymentMeansID").String()
+
+			inv.SpecifiedTradePaymentTerms = append(inv.SpecifiedTradePaymentTerms, paymentTerm)
 		}
-
-		// BT-9: Payment due date
-		var err error
-		paymentTerm.DueDate, err = parseTimeUBL(pt, "cbc:PaymentDueDate")
-		if err != nil {
-			return err
-		}
-
-		// BT-89: Direct debit mandate identifier
-		paymentTerm.DirectDebitMandateID = pt.Eval("cbc:PaymentMeansID").String()
-
-		inv.SpecifiedTradePaymentTerms = append(inv.SpecifiedTradePaymentTerms, paymentTerm)
 	}
 
 	return nil
@@ -571,6 +609,11 @@ func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) err
 
 // parseUBLLines parses all invoice line items (BG-25).
 func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
+	lineCount := root.Eval("count(cac:InvoiceLine)").Int()
+	if lineCount > 0 {
+		inv.InvoiceLines = make([]InvoiceLine, 0, lineCount)
+	}
+
 	for lineItem := range root.Each("cac:InvoiceLine") {
 		invoiceLine := InvoiceLine{}
 		var err error
@@ -632,37 +675,43 @@ func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 
 		// BG-27: Line level allowances
 		// BG-28: Line level charges
-		for ac := range lineItem.Each("cac:AllowanceCharge") {
-			chargeIndicator := ac.Eval("string(cbc:ChargeIndicator) = 'true'").Bool()
+		lineACCount := lineItem.Eval("count(cac:AllowanceCharge)").Int()
+		if lineACCount > 0 {
+			// Pre-allocate both slices with full capacity since we don't know the split
+			invoiceLine.InvoiceLineAllowances = make([]AllowanceCharge, 0, lineACCount)
+			invoiceLine.InvoiceLineCharges = make([]AllowanceCharge, 0, lineACCount)
+			for ac := range lineItem.Each("cac:AllowanceCharge") {
+				chargeIndicator := ac.Eval("string(cbc:ChargeIndicator) = 'true'").Bool()
 
-			basisAmount, err := getDecimal(ac, "cbc:BaseAmount")
-			if err != nil {
-				return err
-			}
+				basisAmount, err := getDecimal(ac, "cbc:BaseAmount")
+				if err != nil {
+					return err
+				}
 
-			actualAmount, err := getDecimal(ac, "cbc:Amount")
-			if err != nil {
-				return err
-			}
+				actualAmount, err := getDecimal(ac, "cbc:Amount")
+				if err != nil {
+					return err
+				}
 
-			calculationPercent, err := getDecimal(ac, "cbc:MultiplierFactorNumeric")
-			if err != nil {
-				return err
-			}
+				calculationPercent, err := getDecimal(ac, "cbc:MultiplierFactorNumeric")
+				if err != nil {
+					return err
+				}
 
-			alc := AllowanceCharge{
-				ChargeIndicator:    chargeIndicator,
-				BasisAmount:        basisAmount,
-				ActualAmount:       actualAmount,
-				CalculationPercent: calculationPercent,
-				ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
-				Reason:             ac.Eval("cbc:AllowanceChargeReason").String(),
-			}
+				alc := AllowanceCharge{
+					ChargeIndicator:    chargeIndicator,
+					BasisAmount:        basisAmount,
+					ActualAmount:       actualAmount,
+					CalculationPercent: calculationPercent,
+					ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
+					Reason:             ac.Eval("cbc:AllowanceChargeReason").String(),
+				}
 
-			if chargeIndicator {
-				invoiceLine.InvoiceLineCharges = append(invoiceLine.InvoiceLineCharges, alc)
-			} else {
-				invoiceLine.InvoiceLineAllowances = append(invoiceLine.InvoiceLineAllowances, alc)
+				if chargeIndicator {
+					invoiceLine.InvoiceLineCharges = append(invoiceLine.InvoiceLineCharges, alc)
+				} else {
+					invoiceLine.InvoiceLineAllowances = append(invoiceLine.InvoiceLineAllowances, alc)
+				}
 			}
 		}
 
@@ -705,25 +754,33 @@ func parseUBLLineItem(lineItem *cxpath.Context, invoiceLine *InvoiceLine) error 
 	invoiceLine.GlobalIDType = item.Eval("cac:StandardItemIdentification/cbc:ID/@schemeID").String()
 
 	// BT-158: Item classification identifier
-	for class := range item.Each("cac:CommodityClassification") {
-		classification := Classification{
-			ClassCode:     class.Eval("cbc:ItemClassificationCode").String(),
-			ListID:        class.Eval("cbc:ItemClassificationCode/@listID").String(),
-			ListVersionID: class.Eval("cbc:ItemClassificationCode/@listVersionID").String(),
+	classCount := item.Eval("count(cac:CommodityClassification)").Int()
+	if classCount > 0 {
+		invoiceLine.ProductClassification = make([]Classification, 0, classCount)
+		for class := range item.Each("cac:CommodityClassification") {
+			classification := Classification{
+				ClassCode:     class.Eval("cbc:ItemClassificationCode").String(),
+				ListID:        class.Eval("cbc:ItemClassificationCode/@listID").String(),
+				ListVersionID: class.Eval("cbc:ItemClassificationCode/@listVersionID").String(),
+			}
+			invoiceLine.ProductClassification = append(invoiceLine.ProductClassification, classification)
 		}
-		invoiceLine.ProductClassification = append(invoiceLine.ProductClassification, classification)
 	}
 
 	// BT-159: Item country of origin
 	invoiceLine.OriginTradeCountry = item.Eval("cac:OriginCountry/cbc:IdentificationCode").String()
 
 	// BG-32: Item attributes
-	for attr := range item.Each("cac:AdditionalItemProperty") {
-		characteristic := Characteristic{
-			Description: attr.Eval("cbc:Name").String(),
-			Value:       attr.Eval("cbc:Value").String(),
+	attrCount := item.Eval("count(cac:AdditionalItemProperty)").Int()
+	if attrCount > 0 {
+		invoiceLine.Characteristics = make([]Characteristic, 0, attrCount)
+		for attr := range item.Each("cac:AdditionalItemProperty") {
+			characteristic := Characteristic{
+				Description: attr.Eval("cbc:Name").String(),
+				Value:       attr.Eval("cbc:Value").String(),
+			}
+			invoiceLine.Characteristics = append(invoiceLine.Characteristics, characteristic)
 		}
-		invoiceLine.Characteristics = append(invoiceLine.Characteristics, characteristic)
 	}
 
 	return nil
@@ -752,38 +809,42 @@ func parseUBLLinePrice(lineItem *cxpath.Context, invoiceLine *InvoiceLine) error
 	// BT-148: Item gross price (price before allowances)
 	// UBL doesn't have a direct gross price field, but may have allowances on price
 	// For now, calculate from net price if allowances exist on price
-	for ac := range price.Each("cac:AllowanceCharge") {
-		chargeIndicator := ac.Eval("string(cbc:ChargeIndicator) = 'true'").Bool()
+	priceACCount := price.Eval("count(cac:AllowanceCharge)").Int()
+	if priceACCount > 0 {
+		invoiceLine.AppliedTradeAllowanceCharge = make([]AllowanceCharge, 0, priceACCount)
+		for ac := range price.Each("cac:AllowanceCharge") {
+			chargeIndicator := ac.Eval("string(cbc:ChargeIndicator) = 'true'").Bool()
 
-		basisAmount, err := getDecimal(ac, "cbc:BaseAmount")
-		if err != nil {
-			return err
-		}
+			basisAmount, err := getDecimal(ac, "cbc:BaseAmount")
+			if err != nil {
+				return err
+			}
 
-		actualAmount, err := getDecimal(ac, "cbc:Amount")
-		if err != nil {
-			return err
-		}
+			actualAmount, err := getDecimal(ac, "cbc:Amount")
+			if err != nil {
+				return err
+			}
 
-		calculationPercent, err := getDecimal(ac, "cbc:MultiplierFactorNumeric")
-		if err != nil {
-			return err
-		}
+			calculationPercent, err := getDecimal(ac, "cbc:MultiplierFactorNumeric")
+			if err != nil {
+				return err
+			}
 
-		allowanceCharge := AllowanceCharge{
-			ChargeIndicator:    chargeIndicator,
-			BasisAmount:        basisAmount,
-			ActualAmount:       actualAmount,
-			CalculationPercent: calculationPercent,
-			ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
-			Reason:             ac.Eval("cbc:AllowanceChargeReason").String(),
-		}
+			allowanceCharge := AllowanceCharge{
+				ChargeIndicator:    chargeIndicator,
+				BasisAmount:        basisAmount,
+				ActualAmount:       actualAmount,
+				CalculationPercent: calculationPercent,
+				ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
+				Reason:             ac.Eval("cbc:AllowanceChargeReason").String(),
+			}
 
-		invoiceLine.AppliedTradeAllowanceCharge = append(invoiceLine.AppliedTradeAllowanceCharge, allowanceCharge)
+			invoiceLine.AppliedTradeAllowanceCharge = append(invoiceLine.AppliedTradeAllowanceCharge, allowanceCharge)
 
-		// Calculate gross price if we have basis amount
-		if !basisAmount.IsZero() && invoiceLine.GrossPrice.IsZero() {
-			invoiceLine.GrossPrice = basisAmount
+			// Calculate gross price if we have basis amount
+			if !basisAmount.IsZero() && invoiceLine.GrossPrice.IsZero() {
+				invoiceLine.GrossPrice = basisAmount
+			}
 		}
 	}
 
