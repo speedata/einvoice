@@ -827,16 +827,17 @@ func TestAllValidFixtures(t *testing.T) {
 				t.Fatalf("Round-trip parse failed: %v", err)
 			}
 
-			// Step 5: Compare round-trip fidelity - catches data loss bugs!
-			assertInvoiceEqual(t, inv1, inv2)
+		// Step 5: Compare round-trip fidelity - catches data loss bugs!
+		assertInvoiceEqual(t, inv1, inv2)
 
-			// Step 6: Update totals on round-tripped invoice (calculates from line items)
-			// UpdateTotals() safely handles profiles without line items (Minimum, BasicWL)
-			inv2.UpdateTotals()
+		// Step 6: Update totals on round-tripped invoice
+		// UpdateTotals() internally handles profile-level detection and skips recalculation
+		// for Minimum (level 1) and BasicWL (level 2) profiles that don't have line items
+		inv2.UpdateTotals()
 
-			// Step 7: Verify calculated totals match fixture totals
-			// This validates fixture correctness AND UpdateTotals() logic
-			assertInvoiceEqual(t, inv1, inv2)
+		// Step 7: Verify calculated totals match fixture totals
+		// This validates fixture correctness AND UpdateTotals() logic
+		assertInvoiceEqual(t, inv1, inv2)
 		})
 	}
 }
