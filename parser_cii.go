@@ -197,7 +197,7 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 				BasisAmount:                           basisAmount,
 				ActualAmount:                          actualAmount,
 				CalculationPercent:                    calculationPercent,
-				ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").Int(),
+				ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").String(),
 				Reason:                                allowanceCharge.Eval("ram:Reason").String(),
 				CategoryTradeTaxType:                  allowanceCharge.Eval("ram:CategoryTradeTax/ram:TypeCode").String(),
 				CategoryTradeTaxCategoryCode:          allowanceCharge.Eval("ram:CategoryTradeTax/ram:CategoryCode").String(),
@@ -228,6 +228,9 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		if err != nil {
 			return fmt.Errorf("invalid line billing period end date for line %s: %w", invoiceLine.LineID, err)
 		}
+
+		// BT-128: Referenced document (line level)
+		invoiceLine.AdditionalReferencedDocumentID = lineItem.Eval("ram:SpecifiedLineTradeSettlement/ram:AdditionalReferencedDocument/ram:IssuerAssignedID").String()
 
 		inv.InvoiceLines = append(inv.InvoiceLines, invoiceLine)
 	}
@@ -373,7 +376,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 			BasisAmount:                           basisAmount,
 			ActualAmount:                          actualAmount,
 			CalculationPercent:                    calculationPercent,
-			ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").Int(),
+			ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").String(),
 			Reason:                                allowanceCharge.Eval("ram:Reason").String(),
 			CategoryTradeTaxType:                  allowanceCharge.Eval("ram:CategoryTradeTax/ram:TypeCode").String(),
 			CategoryTradeTaxCategoryCode:          allowanceCharge.Eval("ram:CategoryTradeTax/ram:CategoryCode").String(),
@@ -440,6 +443,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		}
 		tradeTax.TypeCode = att.Eval("ram:TypeCode").String()
 		tradeTax.ExemptionReason = att.Eval("ram:ExemptionReason").String()
+		tradeTax.ExemptionReasonCode = att.Eval("ram:ExemptionReasonCode").String()
 		tradeTax.CategoryCode = att.Eval("ram:CategoryCode").String()
 		tradeTax.Percent, err = getDecimal(att, "ram:RateApplicablePercent") // BT-119
 		if err != nil {
@@ -576,7 +580,7 @@ func parseSpecifiedLineTradeAgreement(specifiedLineTradeAgreement *cxpath.Contex
 			BasisAmount:                           basisAmount,
 			ActualAmount:                          actualAmount,
 			CalculationPercent:                    calculationPercent,
-			ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").Int(),
+			ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").String(),
 			Reason:                                allowanceCharge.Eval("ram:Reason").String(),
 			CategoryTradeTaxType:                  allowanceCharge.Eval("ram:CategoryTradeTax/ram:TypeCode").String(),
 			CategoryTradeTaxCategoryCode:          allowanceCharge.Eval("ram:CategoryTradeTax/ram:CategoryCode").String(),

@@ -167,8 +167,8 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 
 		acElt.CreateElement("ram:ActualAmount").SetText(allowance.ActualAmount.StringFixed(2))
 
-		if allowance.ReasonCode != 0 {
-			acElt.CreateElement("ram:ReasonCode").SetText(fmt.Sprintf("%d", allowance.ReasonCode))
+		if allowance.ReasonCode != "" {
+			acElt.CreateElement("ram:ReasonCode").SetText(allowance.ReasonCode)
 		}
 
 		if allowance.Reason != "" {
@@ -201,8 +201,8 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 
 		acElt.CreateElement("ram:ActualAmount").SetText(charge.ActualAmount.StringFixed(2))
 
-		if charge.ReasonCode != 0 {
-			acElt.CreateElement("ram:ReasonCode").SetText(fmt.Sprintf("%d", charge.ReasonCode))
+		if charge.ReasonCode != "" {
+			acElt.CreateElement("ram:ReasonCode").SetText(charge.ReasonCode)
 		}
 
 		if charge.Reason != "" {
@@ -230,6 +230,12 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	att.CreateElement("ram:CategoryCode").SetText(invoiceLine.TaxCategoryCode)
 	att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(invoiceLine.TaxRateApplicablePercent))
 	slts.CreateElement("ram:SpecifiedTradeSettlementLineMonetarySummation").CreateElement("ram:LineTotalAmount").SetText(invoiceLine.Total.StringFixed(2))
+
+	// BT-128: Referenced document at line level
+	if invoiceLine.AdditionalReferencedDocumentID != "" {
+		addDoc := slts.CreateElement("ram:AdditionalReferencedDocument")
+		addDoc.CreateElement("ram:IssuerAssignedID").SetText(invoiceLine.AdditionalReferencedDocumentID)
+	}
 }
 
 func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType CodePartyType) {
@@ -567,9 +573,9 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 			stacElt.CreateElement("ram:BasisAmount").SetText(stac.BasisAmount.StringFixed(2))
 		}
 		stacElt.CreateElement("ram:ActualAmount").SetText(stac.ActualAmount.StringFixed(2))
-		// BT-98, BT-105: ReasonCode is optional - only create if non-zero (PEPPOL-EN16931-R008)
-		if stac.ReasonCode != 0 {
-			stacElt.CreateElement("ram:ReasonCode").SetText(fmt.Sprintf("%d", stac.ReasonCode))
+		// BT-98, BT-105: ReasonCode is optional - only create if non-empty (PEPPOL-EN16931-R008)
+		if stac.ReasonCode != "" {
+			stacElt.CreateElement("ram:ReasonCode").SetText(stac.ReasonCode)
 		}
 		// BT-97, BT-104: Reason is optional - only create if non-empty (PEPPOL-EN16931-R008)
 		if stac.Reason != "" {
@@ -644,7 +650,8 @@ func writeCIIrsmSupplyChainTradeTransaction(inv *Invoice, parent *etree.Element)
 
 func writeCIIrsmExchangedDocumentContext(inv *Invoice, root *etree.Element) {
 	documentContext := root.CreateElement("rsm:ExchangedDocumentContext")
-	// BusinessProcessSpecifiedDocumentContextParameter BT-23 is mandatory in extended
+	// BusinessProcessSpecifiedDocumentContextParameter BT-23 is mandatory in extended, optional otherwise
+	// Only output if it has a value OR if we're in Extended profile (where it's mandatory)
 	if inv.BPSpecifiedDocumentContextParameter != "" || is(levelExtended, inv) {
 		documentContext.CreateElement("ram:BusinessProcessSpecifiedDocumentContextParameter").CreateElement("ram:ID").CreateText(inv.BPSpecifiedDocumentContextParameter)
 	}

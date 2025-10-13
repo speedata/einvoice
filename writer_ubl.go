@@ -350,8 +350,8 @@ func writeUBLAllowanceCharge(inv *Invoice, root *etree.Element, prefix string) {
 		acElt := root.CreateElement("cac:AllowanceCharge")
 		acElt.CreateElement("cbc:ChargeIndicator").SetText(fmt.Sprintf("%t", ac.ChargeIndicator))
 
-		if ac.ReasonCode != 0 {
-			acElt.CreateElement("cbc:AllowanceChargeReasonCode").SetText(fmt.Sprintf("%d", ac.ReasonCode))
+		if ac.ReasonCode != "" {
+			acElt.CreateElement("cbc:AllowanceChargeReasonCode").SetText(ac.ReasonCode)
 		}
 
 		if ac.Reason != "" {
@@ -616,8 +616,8 @@ func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCh
 	acElt := parent.CreateElement("cac:AllowanceCharge")
 	acElt.CreateElement("cbc:ChargeIndicator").SetText(fmt.Sprintf("%t", isCharge))
 
-	if ac.ReasonCode != 0 {
-		acElt.CreateElement("cbc:AllowanceChargeReasonCode").SetText(fmt.Sprintf("%d", ac.ReasonCode))
+	if ac.ReasonCode != "" {
+		acElt.CreateElement("cbc:AllowanceChargeReasonCode").SetText(ac.ReasonCode)
 	}
 
 	if ac.Reason != "" {
