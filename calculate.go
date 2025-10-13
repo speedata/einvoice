@@ -128,13 +128,16 @@ func (inv *Invoice) updateAllowancesAndCharges() {
 // - BR-CO-15: GrandTotal (BT-112) = TaxBasisTotal + TaxTotal (BT-110)
 // - BR-CO-16: DuePayableAmount (BT-115) = GrandTotal - TotalPrepaid (BT-113) + RoundingAmount (BT-114)
 //
-// Profile handling: Minimum (level 1) and BasicWL (level 2) profiles do not have line items by design.
-// For these profiles, totals are provided directly and cannot be recalculated from line items.
-// This function skips recalculation for profiles below level 3 (Basic, EN16931, Extended, etc.).
+// Profile handling: Only recalculate for EN 16931 profiles that support line items.
+// - Level 0 (unknown): Skip - may not follow EN 16931 calculation rules
+// - Level 1 (Minimum): Skip - no line items by design, totals provided directly
+// - Level 2 (BasicWL): Skip - no line items by design, totals provided directly
+// - Level 3+ (Basic, EN16931, Extended, etc.): Calculate - have line items
 func (inv *Invoice) UpdateTotals() {
-	// Skip recalculation for Minimum and BasicWL profiles - they don't have line items
-	// and provide totals directly in the invoice
-	if inv.ProfileLevel() < 3 {
+	// Only recalculate for profiles that explicitly support line-based calculations
+	// This ensures we don't modify totals for unknown or non-compliant invoices
+	profileLevel := inv.ProfileLevel()
+	if profileLevel < 3 {
 		return
 	}
 

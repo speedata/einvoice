@@ -831,8 +831,7 @@ func TestAllValidFixtures(t *testing.T) {
 			assertInvoiceEqual(t, inv1, inv2)
 
 			// Step 6: Update totals on round-tripped invoice
-			// UpdateTotals() internally handles profile-level detection and skips recalculation
-			// for Minimum (level 1) and BasicWL (level 2) profiles that don't have line items
+			// UpdateTotals() internally handles profile-level detection
 			inv2.UpdateTotals()
 
 			// Step 7: Verify calculated totals match fixture totals
