@@ -582,6 +582,13 @@ func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) err
 
 // parseUBLPaymentTerms parses payment terms (BT-20, BT-9, BT-89).
 func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) error {
+	// BT-9: Payment due date at invoice level
+	// In UBL, DueDate is at the root Invoice/CreditNote level, not inside PaymentTerms
+	rootDueDate, err := parseTimeUBL(root, "cbc:DueDate")
+	if err != nil {
+		return err
+	}
+
 	ptCount := root.Eval("count(cac:PaymentTerms)").Int()
 	if ptCount > 0 {
 		inv.SpecifiedTradePaymentTerms = make([]SpecifiedTradePaymentTerms, 0, ptCount)
@@ -590,17 +597,26 @@ func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) err
 				Description: pt.Eval("cbc:Note").String(),
 			}
 
-			// BT-9: Payment due date
-			var err error
+			// BT-9: Payment due date (prefer element-level DueDate if present)
 			paymentTerm.DueDate, err = parseTimeUBL(pt, "cbc:PaymentDueDate")
 			if err != nil {
 				return err
+			}
+			// If not in PaymentTerms, use root-level DueDate
+			if paymentTerm.DueDate.IsZero() && !rootDueDate.IsZero() {
+				paymentTerm.DueDate = rootDueDate
 			}
 
 			// BT-89: Direct debit mandate identifier
 			paymentTerm.DirectDebitMandateID = pt.Eval("cbc:PaymentMeansID").String()
 
 			inv.SpecifiedTradePaymentTerms = append(inv.SpecifiedTradePaymentTerms, paymentTerm)
+		}
+	} else if !rootDueDate.IsZero() {
+		// If there are no PaymentTerms elements but there's a root-level DueDate,
+		// create a single PaymentTerms entry with just the DueDate
+		inv.SpecifiedTradePaymentTerms = []SpecifiedTradePaymentTerms{
+			{DueDate: rootDueDate},
 		}
 	}
 
