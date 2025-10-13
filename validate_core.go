@@ -57,12 +57,15 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-10 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Sum of Invoice line net amount" (BT-106) entspricht der Summe aller Inhalte der Elemente "Invoice line net amount"
 	// (BT-131).
-	sum = decimal.Zero
-	for _, line := range inv.InvoiceLines {
-		sum = sum.Add(line.Total)
-	}
-	if !inv.LineTotal.Equal(sum) {
-		inv.addViolation(rules.BRCO10, fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String()))
+	// Note: Only validate when invoice lines exist (Minimum profile may not have lines)
+	if len(inv.InvoiceLines) > 0 {
+		sum = decimal.Zero
+		for _, line := range inv.InvoiceLines {
+			sum = sum.Add(line.Total)
+		}
+		if !inv.LineTotal.Equal(sum) {
+			inv.addViolation(rules.BRCO10, fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String()))
+		}
 	}
 
 	// BR-CO-11 Gesamtsummen auf Dokumentenebene
@@ -94,20 +97,26 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-13 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Invoice total amount without VAT" (BT-109) entspricht der Summe aus "Sum of Invoice line net amount"
 	// (BT-106) abzüglich "Sum of allowances on document level" (BT-107) zuzüglich "Sum of charges on document level" (BT-108).
-	expectedTaxBasisTotal := inv.LineTotal.Sub(inv.AllowanceTotal).Add(inv.ChargeTotal)
-	if !inv.TaxBasisTotal.Equal(expectedTaxBasisTotal) {
-		inv.addViolation(rules.BRCO13, fmt.Sprintf("Tax basis total %s does not match LineTotal - AllowanceTotal + ChargeTotal = %s", inv.TaxBasisTotal.String(), expectedTaxBasisTotal.String()))
+	// Note: Minimum profile may not have LineTotal populated, so only validate when invoice lines exist
+	if len(inv.InvoiceLines) > 0 || !inv.LineTotal.IsZero() {
+		expectedTaxBasisTotal := inv.LineTotal.Sub(inv.AllowanceTotal).Add(inv.ChargeTotal)
+		if !inv.TaxBasisTotal.Equal(expectedTaxBasisTotal) {
+			inv.addViolation(rules.BRCO13, fmt.Sprintf("Tax basis total %s does not match LineTotal - AllowanceTotal + ChargeTotal = %s", inv.TaxBasisTotal.String(), expectedTaxBasisTotal.String()))
+		}
 	}
 
 	// BR-CO-14 Gesamtsummen auf Dokumentenebene
 	// Der Inhalt des Elementes "Invoice total VAT amount" (BT-110) entspricht der
 	// Summe aller Inhalte der Elemente "VAT category tax amount" (BT-117).
-	calculatedTaxTotal := decimal.Zero
-	for _, tax := range inv.TradeTaxes {
-		calculatedTaxTotal = calculatedTaxTotal.Add(tax.CalculatedAmount)
-	}
-	if !inv.TaxTotal.Equal(calculatedTaxTotal) {
-		inv.addViolation(rules.BRCO14, fmt.Sprintf("Invoice total VAT amount %s does not match sum of VAT category amounts %s", inv.TaxTotal.String(), calculatedTaxTotal.String()))
+	// Note: Minimum profile may not have VAT breakdown, so only validate when TradeTaxes exist
+	if len(inv.TradeTaxes) > 0 {
+		calculatedTaxTotal := decimal.Zero
+		for _, tax := range inv.TradeTaxes {
+			calculatedTaxTotal = calculatedTaxTotal.Add(tax.CalculatedAmount)
+		}
+		if !inv.TaxTotal.Equal(calculatedTaxTotal) {
+			inv.addViolation(rules.BRCO14, fmt.Sprintf("Invoice total VAT amount %s does not match sum of VAT category amounts %s", inv.TaxTotal.String(), calculatedTaxTotal.String()))
+		}
 	}
 
 	// BR-CO-15 Gesamtsummen auf Dokumentenebene
@@ -138,7 +147,8 @@ func (inv *Invoice) validateCalculations() {
 
 	// BR-CO-18 Umsatzsteueraufschlüsselung
 	// Eine Rechnung (INVOICE) soll mindestens eine Gruppe "VAT BREAKDOWN" (BG-23) enthalten.
-	if len(inv.TradeTaxes) < 1 {
+	// Note: This rule only applies to profiles >= BasicWL (Minimum profile doesn't require VAT breakdown)
+	if inv.ProfileLevel() >= levelBasicWL && len(inv.TradeTaxes) < 1 {
 		inv.addViolation(rules.BRCO18, "Invoice should contain at least one VAT BREAKDOWN")
 	}
 
@@ -157,7 +167,8 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-25 Rechnung
 	// Im Falle eines positiven Zahlbetrags "Amount due for payment" (BT-115) muss entweder das Element Fälligkeitsdatum "Payment due date" (BT-9)
 	// oder das Element Zahlungsbedingungen "Payment terms" (BT-20) vorhanden sein.
-	if inv.DuePayableAmount.GreaterThan(decimal.Zero) {
+	// Note: This rule only applies to profiles >= BasicWL (Minimum profile doesn't require payment details)
+	if inv.ProfileLevel() >= levelBasicWL && inv.DuePayableAmount.GreaterThan(decimal.Zero) {
 		hasPaymentDueDate := false
 		hasPaymentTerms := false
 
@@ -333,7 +344,8 @@ func (inv *Invoice) validateCore() {
 	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 	// Zero is valid (e.g., credit notes, zero-rated items).
 	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-	if !inv.hasLineTotalInXML && inv.SchemaType == CII {
+	// Minimum profile doesn't require LineTotal (no invoice lines), so only check for profiles >= Basic
+	if inv.ProfileLevel() >= levelBasic && !inv.hasLineTotalInXML && inv.SchemaType == CII {
 		inv.addViolation(rules.BR12, "LineTotalAmount element missing in XML")
 	}
 
