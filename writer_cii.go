@@ -246,6 +246,11 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		parent.CreateElement("ram:Name").SetText(n)
 	}
 
+	// BT-33: Seller additional legal information (or buyer/payee/etc. description)
+	if desc := party.Description; desc != "" {
+		parent.CreateElement("ram:Description").SetText(desc)
+	}
+
 	if slo := party.SpecifiedLegalOrganization; slo != nil {
 		sloElt := parent.CreateElement("ram:SpecifiedLegalOrganization")
 		id := sloElt.CreateElement("ram:ID")
@@ -346,6 +351,11 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 		writeCIIParty(inv, *inv.SellerTaxRepresentativeTradeParty, elt.CreateElement("ram:SellerTaxRepresentativeTradeParty"), CSellerParty)
 	}
 
+	// BT-14: Seller order reference
+	if inv.SellerOrderReferencedDocument != "" {
+		elt.CreateElement("ram:SellerOrderReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.SellerOrderReferencedDocument)
+	}
+
 	// BT-13
 	if inv.BuyerOrderReferencedDocument != "" {
 		elt.CreateElement("ram:BuyerOrderReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.BuyerOrderReferencedDocument)
@@ -365,16 +375,27 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 		// BT-125: Only write AttachmentBinaryObject if attachment data exists (PEPPOL-EN16931-R008)
 		if len(doc.AttachmentBinaryObject) > 0 {
 			abo := ard.CreateElement("ram:AttachmentBinaryObject")
-			if doc.AttachmentMimeCode != "" {
-				abo.CreateAttr("mimeCode", doc.AttachmentMimeCode)
-			}
 			if doc.AttachmentFilename != "" {
 				abo.CreateAttr("filename", doc.AttachmentFilename)
+			}
+			if doc.AttachmentMimeCode != "" {
+				abo.CreateAttr("mimeCode", doc.AttachmentMimeCode)
 			}
 			abo.SetText(base64.StdEncoding.EncodeToString(doc.AttachmentBinaryObject))
 		}
 		if doc.TypeCode == "130" {
 			ard.CreateElement("ram:ReferenceTypeCode").SetText(doc.ReferenceTypeCode)
+		}
+	}
+
+	// BT-11: Project reference (ID and Name)
+	if inv.SpecifiedProcuringProjectID != "" || inv.SpecifiedProcuringProjectName != "" {
+		spp := elt.CreateElement("ram:SpecifiedProcuringProject")
+		if inv.SpecifiedProcuringProjectID != "" {
+			spp.CreateElement("ram:ID").SetText(inv.SpecifiedProcuringProjectID)
+		}
+		if inv.SpecifiedProcuringProjectName != "" {
+			spp.CreateElement("ram:Name").SetText(inv.SpecifiedProcuringProjectName)
 		}
 	}
 }
@@ -595,6 +616,13 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	}
 
 	writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv, elt)
+
+	// BT-19: Buyer accounting reference
+	if inv.ReceivableSpecifiedTradeAccountingAccount != "" {
+		rstaac := elt.CreateElement("ram:ReceivableSpecifiedTradeAccountingAccount")
+		rstaac.CreateElement("ram:ID").SetText(inv.ReceivableSpecifiedTradeAccountingAccount)
+	}
+
 	// BG-3
 	for _, v := range inv.InvoiceReferencedDocument {
 		refdoc := elt.CreateElement("ram:InvoiceReferencedDocument")

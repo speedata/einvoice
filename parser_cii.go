@@ -43,6 +43,8 @@ func parseCIIParty(tradeParty *cxpath.Context) Party {
 	}
 
 	adr.Name = tradeParty.Eval("ram:Name").String()
+	// BT-33: Seller additional legal information (or buyer/payee/etc. description)
+	adr.Description = tradeParty.Eval("ram:Description").String()
 
 	// BT-34, BT-49: Electronic address with scheme
 	adr.URIUniversalCommunication = tradeParty.Eval("ram:URIUniversalCommunication/ram:URIID").String()
@@ -258,6 +260,9 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 		inv.SellerTaxRepresentativeTradeParty = &trp
 	}
 
+	// BT-14: Seller order reference
+	inv.SellerOrderReferencedDocument = applicableHeaderTradeAgreement.Eval("ram:SellerOrderReferencedDocument/ram:IssuerAssignedID").String()
+
 	for additionalDocument := range applicableHeaderTradeAgreement.Each("ram:AdditionalReferencedDocument") {
 		doc := Document{}
 		doc.IssuerAssignedID = additionalDocument.Eval("ram:IssuerAssignedID").String()
@@ -279,6 +284,10 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 		doc.ReferenceTypeCode = additionalDocument.Eval("ram:ReferenceTypeCode").String()
 		inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, doc)
 	}
+
+	// BT-11: Project reference (ID and Name)
+	inv.SpecifiedProcuringProjectID = applicableHeaderTradeAgreement.Eval("ram:SpecifiedProcuringProject/ram:ID").String()
+	inv.SpecifiedProcuringProjectName = applicableHeaderTradeAgreement.Eval("ram:SpecifiedProcuringProject/ram:Name").String()
 
 	return nil
 }
@@ -513,6 +522,9 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		refDoc.ID = refdoc.Eval("ram:IssuerAssignedID").String()
 		inv.InvoiceReferencedDocument = append(inv.InvoiceReferencedDocument, refDoc)
 	}
+
+	// BT-19: Buyer accounting reference
+	inv.ReceivableSpecifiedTradeAccountingAccount = applicableHeaderTradeSettlement.Eval("ram:ReceivableSpecifiedTradeAccountingAccount/ram:ID").String()
 
 	return nil
 }
