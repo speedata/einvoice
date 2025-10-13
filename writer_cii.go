@@ -141,6 +141,17 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 
 	slts := lineItem.CreateElement("ram:SpecifiedLineTradeSettlement")
 
+	// ApplicableTradeTax must come first per CII XSD sequence
+	att := slts.CreateElement("ram:ApplicableTradeTax")
+	// BT-151 must be VAT
+	if invoiceLine.TaxTypeCode == "" {
+		invoiceLine.TaxTypeCode = "VAT"
+	}
+
+	att.CreateElement("ram:TypeCode").SetText(invoiceLine.TaxTypeCode)
+	att.CreateElement("ram:CategoryCode").SetText(invoiceLine.TaxCategoryCode)
+	att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(invoiceLine.TaxRateApplicablePercent))
+
 	// BG-26: Invoice line period (BT-134, BT-135)
 	if !invoiceLine.BillingSpecifiedPeriodStart.IsZero() || !invoiceLine.BillingSpecifiedPeriodEnd.IsZero() {
 		bsp := slts.CreateElement("ram:BillingSpecifiedPeriod")
@@ -220,15 +231,6 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		}
 	}
 
-	att := slts.CreateElement("ram:ApplicableTradeTax")
-	// BT-151 must be VAT
-	if invoiceLine.TaxTypeCode == "" {
-		invoiceLine.TaxTypeCode = "VAT"
-	}
-
-	att.CreateElement("ram:TypeCode").SetText(invoiceLine.TaxTypeCode)
-	att.CreateElement("ram:CategoryCode").SetText(invoiceLine.TaxCategoryCode)
-	att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(invoiceLine.TaxRateApplicablePercent))
 	slts.CreateElement("ram:SpecifiedTradeSettlementLineMonetarySummation").CreateElement("ram:LineTotalAmount").SetText(invoiceLine.Total.StringFixed(2))
 
 	// BT-128: Referenced document at line level
