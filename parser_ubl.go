@@ -398,7 +398,7 @@ func parseUBLAllowanceCharge(root *cxpath.Context, inv *Invoice, prefix string) 
 				BasisAmount:                           basisAmount,
 				ActualAmount:                          actualAmount,
 				CalculationPercent:                    calculationPercent,
-				ReasonCode:                            ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
+				ReasonCode:                            ac.Eval("cbc:AllowanceChargeReasonCode").String(),
 				Reason:                                ac.Eval("cbc:AllowanceChargeReason").String(),
 				CategoryTradeTaxType:                  ac.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String(),
 				CategoryTradeTaxCategoryCode:          ac.Eval("cac:TaxCategory/cbc:ID").String(),
@@ -739,7 +739,7 @@ func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 					BasisAmount:        basisAmount,
 					ActualAmount:       actualAmount,
 					CalculationPercent: calculationPercent,
-					ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
+					ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").String(),
 					Reason:             ac.Eval("cbc:AllowanceChargeReason").String(),
 				}
 
@@ -872,7 +872,7 @@ func parseUBLLinePrice(lineItem *cxpath.Context, invoiceLine *InvoiceLine) error
 				BasisAmount:        basisAmount,
 				ActualAmount:       actualAmount,
 				CalculationPercent: calculationPercent,
-				ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").Int(),
+				ReasonCode:         ac.Eval("cbc:AllowanceChargeReasonCode").String(),
 				Reason:             ac.Eval("cbc:AllowanceChargeReason").String(),
 			}
 

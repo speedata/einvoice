@@ -525,7 +525,7 @@ func (inv *Invoice) validateCore() {
 			// BR-38 Zuschläge auf Dokumentenebene
 			// Jede Abgabe auf Dokumentenebene "DOCUMENT LEVEL CHARGES" (BG-21) muss einen Abgabegrund "Document level charge reason" (BT-104)
 			// oder einen entsprechenden Code "Document level charge reason code" (BT-105) aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == 0 {
+			if ac.Reason == "" && ac.ReasonCode == "" {
 				inv.addViolation(rules.BR38, "Charge reason empty or code unset")
 			}
 			// BR-39 Zuschläge auf Dokumentenebene
@@ -556,7 +556,7 @@ func (inv *Invoice) validateCore() {
 			// BR-33 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Nachlassgrund "Document level allowance
 			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98") aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == 0 {
+			if ac.Reason == "" && ac.ReasonCode == "" {
 				inv.addViolation(rules.BR33, "Allowance reason empty or code unset")
 			}
 			// BR-34 Abschläge auf Dokumentenebene
@@ -585,7 +585,7 @@ func (inv *Invoice) validateCore() {
 			// BR-42 Abschläge auf Ebene der Rechnungsposition
 			// Jeder Nachlass auf der Ebene der Rechnungsposition "INVOICE LINE ALLOWANCES“ (BG-27) muss einen Nachlassgrund "Invoice line allowance
 			// reason“ (BT-139) oder einen entsprechenden Code "Invoice line allowance reason code“ (BT-140) aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == 0 {
+			if ac.Reason == "" && ac.ReasonCode == "" {
 				inv.addViolation(rules.BR42, "Line allowance must have a reason")
 			}
 		}
@@ -599,7 +599,7 @@ func (inv *Invoice) validateCore() {
 			// BR-44 Charge ou frais sur ligne de facture
 			// Jede Abgabe auf der Ebene der Rechnungsposition "INVOICE LINE CHARGES“ (BG-28) muss einen Abgabegrund "Invoice line charge reason“ (BT-
 			// 144) oder einen entsprechenden Code "Invoice line charge reason code“ (BT-145) aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == 0 {
+			if ac.Reason == "" && ac.ReasonCode == "" {
 				inv.addViolation(rules.BR44, "Line charge must have a reason")
 			}
 		}

@@ -256,7 +256,7 @@ type AllowanceCharge struct {
 	CalculationPercent                    decimal.Decimal // BT-94, BT-101, BT-138, BT-143
 	BasisAmount                           decimal.Decimal // BT-93, BT-100, BT-137, BT-142
 	ActualAmount                          decimal.Decimal // BT-92, BT-99, BT-136, BT-141
-	ReasonCode                            int             // BT-98, BT-105, BT-140, BT-145
+	ReasonCode                            string          // BT-98, BT-105, BT-140, BT-145
 	Reason                                string          // BT-97, BT-104, BT-139, BT-144
 	CategoryTradeTaxType                  string          // BT-95, BT-102
 	CategoryTradeTaxCategoryCode          string          // BT-95, BT-102
