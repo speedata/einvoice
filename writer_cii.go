@@ -246,6 +246,11 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		parent.CreateElement("ram:Name").SetText(n)
 	}
 
+	// BT-33: Seller additional legal information (or buyer/payee/etc. description)
+	if desc := party.Description; desc != "" {
+		parent.CreateElement("ram:Description").SetText(desc)
+	}
+
 	if slo := party.SpecifiedLegalOrganization; slo != nil {
 		sloElt := parent.CreateElement("ram:SpecifiedLegalOrganization")
 		id := sloElt.CreateElement("ram:ID")
@@ -275,17 +280,6 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 			// email.CreateAttr("schemeID", "SMTP")
 			email.SetText(dtc.EMail)
 		}
-	}
-
-	// BT-34, BT-49: Electronic address (URI Universal Communication)
-	// Write element if either value or scheme is present
-	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
-		uuc := parent.CreateElement("ram:URIUniversalCommunication")
-		uriID := uuc.CreateElement("ram:URIID")
-		if party.URIUniversalCommunicationScheme != "" {
-			uriID.CreateAttr("schemeID", party.URIUniversalCommunicationScheme)
-		}
-		uriID.SetText(party.URIUniversalCommunication)
 	}
 
 	if ppa := party.PostalAddress; ppa != nil {
@@ -319,6 +313,17 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		}
 	}
 
+	// BT-34, BT-49: Electronic address (URI Universal Communication)
+	// Write element if either value or scheme is present
+	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
+		uuc := parent.CreateElement("ram:URIUniversalCommunication")
+		uriID := uuc.CreateElement("ram:URIID")
+		if party.URIUniversalCommunicationScheme != "" {
+			uriID.CreateAttr("schemeID", party.URIUniversalCommunicationScheme)
+		}
+		uriID.SetText(party.URIUniversalCommunication)
+	}
+
 	if fc := party.FCTaxRegistration; fc != "" {
 		elt := parent.CreateElement("ram:SpecifiedTaxRegistration").CreateElement("ram:ID")
 		elt.CreateAttr("schemeID", "FC")
@@ -344,6 +349,11 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 	// BG-11: Seller tax representative party
 	if inv.SellerTaxRepresentativeTradeParty != nil {
 		writeCIIParty(inv, *inv.SellerTaxRepresentativeTradeParty, elt.CreateElement("ram:SellerTaxRepresentativeTradeParty"), CSellerParty)
+	}
+
+	// BT-14: Seller order reference
+	if inv.SellerOrderReferencedDocument != "" {
+		elt.CreateElement("ram:SellerOrderReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.SellerOrderReferencedDocument)
 	}
 
 	// BT-13
@@ -375,6 +385,17 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 		}
 		if doc.TypeCode == "130" {
 			ard.CreateElement("ram:ReferenceTypeCode").SetText(doc.ReferenceTypeCode)
+		}
+	}
+
+	// BT-11: Project reference (ID and Name)
+	if inv.SpecifiedProcuringProjectID != "" || inv.SpecifiedProcuringProjectName != "" {
+		spp := elt.CreateElement("ram:SpecifiedProcuringProject")
+		if inv.SpecifiedProcuringProjectID != "" {
+			spp.CreateElement("ram:ID").SetText(inv.SpecifiedProcuringProjectID)
+		}
+		if inv.SpecifiedProcuringProjectName != "" {
+			spp.CreateElement("ram:Name").SetText(inv.SpecifiedProcuringProjectName)
 		}
 	}
 }
@@ -595,6 +616,13 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	}
 
 	writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv, elt)
+
+	// BT-19: Buyer accounting reference
+	if inv.ReceivableSpecifiedTradeAccountingAccount != "" {
+		rstaac := elt.CreateElement("ram:ReceivableSpecifiedTradeAccountingAccount")
+		rstaac.CreateElement("ram:ID").SetText(inv.ReceivableSpecifiedTradeAccountingAccount)
+	}
+
 	// BG-3
 	for _, v := range inv.InvoiceReferencedDocument {
 		refdoc := elt.CreateElement("ram:InvoiceReferencedDocument")
