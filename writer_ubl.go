@@ -592,13 +592,13 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 			}
 		}
 
-		// BG-27: Line level allowances
-		// BG-28: Line level charges
+		// BG-27: Line level allowances (BT-136 - must be rounded to 2 decimals)
+		// BG-28: Line level charges (BT-141 - must be rounded to 2 decimals)
 		for _, ac := range line.InvoiceLineAllowances {
-			writeUBLLineAllowanceCharge(lineElt, ac, false)
+			writeUBLLineAllowanceCharge(lineElt, ac, false, true)
 		}
 		for _, ac := range line.InvoiceLineCharges {
-			writeUBLLineAllowanceCharge(lineElt, ac, true)
+			writeUBLLineAllowanceCharge(lineElt, ac, true, true)
 		}
 
 		// Item information
@@ -610,7 +610,8 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 }
 
 // writeUBLLineAllowanceCharge writes a line-level allowance or charge
-func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCharge bool) {
+// roundAmount: true for BT-136/BT-141 (line allowances/charges), false for BT-147 (item price discounts)
+func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCharge bool, roundAmount bool) {
 	acElt := parent.CreateElement("cac:AllowanceCharge")
 	acElt.CreateElement("cbc:ChargeIndicator").SetText(fmt.Sprintf("%t", isCharge))
 
@@ -626,7 +627,13 @@ func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCh
 		acElt.CreateElement("cbc:MultiplierFactorNumeric").SetText(formatPercent(ac.CalculationPercent))
 	}
 
-	acElt.CreateElement("cbc:Amount").SetText(ac.ActualAmount.StringFixed(2))
+	// BT-136/BT-141 (line allowances/charges) must be 2 decimals (BR-DEC-24, BR-DEC-27)
+	// BT-147 (item price discount) has no decimal restriction per EN 16931
+	if roundAmount {
+		acElt.CreateElement("cbc:Amount").SetText(ac.ActualAmount.StringFixed(2))
+	} else {
+		acElt.CreateElement("cbc:Amount").SetText(ac.ActualAmount.String())
+	}
 
 	if !ac.BasisAmount.IsZero() {
 		acElt.CreateElement("cbc:BaseAmount").SetText(ac.BasisAmount.StringFixed(2))
@@ -704,8 +711,8 @@ func writeUBLLineItem(parent *etree.Element, line InvoiceLine) {
 func writeUBLLinePrice(parent *etree.Element, line InvoiceLine) {
 	price := parent.CreateElement("cac:Price")
 
-	// BT-146: Item net price
-	price.CreateElement("cbc:PriceAmount").SetText(line.NetPrice.StringFixed(2))
+	// BT-146: Item net price (no decimal restriction per EN 16931)
+	price.CreateElement("cbc:PriceAmount").SetText(line.NetPrice.String())
 
 	// BT-149: Item price base quantity with unit code
 	if !line.BasisQuantity.IsZero() {
@@ -716,11 +723,12 @@ func writeUBLLinePrice(parent *etree.Element, line InvoiceLine) {
 			unitCode = line.BilledQuantityUnit
 		}
 		baseQty.CreateAttr("unitCode", unitCode)
-		baseQty.SetText(line.BasisQuantity.StringFixed(4))
+		// BT-149: Item price base quantity (no decimal restriction per EN 16931)
+		baseQty.SetText(line.BasisQuantity.String())
 	}
 
-	// BT-147: Item price allowances (from GrossPrice)
+	// BT-147: Item price allowances/discounts (no decimal restriction per EN 16931)
 	for _, ac := range line.AppliedTradeAllowanceCharge {
-		writeUBLLineAllowanceCharge(price, ac, ac.ChargeIndicator)
+		writeUBLLineAllowanceCharge(price, ac, ac.ChargeIndicator, false)
 	}
 }
