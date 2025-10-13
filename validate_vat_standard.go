@@ -129,28 +129,32 @@ func (inv *Invoice) validateVATStandard() {
 
 	// BR-S-8 Umsatzsteuer mit Normalsatz
 	// For each distinct rate in Standard rated category, taxable amount must match calculated sum
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "S" {
-			// Calculate sum: lines - allowances + charges for this rate
-			calculatedBasis := decimal.Zero
-			for _, line := range inv.InvoiceLines {
-				if line.TaxCategoryCode == "S" && line.TaxRateApplicablePercent.Equal(tt.Percent) {
-					calculatedBasis = calculatedBasis.Add(line.Total)
-				}
-			}
-			for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-				if ac.CategoryTradeTaxCategoryCode == "S" && ac.CategoryTradeTaxRateApplicablePercent.Equal(tt.Percent) {
-					if ac.ChargeIndicator {
-						calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
-					} else {
-						calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
+		for _, tt := range inv.TradeTaxes {
+			if tt.CategoryCode == "S" {
+				// Calculate sum: lines - allowances + charges for this rate
+				calculatedBasis := decimal.Zero
+				for _, line := range inv.InvoiceLines {
+					if line.TaxCategoryCode == "S" && line.TaxRateApplicablePercent.Equal(tt.Percent) {
+						calculatedBasis = calculatedBasis.Add(line.Total)
 					}
 				}
-			}
-			// Round to 2 decimals for comparison using commercial rounding (round half up)
-			calculatedBasis = roundHalfUp(calculatedBasis, 2)
-			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(rules.BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String()))
+				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+					if ac.CategoryTradeTaxCategoryCode == "S" && ac.CategoryTradeTaxRateApplicablePercent.Equal(tt.Percent) {
+						if ac.ChargeIndicator {
+							calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
+						} else {
+							calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+						}
+					}
+				}
+				// Round to 2 decimals for comparison using commercial rounding (round half up)
+				calculatedBasis = roundHalfUp(calculatedBasis, 2)
+				if !tt.BasisAmount.Equal(calculatedBasis) {
+					inv.addViolation(rules.BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String()))
+				}
 			}
 		}
 	}

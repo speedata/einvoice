@@ -59,28 +59,32 @@ func (inv *Invoice) validateVATIGIC() {
 
 	// BR-AF-5 IGIC
 	// Verify taxable amount calculation for category L
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "L" {
-			var lineTotal decimal.Decimal
-			for _, line := range inv.InvoiceLines {
-				if line.TaxCategoryCode == "L" {
-					lineTotal = lineTotal.Add(line.Total)
-				}
-			}
-			var allowanceTotal decimal.Decimal
-			var chargeTotal decimal.Decimal
-			for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-				if ac.CategoryTradeTaxCategoryCode == "L" {
-					if ac.ChargeIndicator {
-						chargeTotal = chargeTotal.Add(ac.ActualAmount)
-					} else {
-						allowanceTotal = allowanceTotal.Add(ac.ActualAmount)
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
+		for _, tt := range inv.TradeTaxes {
+			if tt.CategoryCode == "L" {
+				var lineTotal decimal.Decimal
+				for _, line := range inv.InvoiceLines {
+					if line.TaxCategoryCode == "L" {
+						lineTotal = lineTotal.Add(line.Total)
 					}
 				}
-			}
-			expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
-			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(rules.BRAF5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				var allowanceTotal decimal.Decimal
+				var chargeTotal decimal.Decimal
+				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+					if ac.CategoryTradeTaxCategoryCode == "L" {
+						if ac.ChargeIndicator {
+							chargeTotal = chargeTotal.Add(ac.ActualAmount)
+						} else {
+							allowanceTotal = allowanceTotal.Add(ac.ActualAmount)
+						}
+					}
+				}
+				expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
+				if !tt.BasisAmount.Equal(expectedBasis) {
+					inv.addViolation(rules.BRAF5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				}
 			}
 		}
 	}
@@ -98,29 +102,33 @@ func (inv *Invoice) validateVATIGIC() {
 
 	// BR-AF-7 IGIC
 	// For each different VAT rate, verify taxable amount calculation
-	igicRateMap := make(map[string]decimal.Decimal)
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "L" {
-			key := line.TaxRateApplicablePercent.String()
-			igicRateMap[key] = igicRateMap[key].Add(line.Total)
-		}
-	}
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.CategoryTradeTaxCategoryCode == "L" {
-			key := ac.CategoryTradeTaxRateApplicablePercent.String()
-			if ac.ChargeIndicator {
-				igicRateMap[key] = igicRateMap[key].Add(ac.ActualAmount)
-			} else {
-				igicRateMap[key] = igicRateMap[key].Sub(ac.ActualAmount)
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
+		igicRateMap := make(map[string]decimal.Decimal)
+		for _, line := range inv.InvoiceLines {
+			if line.TaxCategoryCode == "L" {
+				key := line.TaxRateApplicablePercent.String()
+				igicRateMap[key] = igicRateMap[key].Add(line.Total)
 			}
 		}
-	}
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "L" {
-			key := tt.Percent.String()
-			expectedBasis := roundHalfUp(igicRateMap[key], 2)
-			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(rules.BRAF7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+			if ac.CategoryTradeTaxCategoryCode == "L" {
+				key := ac.CategoryTradeTaxRateApplicablePercent.String()
+				if ac.ChargeIndicator {
+					igicRateMap[key] = igicRateMap[key].Add(ac.ActualAmount)
+				} else {
+					igicRateMap[key] = igicRateMap[key].Sub(ac.ActualAmount)
+				}
+			}
+		}
+		for _, tt := range inv.TradeTaxes {
+			if tt.CategoryCode == "L" {
+				key := tt.Percent.String()
+				expectedBasis := roundHalfUp(igicRateMap[key], 2)
+				if !tt.BasisAmount.Equal(expectedBasis) {
+					inv.addViolation(rules.BRAF7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				}
 			}
 		}
 	}

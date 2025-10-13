@@ -138,29 +138,33 @@ func (inv *Invoice) validateVATIntracommunity() {
 
 	// BR-IC-8 Innergemeinschaftliche Lieferung
 	// For each different VAT rate, verify taxable amount calculation
-	taxRateMap := make(map[string]decimal.Decimal)
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "K" {
-			key := line.TaxRateApplicablePercent.String()
-			taxRateMap[key] = taxRateMap[key].Add(line.Total)
-		}
-	}
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.CategoryTradeTaxCategoryCode == "K" {
-			key := ac.CategoryTradeTaxRateApplicablePercent.String()
-			if ac.ChargeIndicator {
-				taxRateMap[key] = taxRateMap[key].Add(ac.ActualAmount)
-			} else {
-				taxRateMap[key] = taxRateMap[key].Sub(ac.ActualAmount)
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
+		taxRateMap := make(map[string]decimal.Decimal)
+		for _, line := range inv.InvoiceLines {
+			if line.TaxCategoryCode == "K" {
+				key := line.TaxRateApplicablePercent.String()
+				taxRateMap[key] = taxRateMap[key].Add(line.Total)
 			}
 		}
-	}
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "K" {
-			key := tt.Percent.String()
-			expectedBasis := roundHalfUp(taxRateMap[key], 2)
-			if !tt.BasisAmount.Equal(expectedBasis) {
-				inv.addViolation(rules.BRIC8, fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+			if ac.CategoryTradeTaxCategoryCode == "K" {
+				key := ac.CategoryTradeTaxRateApplicablePercent.String()
+				if ac.ChargeIndicator {
+					taxRateMap[key] = taxRateMap[key].Add(ac.ActualAmount)
+				} else {
+					taxRateMap[key] = taxRateMap[key].Sub(ac.ActualAmount)
+				}
+			}
+		}
+		for _, tt := range inv.TradeTaxes {
+			if tt.CategoryCode == "K" {
+				key := tt.Percent.String()
+				expectedBasis := roundHalfUp(taxRateMap[key], 2)
+				if !tt.BasisAmount.Equal(expectedBasis) {
+					inv.addViolation(rules.BRIC8, fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				}
 			}
 		}
 	}

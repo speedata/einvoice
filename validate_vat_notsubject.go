@@ -121,7 +121,9 @@ func (inv *Invoice) validateVATNotSubject() {
 	}
 
 	// BR-O-08: VAT category taxable amount calculation
-	if oBreakdown != nil {
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if oBreakdown != nil && (inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0)) {
 		var lineTotal decimal.Decimal
 		for _, line := range inv.InvoiceLines {
 			if line.TaxCategoryCode == "O" {
