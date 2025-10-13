@@ -223,6 +223,9 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		id := sloElt.CreateElement("ram:ID")
 		id.CreateAttr("schemeID", slo.Scheme)
 		id.SetText(slo.ID)
+		if slo.TradingBusinessName != "" {
+			sloElt.CreateElement("ram:TradingBusinessName").SetText(slo.TradingBusinessName)
+		}
 	}
 
 	for _, dtc := range party.DefinedTradeContact {
