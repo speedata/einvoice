@@ -79,9 +79,13 @@ func writeUBLHeader(inv *Invoice, root *etree.Element, prefix string) {
 	// BT-2: Invoice issue date
 	addTimeUBL(root, "cbc:IssueDate", inv.InvoiceDate)
 
-	// BT-3: Invoice type code
+	// BT-3: Invoice type code (or CreditNoteTypeCode for credit notes)
 	if inv.InvoiceTypeCode != 0 {
-		root.CreateElement("cbc:InvoiceTypeCode").SetText(inv.InvoiceTypeCode.String())
+		typeCodeElementName := "cbc:InvoiceTypeCode"
+		if prefix == "cn:" {
+			typeCodeElementName = "cbc:CreditNoteTypeCode"
+		}
+		root.CreateElement(typeCodeElementName).SetText(inv.InvoiceTypeCode.String())
 	}
 
 	// BG-1: Process notes
@@ -530,8 +534,16 @@ func writeUBLPaymentTerms(inv *Invoice, root *etree.Element, prefix string) {
 
 // writeUBLLines writes all invoice line items (BG-25)
 func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
+	// Determine line element and quantity element names based on document type
+	lineElementName := "cac:InvoiceLine"
+	quantityElementName := "cbc:InvoicedQuantity"
+	if prefix == "cn:" {
+		lineElementName = "cac:CreditNoteLine"
+		quantityElementName = "cbc:CreditedQuantity"
+	}
+
 	for _, line := range inv.InvoiceLines {
-		lineElt := root.CreateElement("cac:InvoiceLine")
+		lineElt := root.CreateElement(lineElementName)
 
 		// BT-126: Invoice line identifier
 		lineElt.CreateElement("cbc:ID").SetText(line.LineID)
@@ -541,8 +553,8 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 			lineElt.CreateElement("cbc:Note").SetText(line.Note)
 		}
 
-		// BT-129: Invoiced quantity
-		qty := lineElt.CreateElement("cbc:InvoicedQuantity")
+		// BT-129: Invoiced quantity (or Credited quantity for credit notes)
+		qty := lineElt.CreateElement(quantityElementName)
 		qty.CreateAttr("unitCode", line.BilledQuantityUnit)
 		qty.SetText(line.BilledQuantity.StringFixed(4))
 
