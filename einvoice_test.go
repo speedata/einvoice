@@ -698,12 +698,17 @@ func assertInvoiceEqual(t *testing.T, original, roundtrip *Invoice) {
 //
 // Test flow:
 //  1. Parse original XML
-//  2. Validate (log all violations, don't fail)
+//  2. Validate (log all violations)
 //  3. Write to new XML
 //  4. Parse the written XML
-//  5. Compare critical fields using assertInvoiceEqual
+//  5. Compare round-trip fidelity (tests writer/parser)
+//  6. UpdateTotals() on round-tripped invoice (calculates from line items)
+//  7. Compare calculated totals vs fixture totals (tests UpdateTotals() & fixture correctness)
 //
-// This catches data loss bugs like the multi-currency TaxTotalAmount concatenation issue.
+// This catches:
+// - Data loss bugs (step 5: multi-currency TaxTotalAmount concatenation issue)
+// - Calculation bugs (step 7: UpdateTotals() correctness)
+// - Fixture issues (step 7: fixture totals don't match their line items)
 func TestAllValidFixtures(t *testing.T) {
 	t.Parallel()
 
@@ -822,7 +827,15 @@ func TestAllValidFixtures(t *testing.T) {
 				t.Fatalf("Round-trip parse failed: %v", err)
 			}
 
-			// Step 5: Compare critical fields - catches data loss bugs!
+			// Step 5: Compare round-trip fidelity - catches data loss bugs!
+			assertInvoiceEqual(t, inv1, inv2)
+
+			// Step 6: Update totals on round-tripped invoice
+			// UpdateTotals() internally handles profile-level detection
+			inv2.UpdateTotals()
+
+			// Step 7: Verify calculated totals match fixture totals
+			// This validates fixture correctness AND UpdateTotals() logic
 			assertInvoiceEqual(t, inv1, inv2)
 		})
 	}

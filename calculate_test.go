@@ -12,6 +12,7 @@ import (
 // according to BR-CO-10: LineTotal should be the sum of all invoice line net amounts
 func TestUpdateTotals_BasicCalculation(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{Total: decimal.NewFromFloat(100.00)},
 			{Total: decimal.NewFromFloat(200.00)},
@@ -58,6 +59,7 @@ func TestUpdateTotals_BasicCalculation(t *testing.T) {
 // and charges are correctly applied according to BR-CO-13
 func TestUpdateTotals_WithAllowancesAndCharges(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{Total: decimal.NewFromFloat(1000.00)},
 		},
@@ -110,6 +112,7 @@ func TestUpdateTotals_WithAllowancesAndCharges(t *testing.T) {
 // applied according to BR-CO-16
 func TestUpdateTotals_WithRoundingAmount(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{Total: decimal.NewFromFloat(100.00)},
 		},
@@ -135,6 +138,7 @@ func TestUpdateTotals_WithRoundingAmount(t *testing.T) {
 // produces the same result (fixes the accumulation bug)
 func TestUpdateTotals_Idempotent(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{Total: decimal.NewFromFloat(100.00)},
 			{Total: decimal.NewFromFloat(200.00)},
@@ -182,6 +186,7 @@ func TestUpdateTotals_Idempotent(t *testing.T) {
 // with a realistic invoice scenario
 func TestUpdateTotals_ComprehensiveScenario(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{Total: decimal.NewFromFloat(500.00)}, // Line 1
 			{Total: decimal.NewFromFloat(300.00)}, // Line 2
@@ -245,6 +250,7 @@ func TestUpdateTotals_ComprehensiveScenario(t *testing.T) {
 // TestUpdateTotals_ZeroValues tests that UpdateTotals works correctly with zero values
 func TestUpdateTotals_ZeroValues(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{},
 		TradeTaxes:   []TradeTax{},
 	}
@@ -276,6 +282,7 @@ func TestUpdateTotals_ZeroValues(t *testing.T) {
 // allowances are correctly subtracted from the tax basis amount (Bug #4 fix)
 func TestUpdateApplicableTradeTax_WithDocumentLevelAllowances(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{
 				TaxCategoryCode:          "S",
@@ -324,6 +331,7 @@ func TestUpdateApplicableTradeTax_WithDocumentLevelAllowances(t *testing.T) {
 // charges are correctly added to the tax basis amount (Bug #4 fix)
 func TestUpdateApplicableTradeTax_WithDocumentLevelCharges(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{
 				TaxCategoryCode:          "S",
@@ -368,6 +376,7 @@ func TestUpdateApplicableTradeTax_WithDocumentLevelCharges(t *testing.T) {
 // with both allowances and charges on the same tax category
 func TestUpdateApplicableTradeTax_MixedAllowancesAndCharges(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{
 				TaxCategoryCode:          "S",
@@ -421,6 +430,7 @@ func TestUpdateApplicableTradeTax_MixedAllowancesAndCharges(t *testing.T) {
 // tax categories with document-level allowances/charges
 func TestUpdateApplicableTradeTax_MultipleCategories(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{
 				TaxCategoryCode:          "S",
@@ -490,6 +500,7 @@ func TestUpdateApplicableTradeTax_MultipleCategories(t *testing.T) {
 // can create a tax category even without invoice lines (edge case)
 func TestUpdateApplicableTradeTax_AllowanceOnlyCategory(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{},
 		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
 			{
@@ -526,6 +537,7 @@ func TestUpdateApplicableTradeTax_AllowanceOnlyCategory(t *testing.T) {
 // TestUpdateAllowancesAndCharges verifies the internal calculation function
 func TestUpdateAllowancesAndCharges(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
 			{
 				ChargeIndicator: false,
@@ -563,6 +575,7 @@ func TestUpdateAllowancesAndCharges(t *testing.T) {
 // TestUpdateAllowancesAndCharges_Idempotent verifies idempotent behavior
 func TestUpdateAllowancesAndCharges_Idempotent(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
 			{
 				ChargeIndicator: false,
@@ -587,6 +600,7 @@ func TestUpdateAllowancesAndCharges_Idempotent(t *testing.T) {
 // from SpecifiedTradeAllowanceCharge, making the API more intuitive
 func TestUpdateTotals_AutomaticallyCalculatesAllowancesAndCharges(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{Total: decimal.NewFromFloat(1000.00)},
 		},
@@ -648,6 +662,7 @@ func TestUpdateTotals_AutomaticallyCalculatesAllowancesAndCharges(t *testing.T) 
 // that users would typically follow when building an invoice programmatically
 func TestUpdateTotals_IntegrationWithCalculations(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{
 				Total:                    decimal.NewFromFloat(500.00),
@@ -747,6 +762,7 @@ func TestUpdateTotals_IntegrationWithCalculations(t *testing.T) {
 // when there are no document-level allowances or charges
 func TestUpdateTotals_NoAllowancesOrCharges(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{Total: decimal.NewFromFloat(100.00)},
 		},
@@ -782,6 +798,7 @@ func TestUpdateTotals_NoAllowancesOrCharges(t *testing.T) {
 func TestUpdateApplicableTradeTax_BasisAmountRounding(t *testing.T) {
 	// Create invoice with line totals that sum to a value with > 2 decimals
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{
 				TaxCategoryCode:          "S",
@@ -831,6 +848,7 @@ func TestUpdateApplicableTradeTax_BasisAmountRounding(t *testing.T) {
 // BR-S-8 validation (Bug #4)
 func TestUpdateApplicableTradeTax_ValidationConsistency(t *testing.T) {
 	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 		InvoiceLines: []InvoiceLine{
 			{
 				TaxCategoryCode:          "S",
@@ -937,6 +955,7 @@ func TestUpdateApplicableTradeTax_RoundHalfUpVAT(t *testing.T) {
 			expectedVAT, _ := decimal.NewFromString(tt.expectedVAT)
 
 			inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 				InvoiceLines: []InvoiceLine{
 					{
 						TaxCategoryCode:          "S",
@@ -1095,6 +1114,7 @@ func TestUpdateTotals_BRCORules(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 				InvoiceLines:                  tt.lines,
 				SpecifiedTradeAllowanceCharge: tt.allowancesCharges,
 				TradeTaxes:                    tt.tradeTaxes,
