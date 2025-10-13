@@ -128,26 +128,30 @@ func (inv *Invoice) validateVATExport() {
 
 	// BR-G-8 Export außerhalb der EU
 	// Taxable amount must match calculated sum for Export outside EU category
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "G" {
-			calculatedBasis := decimal.Zero
-			for _, line := range inv.InvoiceLines {
-				if line.TaxCategoryCode == "G" {
-					calculatedBasis = calculatedBasis.Add(line.Total)
-				}
-			}
-			for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-				if ac.CategoryTradeTaxCategoryCode == "G" {
-					if ac.ChargeIndicator {
-						calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
-					} else {
-						calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
+		for _, tt := range inv.TradeTaxes {
+			if tt.CategoryCode == "G" {
+				calculatedBasis := decimal.Zero
+				for _, line := range inv.InvoiceLines {
+					if line.TaxCategoryCode == "G" {
+						calculatedBasis = calculatedBasis.Add(line.Total)
 					}
 				}
-			}
-			calculatedBasis = roundHalfUp(calculatedBasis, 2)
-			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(rules.BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+					if ac.CategoryTradeTaxCategoryCode == "G" {
+						if ac.ChargeIndicator {
+							calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
+						} else {
+							calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+						}
+					}
+				}
+				calculatedBasis = roundHalfUp(calculatedBasis, 2)
+				if !tt.BasisAmount.Equal(calculatedBasis) {
+					inv.addViolation(rules.BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				}
 			}
 		}
 	}

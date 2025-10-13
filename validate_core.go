@@ -566,10 +566,14 @@ func (inv *Invoice) validateCore() {
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss die
 		// Summe aller nach dem jeweiligen Schlüssel zu versteuernden Beträge
 		// "VAT category taxable amount" (BT-116) aufweisen.
-		key := tt.CategoryCode + "_" + tt.Percent.String()
-		if !applicableTradeTaxes[key].Equal(tt.BasisAmount) {
-			inv.addViolation(rules.BR45, "Applicable trade tax basis amount not equal to the sum of line total")
+		// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+		// BasicWL profile (level 2) provides BasisAmount directly without line items.
+		if is(levelBasic, inv) {
+			key := tt.CategoryCode + "_" + tt.Percent.String()
+			if !applicableTradeTaxes[key].Equal(tt.BasisAmount) {
+				inv.addViolation(rules.BR45, "Applicable trade tax basis amount not equal to the sum of line total")
 
+			}
 		}
 		// BR-47 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss über

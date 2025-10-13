@@ -132,26 +132,30 @@ func (inv *Invoice) validateVATReverse() {
 
 	// BR-AE-8 Umkehrung der Steuerschuldnerschaft
 	// Taxable amount must match calculated sum for Reverse charge category
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "AE" {
-			calculatedBasis := decimal.Zero
-			for _, line := range inv.InvoiceLines {
-				if line.TaxCategoryCode == "AE" {
-					calculatedBasis = calculatedBasis.Add(line.Total)
-				}
-			}
-			for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-				if ac.CategoryTradeTaxCategoryCode == "AE" {
-					if ac.ChargeIndicator {
-						calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
-					} else {
-						calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
+		for _, tt := range inv.TradeTaxes {
+			if tt.CategoryCode == "AE" {
+				calculatedBasis := decimal.Zero
+				for _, line := range inv.InvoiceLines {
+					if line.TaxCategoryCode == "AE" {
+						calculatedBasis = calculatedBasis.Add(line.Total)
 					}
 				}
-			}
-			calculatedBasis = roundHalfUp(calculatedBasis, 2)
-			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(rules.BRAE8, fmt.Sprintf("Reverse charge taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+					if ac.CategoryTradeTaxCategoryCode == "AE" {
+						if ac.ChargeIndicator {
+							calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
+						} else {
+							calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+						}
+					}
+				}
+				calculatedBasis = roundHalfUp(calculatedBasis, 2)
+				if !tt.BasisAmount.Equal(calculatedBasis) {
+					inv.addViolation(rules.BRAE8, fmt.Sprintf("Reverse charge taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				}
 			}
 		}
 	}

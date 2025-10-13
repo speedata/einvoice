@@ -130,26 +130,30 @@ func (inv *Invoice) validateVATZero() {
 
 	// BR-Z-8 Umsatzsteuer mit Nullsatz
 	// Taxable amount must match calculated sum for Zero rated category
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "Z" {
-			calculatedBasis := decimal.Zero
-			for _, line := range inv.InvoiceLines {
-				if line.TaxCategoryCode == "Z" {
-					calculatedBasis = calculatedBasis.Add(line.Total)
-				}
-			}
-			for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-				if ac.CategoryTradeTaxCategoryCode == "Z" {
-					if ac.ChargeIndicator {
-						calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
-					} else {
-						calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
+	// BasicWL profile (level 2) provides BasisAmount directly without line items.
+	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
+		for _, tt := range inv.TradeTaxes {
+			if tt.CategoryCode == "Z" {
+				calculatedBasis := decimal.Zero
+				for _, line := range inv.InvoiceLines {
+					if line.TaxCategoryCode == "Z" {
+						calculatedBasis = calculatedBasis.Add(line.Total)
 					}
 				}
-			}
-			calculatedBasis = roundHalfUp(calculatedBasis, 2)
-			if !tt.BasisAmount.Equal(calculatedBasis) {
-				inv.addViolation(rules.BRZ8, fmt.Sprintf("Zero rated taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+					if ac.CategoryTradeTaxCategoryCode == "Z" {
+						if ac.ChargeIndicator {
+							calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
+						} else {
+							calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+						}
+					}
+				}
+				calculatedBasis = roundHalfUp(calculatedBasis, 2)
+				if !tt.BasisAmount.Equal(calculatedBasis) {
+					inv.addViolation(rules.BRZ8, fmt.Sprintf("Zero rated taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				}
 			}
 		}
 	}
