@@ -2,10 +2,13 @@ package einvoice
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/shopspring/decimal"
 )
 
@@ -658,4 +661,169 @@ func FuzzRoundTrip(f *testing.F) {
 				err, inv.SchemaType, inv.GuidelineSpecifiedDocumentContextParameter)
 		}
 	})
+}
+
+// assertInvoiceEqual compares critical fields between two invoices after round-trip using go-cmp.
+// This ensures no data is lost during Parse → Write → Parse cycle.
+func assertInvoiceEqual(t *testing.T, original, roundtrip *Invoice) {
+	t.Helper()
+
+	opts := []cmp.Option{
+		// Proper decimal comparison using .Equal() method
+		cmp.Comparer(func(a, b decimal.Decimal) bool {
+			return a.Equal(b)
+		}),
+		// Normalize empty TaxTotalCurrency → InvoiceCurrencyCode
+		// This is required because XML writers default currency attributes to InvoiceCurrencyCode
+		cmp.Transformer("NormalizeTaxCurrency", func(inv Invoice) Invoice {
+			if inv.TaxTotalCurrency == "" {
+				inv.TaxTotalCurrency = inv.InvoiceCurrencyCode
+			}
+			return inv
+		}),
+		// Ignore unexported fields (like hasLineTotalInXML in InvoiceLine)
+		cmpopts.IgnoreUnexported(Invoice{}, InvoiceLine{}, Party{}, TradeTax{}, AllowanceCharge{},
+			PostalAddress{}, DefinedTradeContact{}, PaymentMeans{}, SpecifiedTradePaymentTerms{},
+			Note{}, Document{}, ReferencedDocument{}, GlobalID{}, SpecifiedLegalOrganization{},
+			Characteristic{}, Classification{}),
+	}
+
+	if diff := cmp.Diff(original, roundtrip, opts...); diff != "" {
+		t.Errorf("Invoice round-trip mismatch (-original +roundtrip):\n%s", diff)
+	}
+}
+
+// TestAllValidFixtures performs comprehensive integration testing on all official XML fixtures.
+// Following TESTING_STRATEGY.md Layer 1: Integration Tests
+//
+// Test flow:
+//  1. Parse original XML
+//  2. Validate (log all violations, don't fail)
+//  3. Write to new XML
+//  4. Parse the written XML
+//  5. Compare critical fields using assertInvoiceEqual
+//
+// This catches data loss bugs like the multi-currency TaxTotalAmount concatenation issue.
+func TestAllValidFixtures(t *testing.T) {
+	t.Parallel()
+
+	// Explicit list of 60 fixtures to test (deterministic, not auto-discovery)
+	fixtures := []string{
+		// CII Minimum
+		"testdata/cii/minimum/zugferd-minimum-buchungshilfe.xml",
+		"testdata/cii/minimum/zugferd-minimum-rechnung.xml",
+
+		// CII BasicWL
+		"testdata/cii/basicwl/zugferd-basicwl-buchungshilfe.xml",
+		"testdata/cii/basicwl/zugferd-basicwl-einfach.xml",
+
+		// CII Basic
+		"testdata/cii/basic/zugferd-basic-1.xml",
+		"testdata/cii/basic/zugferd-basic-einfach.xml",
+		"testdata/cii/basic/zugferd-basic-rechnungskorrektur.xml",
+		"testdata/cii/basic/zugferd-basic-taxifahrt.xml",
+
+		// CII EN16931
+		"testdata/cii/en16931/CII_example1.xml",
+		"testdata/cii/en16931/CII_example2.xml",
+		"testdata/cii/en16931/CII_example3.xml",
+		"testdata/cii/en16931/CII_example4.xml",
+		"testdata/cii/en16931/CII_example5.xml", // Multi-currency
+		"testdata/cii/en16931/CII_example6.xml",
+		"testdata/cii/en16931/CII_example7.xml",
+		"testdata/cii/en16931/CII_example8.xml",
+		"testdata/cii/en16931/CII_example9.xml",
+		"testdata/cii/en16931/zugferd_2p0_EN16931_1_Teilrechnung.xml",
+		"testdata/cii/en16931/zugferd-en16931-einfach.xml",
+		"testdata/cii/en16931/zugferd-en16931-gutschrift.xml",
+		"testdata/cii/en16931/zugferd-en16931-intra-community.xml",
+		"testdata/cii/en16931/zugferd-en16931-payee.xml",
+		"testdata/cii/en16931/zugferd-en16931-rabatte.xml",
+		"testdata/cii/en16931/zugferd-en16931-rechnungskorrektur.xml",
+
+		// CII Extended
+		"testdata/cii/extended/zugferd-extended-1.xml",
+		"testdata/cii/extended/zugferd-extended-2.xml",
+		"testdata/cii/extended/zugferd-extended-fremdwaehrung.xml", // Multi-currency
+		"testdata/cii/extended/zugferd-extended-intra-community-multi.xml",
+		"testdata/cii/extended/zugferd-extended-rechnungskorrektur.xml",
+		"testdata/cii/extended/zugferd-extended-warenrechnung.xml",
+
+		// CII XRechnung
+		"testdata/cii/xrechnung/XRechnung-O.xml",
+		"testdata/cii/xrechnung/zugferd-xrechnung-betriebskosten.xml", // XRechnung 2.1
+		"testdata/cii/xrechnung/zugferd-xrechnung-einfach.xml",
+		"testdata/cii/xrechnung/zugferd-xrechnung-elektron.xml",
+
+		// UBL Invoice
+		"testdata/ubl/invoice/UBL-Invoice-2.1-Example.xml",
+		"testdata/ubl/invoice/ubl-tc434-example1.xml",
+		"testdata/ubl/invoice/ubl-tc434-example2.xml",
+		"testdata/ubl/invoice/ubl-tc434-example3.xml",
+		"testdata/ubl/invoice/ubl-tc434-example4.xml",
+		"testdata/ubl/invoice/ubl-tc434-example5.xml",
+		"testdata/ubl/invoice/ubl-tc434-example6.xml",
+		"testdata/ubl/invoice/ubl-tc434-example7.xml",
+		"testdata/ubl/invoice/ubl-tc434-example8.xml",
+		"testdata/ubl/invoice/ubl-tc434-example9.xml",
+		"testdata/ubl/invoice/ubl-tc434-example10.xml",
+
+		// UBL CreditNote
+		"testdata/ubl/creditnote/UBL-CreditNote-2.1-Example.xml",
+		"testdata/ubl/creditnote/ubl-tc434-creditnote1.xml",
+
+		// PEPPOL Valid
+		"testdata/peppol/valid/Allowance-example.xml",
+		"testdata/peppol/valid/GR-base-example-TaxRepresentative.xml",
+		"testdata/peppol/valid/GR-base-example-correct.xml",
+		"testdata/peppol/valid/Norwegian-example-1.xml",
+		"testdata/peppol/valid/Vat-category-S.xml",
+		"testdata/peppol/valid/base-creditnote-correction.xml",
+		"testdata/peppol/valid/base-example.xml",
+		"testdata/peppol/valid/base-negative-inv-correction.xml",
+		"testdata/peppol/valid/vat-category-E.xml",
+		"testdata/peppol/valid/vat-category-O.xml",
+		"testdata/peppol/valid/vat-category-Z.xml",
+	}
+
+	for _, fixture := range fixtures {
+		t.Run(fixture, func(t *testing.T) {
+			t.Parallel()
+
+			// Step 1: Parse original XML
+			inv1, err := ParseXMLFile(fixture)
+			if err != nil {
+				t.Fatalf("Parse failed: %v", err)
+			}
+
+			// Step 2: Validate - validation errors are ERRORS!
+			if err := inv1.Validate(); err != nil {
+				var valErr *ValidationError
+				if errors.As(err, &valErr) {
+					violations := valErr.Violations()
+					t.Errorf("Validation failed with %d violations:", len(violations))
+					for _, v := range violations {
+						t.Logf("  - %s: %s", v.Rule.Code, v.Text)
+					}
+				} else {
+					t.Fatalf("Validation error: %v", err)
+				}
+			}
+
+			// Step 3: Write to new XML
+			var buf bytes.Buffer
+			if err := inv1.Write(&buf); err != nil {
+				t.Fatalf("Write failed: %v", err)
+			}
+
+			// Step 4: Parse the written XML
+			inv2, err := ParseReader(&buf)
+			if err != nil {
+				t.Fatalf("Round-trip parse failed: %v", err)
+			}
+
+			// Step 5: Compare critical fields - catches data loss bugs!
+			assertInvoiceEqual(t, inv1, inv2)
+		})
+	}
 }
