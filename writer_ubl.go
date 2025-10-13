@@ -238,7 +238,8 @@ func writeUBLParties(inv *Invoice, root *etree.Element, prefix string) {
 // writeUBLParty writes a single party (reusable for Seller, Buyer, Payee, etc.)
 func writeUBLParty(parent *etree.Element, party Party, isSeller bool) {
 	// Electronic address (BT-34, BT-49)
-	if party.URIUniversalCommunication != "" {
+	// Write element if either value or scheme is present
+	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
 		endpoint := parent.CreateElement("cbc:EndpointID")
 		if party.URIUniversalCommunicationScheme != "" {
 			endpoint.CreateAttr("schemeID", party.URIUniversalCommunicationScheme)
@@ -717,12 +718,11 @@ func writeUBLLinePrice(parent *etree.Element, line InvoiceLine) {
 	// BT-149: Item price base quantity with unit code
 	if !line.BasisQuantity.IsZero() {
 		baseQty := price.CreateElement("cbc:BaseQuantity")
-		// Use BasisQuantityUnit if available, otherwise fallback to BilledQuantityUnit
-		unitCode := line.BasisQuantityUnit
-		if unitCode == "" {
-			unitCode = line.BilledQuantityUnit
+		// Only add unitCode if BasisQuantityUnit was explicitly set
+		// Don't fallback to BilledQuantityUnit to preserve round-trip accuracy
+		if line.BasisQuantityUnit != "" {
+			baseQty.CreateAttr("unitCode", line.BasisQuantityUnit)
 		}
-		baseQty.CreateAttr("unitCode", unitCode)
 		// BT-149: Item price base quantity (no decimal restriction per EN 16931)
 		baseQty.SetText(line.BasisQuantity.String())
 	}
