@@ -82,6 +82,12 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		}
 	}
 
+	// BT-159: Item country of origin
+	if invoiceLine.OriginTradeCountry != "" {
+		otc := stp.CreateElement("ram:OriginTradeCountry")
+		otc.CreateElement("ram:ID").SetText(invoiceLine.OriginTradeCountry)
+	}
+
 	slta := lineItem.CreateElement("ram:SpecifiedLineTradeAgreement")
 
 	// BT-148
@@ -286,6 +292,12 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 
 	writeCIIParty(inv, inv.Seller, elt.CreateElement("ram:SellerTradeParty"), CSellerParty)
 	writeCIIParty(inv, inv.Buyer, elt.CreateElement("ram:BuyerTradeParty"), CBuyerParty)
+
+	// BG-11: Seller tax representative party
+	if inv.SellerTaxRepresentativeTradeParty != nil {
+		writeCIIParty(inv, *inv.SellerTaxRepresentativeTradeParty, elt.CreateElement("ram:SellerTaxRepresentativeTradeParty"), CSellerParty)
+	}
+
 	// BT-13
 	if inv.BuyerOrderReferencedDocument != "" {
 		elt.CreateElement("ram:BuyerOrderReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.BuyerOrderReferencedDocument)
@@ -376,7 +388,13 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	elt := parent.CreateElement("ram:ApplicableHeaderTradeSettlement")
 	// CreditorReferenceID BT-90
 	// PaymentReference BT-83
-	// TaxCurrencyCode BT-6
+
+	// BT-6: VAT accounting currency code (optional, when different from invoice currency)
+	if inv.TaxCurrencyCode != "" && inv.TaxCurrencyCode != inv.InvoiceCurrencyCode {
+		elt.CreateElement("ram:TaxCurrencyCode").SetText(inv.TaxCurrencyCode)
+	}
+
+	// BT-5: Invoice currency code (required)
 	elt.CreateElement("ram:InvoiceCurrencyCode").SetText(inv.InvoiceCurrencyCode)
 
 	// PayeeTradeParty BG-10
