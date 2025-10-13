@@ -410,9 +410,17 @@ func (inv *Invoice) IsExtended() bool {
 }
 
 // IsXRechnung checks if the invoice uses the XRechnung profile.
-// URN: urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0
+// Supports XRechnung 2.0, 2.1, 2.2, 2.3, and 3.0.
+// URN examples:
+//   - urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0
+//   - urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.1
 func (inv *Invoice) IsXRechnung() bool {
-	return inv.GuidelineSpecifiedDocumentContextParameter == SpecXRechnung30
+	urn := inv.GuidelineSpecifiedDocumentContextParameter
+	return urn == SpecXRechnung20 ||
+		urn == SpecXRechnung21 ||
+		urn == SpecXRechnung22 ||
+		urn == SpecXRechnung23 ||
+		urn == SpecXRechnung30
 }
 
 // ProfileLevel returns an integer representing the profile hierarchy level.
