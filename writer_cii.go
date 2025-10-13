@@ -60,6 +60,28 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		stp.CreateElement("ram:Description").SetText(invoiceLine.Description)
 	}
 
+	// Write product characteristics
+	for _, ch := range invoiceLine.Characteristics {
+		chElt := stp.CreateElement("ram:ApplicableProductCharacteristic")
+		chElt.CreateElement("ram:Description").SetText(ch.Description)
+		chElt.CreateElement("ram:Value").SetText(ch.Value)
+	}
+
+	// Write product classifications
+	for _, cl := range invoiceLine.ProductClassification {
+		clElt := stp.CreateElement("ram:DesignatedProductClassification")
+		if cl.ClassCode != "" {
+			ccElt := clElt.CreateElement("ram:ClassCode")
+			if cl.ListID != "" {
+				ccElt.CreateAttr("listID", cl.ListID)
+			}
+			if cl.ListVersionID != "" {
+				ccElt.CreateAttr("listVersionID", cl.ListVersionID)
+			}
+			ccElt.SetText(cl.ClassCode)
+		}
+	}
+
 	slta := lineItem.CreateElement("ram:SpecifiedLineTradeAgreement")
 
 	// BT-148
