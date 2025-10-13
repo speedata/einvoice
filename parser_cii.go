@@ -44,6 +44,10 @@ func parseCIIParty(tradeParty *cxpath.Context) Party {
 
 	adr.Name = tradeParty.Eval("ram:Name").String()
 
+	// BT-34, BT-49: Electronic address with scheme
+	adr.URIUniversalCommunication = tradeParty.Eval("ram:URIUniversalCommunication/ram:URIID").String()
+	adr.URIUniversalCommunicationScheme = tradeParty.Eval("ram:URIUniversalCommunication/ram:URIID/@schemeID").String()
+
 	if tradeParty.Eval("count(ram:SpecifiedLegalOrganization) > 0").Bool() {
 		slo := SpecifiedLegalOrganization{}
 		slo.ID = tradeParty.Eval("ram:SpecifiedLegalOrganization/ram:ID").String()
@@ -54,9 +58,10 @@ func parseCIIParty(tradeParty *cxpath.Context) Party {
 
 	for dtc := range tradeParty.Each("ram:DefinedTradeContact") {
 		contact := DefinedTradeContact{}
-		contact.EMail = dtc.Eval("ram:EmailURIUniversalCommunication/ram:URIID").String()
-		contact.PhoneNumber = dtc.Eval("ram:TelephoneUniversalCommunication/ram:CompleteNumber").String()
 		contact.PersonName = dtc.Eval("ram:PersonName").String()
+		contact.DepartmentName = dtc.Eval("ram:DepartmentName").String()
+		contact.PhoneNumber = dtc.Eval("ram:TelephoneUniversalCommunication/ram:CompleteNumber").String()
+		contact.EMail = dtc.Eval("ram:EmailURIUniversalCommunication/ram:URIID").String()
 		adr.DefinedTradeContact = append(adr.DefinedTradeContact, contact)
 	}
 
@@ -483,12 +488,23 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 
 func parseSpecifiedLineTradeAgreement(specifiedLineTradeAgreement *cxpath.Context, invoiceLine *InvoiceLine) error {
 	var err error
+
+	// BT-132: Referenced purchase order line reference
+	invoiceLine.BuyerOrderReferencedDocument = specifiedLineTradeAgreement.Eval("ram:BuyerOrderReferencedDocument/ram:LineID").String()
+
 	// BR-26: Track XML element presence to validate later
 	invoiceLine.hasNetPriceInXML = specifiedLineTradeAgreement.Eval("count(ram:NetPriceProductTradePrice/ram:ChargeAmount)").Int() > 0
 	invoiceLine.NetPrice, err = getDecimal(specifiedLineTradeAgreement, "ram:NetPriceProductTradePrice/ram:ChargeAmount")
 	if err != nil {
 		return err
 	}
+	// BT-149: Item price base quantity with unit code (from NetPrice)
+	invoiceLine.BasisQuantity, err = getDecimal(specifiedLineTradeAgreement, "ram:NetPriceProductTradePrice/ram:BasisQuantity")
+	if err != nil {
+		return err
+	}
+	invoiceLine.BasisQuantityUnit = specifiedLineTradeAgreement.Eval("ram:NetPriceProductTradePrice/ram:BasisQuantity/@unitCode").String()
+
 	invoiceLine.GrossPrice, err = getDecimal(specifiedLineTradeAgreement, "ram:GrossPriceProductTradePrice/ram:ChargeAmount")
 	if err != nil {
 		return err

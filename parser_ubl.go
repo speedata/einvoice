@@ -353,9 +353,10 @@ func parseUBLParty(partyCtx *cxpath.Context) Party {
 		party.DefinedTradeContact = make([]DefinedTradeContact, 0, contactCount)
 		for contact := range partyCtx.Each("cac:Contact") {
 			dtc := DefinedTradeContact{
-				PersonName:  contact.Eval("cbc:Name").String(),
-				PhoneNumber: contact.Eval("cbc:Telephone").String(),
-				EMail:       contact.Eval("cbc:ElectronicMail").String(),
+				PersonName:     contact.Eval("cbc:Name").String(),
+				DepartmentName: contact.Eval("cbc:Department").String(),
+				PhoneNumber:    contact.Eval("cbc:Telephone").String(),
+				EMail:          contact.Eval("cbc:ElectronicMail").String(),
 			}
 			party.DefinedTradeContact = append(party.DefinedTradeContact, dtc)
 		}
@@ -828,11 +829,12 @@ func parseUBLLinePrice(lineItem *cxpath.Context, invoiceLine *InvoiceLine) error
 		return err
 	}
 
-	// BT-149: Item price base quantity
+	// BT-149: Item price base quantity with unit code
 	invoiceLine.BasisQuantity, err = getDecimal(price, "cbc:BaseQuantity")
 	if err != nil {
 		return err
 	}
+	invoiceLine.BasisQuantityUnit = price.Eval("cbc:BaseQuantity/@unitCode").String()
 
 	// BT-148: Item gross price (price before allowances)
 	// UBL doesn't have a direct gross price field, but may have allowances on price
