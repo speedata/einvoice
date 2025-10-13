@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/shopspring/decimal"
 )
 
@@ -658,4 +660,34 @@ func FuzzRoundTrip(f *testing.F) {
 				err, inv.SchemaType, inv.GuidelineSpecifiedDocumentContextParameter)
 		}
 	})
+}
+
+// assertInvoiceEqual compares critical fields between two invoices after round-trip using go-cmp.
+// This ensures no data is lost during Parse → Write → Parse cycle.
+func assertInvoiceEqual(t *testing.T, original, roundtrip *Invoice) {
+	t.Helper()
+
+	opts := []cmp.Option{
+		// Proper decimal comparison using .Equal() method
+		cmp.Comparer(func(a, b decimal.Decimal) bool {
+			return a.Equal(b)
+		}),
+		// Normalize empty TaxTotalCurrency → InvoiceCurrencyCode
+		// This is required because XML writers default currency attributes to InvoiceCurrencyCode
+		cmp.Transformer("NormalizeTaxCurrency", func(inv Invoice) Invoice {
+			if inv.TaxTotalCurrency == "" {
+				inv.TaxTotalCurrency = inv.InvoiceCurrencyCode
+			}
+			return inv
+		}),
+		// Ignore unexported fields (like hasLineTotalInXML in InvoiceLine)
+		cmpopts.IgnoreUnexported(Invoice{}, InvoiceLine{}, Party{}, TradeTax{}, AllowanceCharge{},
+			PostalAddress{}, DefinedTradeContact{}, PaymentMeans{}, SpecifiedTradePaymentTerms{},
+			Note{}, Document{}, ReferencedDocument{}, GlobalID{}, SpecifiedLegalOrganization{},
+			Characteristic{}, Classification{}),
+	}
+
+	if diff := cmp.Diff(original, roundtrip, opts...); diff != "" {
+		t.Errorf("Invoice round-trip mismatch (-original +roundtrip):\n%s", diff)
+	}
 }
