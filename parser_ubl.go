@@ -629,12 +629,20 @@ func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) err
 
 // parseUBLLines parses all invoice line items (BG-25).
 func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
-	lineCount := root.Eval("count(cac:InvoiceLine)").Int()
+	// Determine line element and quantity element names based on document type
+	lineElementName := "cac:InvoiceLine"
+	quantityElementName := "cbc:InvoicedQuantity"
+	if prefix == "cn:" {
+		lineElementName = "cac:CreditNoteLine"
+		quantityElementName = "cbc:CreditedQuantity"
+	}
+
+	lineCount := root.Eval("count(" + lineElementName + ")").Int()
 	if lineCount > 0 {
 		inv.InvoiceLines = make([]InvoiceLine, 0, lineCount)
 	}
 
-	for lineItem := range root.Each("cac:InvoiceLine") {
+	for lineItem := range root.Each(lineElementName) {
 		invoiceLine := InvoiceLine{}
 		var err error
 
@@ -666,14 +674,14 @@ func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 		// BT-133: Invoice line Buyer accounting reference
 		invoiceLine.ReceivableSpecifiedTradeAccountingAccount = lineItem.Eval("cac:AccountingCost").String()
 
-		// BT-129: Invoiced quantity
-		invoiceLine.BilledQuantity, err = getDecimal(lineItem, "cbc:InvoicedQuantity")
+		// BT-129: Invoiced quantity (or Credited quantity for credit notes)
+		invoiceLine.BilledQuantity, err = getDecimal(lineItem, quantityElementName)
 		if err != nil {
 			return err
 		}
 
 		// BT-130: Invoiced quantity unit of measure
-		invoiceLine.BilledQuantityUnit = lineItem.Eval("cbc:InvoicedQuantity/@unitCode").String()
+		invoiceLine.BilledQuantityUnit = lineItem.Eval(quantityElementName + "/@unitCode").String()
 
 		// BT-131: Invoice line net amount
 		// Track XML element presence for BR-24 validation
