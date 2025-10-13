@@ -230,9 +230,9 @@ func ExampleInvoice_Write() {
 	//       <ram:ApplicableTradeTax>
 	//         <ram:CalculatedAmount>0.00</ram:CalculatedAmount>
 	//         <ram:TypeCode>VAT</ram:TypeCode>
-	//         <ram:ExemptionReason>Reason for reverse charge</ram:ExemptionReason>
 	//         <ram:BasisAmount>400.00</ram:BasisAmount>
 	//         <ram:CategoryCode>AE</ram:CategoryCode>
+	//         <ram:ExemptionReason>Reason for reverse charge</ram:ExemptionReason>
 	//         <ram:RateApplicablePercent>0</ram:RateApplicablePercent>
 	//       </ram:ApplicableTradeTax>
 	//       <ram:SpecifiedTradePaymentTerms>
@@ -242,12 +242,9 @@ func ExampleInvoice_Write() {
 	//       </ram:SpecifiedTradePaymentTerms>
 	//       <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
 	//         <ram:LineTotalAmount>1650.00</ram:LineTotalAmount>
-	//         <ram:ChargeTotalAmount>0.00</ram:ChargeTotalAmount>
-	//         <ram:AllowanceTotalAmount>0.00</ram:AllowanceTotalAmount>
 	//         <ram:TaxBasisTotalAmount>1650.00</ram:TaxBasisTotalAmount>
 	//         <ram:TaxTotalAmount currencyID="EUR">237.50</ram:TaxTotalAmount>
 	//         <ram:GrandTotalAmount>1887.50</ram:GrandTotalAmount>
-	//         <ram:TotalPrepaidAmount>0.00</ram:TotalPrepaidAmount>
 	//         <ram:DuePayableAmount>1887.50</ram:DuePayableAmount>
 	//       </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
 	//     </ram:ApplicableHeaderTradeSettlement>
