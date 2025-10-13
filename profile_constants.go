@@ -88,12 +88,36 @@ const (
 	SpecEN16931 = "urn:cen.eu:en16931:2017"
 )
 
-// XRechnung Specification Identifier
+// XRechnung Specification Identifiers
 //
 // XRechnung is the German implementation of EN 16931, required for invoices to
 // German public sector entities. It adds German-specific business rules and
 // extensions to the base EN 16931 standard.
 const (
+	// SpecXRechnung20 is the XRechnung 2.0 specification identifier.
+	// Required for German public sector invoicing (B2G).
+	// This is EN 16931 compliant with German extensions.
+	// Version: 2.0
+	SpecXRechnung20 = "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.0"
+
+	// SpecXRechnung21 is the XRechnung 2.1 specification identifier.
+	// Required for German public sector invoicing (B2G).
+	// This is EN 16931 compliant with German extensions.
+	// Version: 2.1
+	SpecXRechnung21 = "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.1"
+
+	// SpecXRechnung22 is the XRechnung 2.2 specification identifier.
+	// Required for German public sector invoicing (B2G).
+	// This is EN 16931 compliant with German extensions.
+	// Version: 2.2
+	SpecXRechnung22 = "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.2"
+
+	// SpecXRechnung23 is the XRechnung 2.3 specification identifier.
+	// Required for German public sector invoicing (B2G).
+	// This is EN 16931 compliant with German extensions.
+	// Version: 2.3
+	SpecXRechnung23 = "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.3"
+
 	// SpecXRechnung30 is the XRechnung 3.0 specification identifier.
 	// Required for German public sector invoicing (B2G).
 	// This is EN 16931 compliant with German extensions.
@@ -110,7 +134,7 @@ func IsProfileURN(urn string) bool {
 	case SpecFacturXMinimum, SpecFacturXBasicWL, SpecFacturXBasic, SpecFacturXBasicAlt, SpecFacturXExtended,
 		SpecZUGFeRDMinimum, SpecZUGFeRDBasic, SpecZUGFeRDExtended,
 		SpecEN16931,
-		SpecXRechnung30:
+		SpecXRechnung20, SpecXRechnung21, SpecXRechnung22, SpecXRechnung23, SpecXRechnung30:
 		return true
 	default:
 		return false
@@ -140,6 +164,14 @@ func GetProfileName(urn string) string {
 		return "ZUGFeRD Extended"
 	case SpecEN16931:
 		return "EN 16931"
+	case SpecXRechnung20:
+		return "XRechnung 2.0"
+	case SpecXRechnung21:
+		return "XRechnung 2.1"
+	case SpecXRechnung22:
+		return "XRechnung 2.2"
+	case SpecXRechnung23:
+		return "XRechnung 2.3"
 	case SpecXRechnung30:
 		return "XRechnung 3.0"
 	default:
