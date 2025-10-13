@@ -321,8 +321,8 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	for paymentMeans := range applicableHeaderTradeSettlement.Each("ram:SpecifiedTradeSettlementPaymentMeans") {
 		// BG-16
 		thisPaymentMeans := PaymentMeans{
-			TypeCode:                                             paymentMeans.Eval("ram:TypeCode").Int(),
-			Information:                                          paymentMeans.Eval("ram:Information").String(),
+			TypeCode:    paymentMeans.Eval("ram:TypeCode").Int(),
+			Information: paymentMeans.Eval("ram:Information").String(),
 			PayeePartyCreditorFinancialAccountIBAN:               paymentMeans.Eval("ram:PayeePartyCreditorFinancialAccount/ram:IBANID").String(),
 			PayeePartyCreditorFinancialAccountName:               paymentMeans.Eval("ram:PayeePartyCreditorFinancialAccount/ram:AccountName").String(),
 			PayeePartyCreditorFinancialAccountProprietaryID:      paymentMeans.Eval("ram:PayeePartyCreditorFinancialAccount/ram:ProprietaryID").String(),
@@ -330,6 +330,13 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 			PayerPartyDebtorFinancialAccountIBAN:                 paymentMeans.Eval("ram:PayerPartyDebtorFinancialAccount/ram:IBANID").String(),
 			ApplicableTradeSettlementFinancialCardID:             paymentMeans.Eval("ram:ApplicableTradeSettlementFinancialCard/ram:ID").String(),
 			ApplicableTradeSettlementFinancialCardCardholderName: paymentMeans.Eval("ram:ApplicableTradeSettlementFinancialCard/ram:CardholderName").String(),
+			// BR-61: Track XML element presence to validate later.
+			// Per EN 16931 schematron, BR-61 test is "(ram:IBANID) or (ram:ProprietaryID)"
+			// which checks for element PRESENCE, not value. An empty element <ram:IBANID/>
+			// satisfies the test because the element exists.
+			hasPayeeAccountInXML:       paymentMeans.Eval("count(ram:PayeePartyCreditorFinancialAccount)").Int() > 0,
+			hasPayeeIBANInXML:          paymentMeans.Eval("count(ram:PayeePartyCreditorFinancialAccount/ram:IBANID)").Int() > 0,
+			hasPayeeProprietaryIDInXML: paymentMeans.Eval("count(ram:PayeePartyCreditorFinancialAccount/ram:ProprietaryID)").Int() > 0,
 		}
 		inv.PaymentMeans = append(inv.PaymentMeans, thisPaymentMeans)
 	}
