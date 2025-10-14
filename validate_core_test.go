@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -380,122 +381,191 @@ func TestBRCO18_AtLeastOneVATBreakdown(t *testing.T) {
 }
 
 // TestBRCO19_InvoicingPeriodRequiresDate tests BR-CO-19: Invoicing period requires start or end date
+// This validation only applies to parsed XML where BG-14 element is present but has no dates.
 func TestBRCO19_InvoicingPeriodRequiresDate(t *testing.T) {
-	// This test is actually tricky because if both dates are zero, the condition
-	// !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero()
-	// will be false, so the validation won't trigger.
-	// The validation only triggers if we somehow have a period indicated but both dates are zero,
-	// which shouldn't happen in practice. Let's verify the logic works correctly.
+	// XML with BG-14 present but no dates inside
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
+    xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
+    xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
+    <rsm:ExchangedDocumentContext>
+        <ram:GuidelineSpecifiedDocumentContextParameter>
+            <ram:ID>urn:cen.eu:en16931:2017</ram:ID>
+        </ram:GuidelineSpecifiedDocumentContextParameter>
+    </rsm:ExchangedDocumentContext>
+    <rsm:ExchangedDocument>
+        <ram:ID>TEST-BRCO19</ram:ID>
+        <ram:TypeCode>380</ram:TypeCode>
+        <ram:IssueDateTime><udt:DateTimeString format="102">20240101</udt:DateTimeString></ram:IssueDateTime>
+    </rsm:ExchangedDocument>
+    <rsm:SupplyChainTradeTransaction>
+        <ram:ApplicableHeaderTradeAgreement>
+            <ram:SellerTradeParty>
+                <ram:Name>Seller</ram:Name>
+                <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
+            </ram:SellerTradeParty>
+            <ram:BuyerTradeParty>
+                <ram:Name>Buyer</ram:Name>
+                <ram:PostalTradeAddress><ram:CountryID>FR</ram:CountryID></ram:PostalTradeAddress>
+            </ram:BuyerTradeParty>
+        </ram:ApplicableHeaderTradeAgreement>
+        <ram:ApplicableHeaderTradeSettlement>
+            <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
+            <ram:BillingSpecifiedPeriod>
+                <!-- Element exists but has no StartDateTime or EndDateTime children -->
+            </ram:BillingSpecifiedPeriod>
+            <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
+                <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
+                <ram:TaxBasisTotalAmount>100.00</ram:TaxBasisTotalAmount>
+                <ram:TaxTotalAmount currencyID="EUR">19.00</ram:TaxTotalAmount>
+                <ram:GrandTotalAmount>119.00</ram:GrandTotalAmount>
+                <ram:DuePayableAmount>119.00</ram:DuePayableAmount>
+            </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
+        </ram:ApplicableHeaderTradeSettlement>
+    </rsm:SupplyChainTradeTransaction>
+</rsm:CrossIndustryInvoice>`
 
-	// Test case: This should NOT trigger BR-CO-19 because no period is used
-	inv := Invoice{
-		GuidelineSpecifiedDocumentContextParameter: SpecFacturXBasic,
-		InvoiceNumber:       "TEST-007",
-		InvoiceTypeCode:     380,
-		InvoiceDate:         time.Now(),
-		InvoiceCurrencyCode: "EUR",
-		LineTotal:           decimal.NewFromInt(100),
-		TaxBasisTotal:       decimal.NewFromInt(100),
-		GrandTotal:          decimal.NewFromInt(119),
-		DuePayableAmount:    decimal.NewFromInt(119),
-		Seller: Party{
-			Name: "Seller",
-			PostalAddress: &PostalAddress{
-				CountryID: "DE",
-			},
-		},
-		Buyer: Party{
-			Name: "Buyer",
-			PostalAddress: &PostalAddress{
-				CountryID: "FR",
-			},
-		},
-		InvoiceLines: []InvoiceLine{
-			{
-				LineID:          "1",
-				ItemName:        "Item",
-				BilledQuantity:  decimal.NewFromInt(1),
-				NetPrice:        decimal.NewFromInt(100),
-				Total:           decimal.NewFromInt(100),
-				TaxCategoryCode: "S",
-			},
-		},
-		TradeTaxes: []TradeTax{
-			{
-				CategoryCode:     "S",
-				Percent:          decimal.NewFromInt(19),
-				BasisAmount:      decimal.NewFromInt(100),
-				CalculatedAmount: decimal.NewFromInt(19),
-			},
-		},
-		// BillingSpecifiedPeriodStart and End are both zero - no period used
+	inv, err := ParseReader(strings.NewReader(xml))
+	if err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
 	}
 
+	// Verify that billingPeriodPresent flag was set
+	if !inv.billingPeriodPresent {
+		t.Error("billingPeriodPresent should be true when BG-14 element exists in XML")
+	}
+
+	// Verify both dates are zero
+	if !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero() {
+		t.Error("Both BillingSpecifiedPeriod dates should be zero")
+	}
+
+	// Run validation
 	_ = inv.Validate()
 
-	// Should NOT find BR-CO-19 violation
+	// Should find BR-CO-19 violation
+	found := false
 	for _, v := range inv.violations {
 		if v.Rule.Code == "BR-CO-19" {
-			t.Error("Should not have BR-CO-19 violation when no billing period is used")
+			found = true
+			break
 		}
+	}
+
+	if !found {
+		t.Error("Expected BR-CO-19 violation when BG-14 exists but has no dates")
 	}
 }
 
 // TestBRCO20_InvoiceLinePeriodRequiresDate tests BR-CO-20: Invoice line period requires start or end date
+// This validation only applies to parsed XML where BG-26 element is present but has no dates.
 func TestBRCO20_InvoiceLinePeriodRequiresDate(t *testing.T) {
-	// Similar to BR-CO-19, this validation only triggers if somehow a period is indicated
-	// but both dates are zero. The current implementation won't trigger in practice.
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
+    xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
+    xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
+    <rsm:ExchangedDocumentContext>
+        <ram:GuidelineSpecifiedDocumentContextParameter>
+            <ram:ID>urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic</ram:ID>
+        </ram:GuidelineSpecifiedDocumentContextParameter>
+    </rsm:ExchangedDocumentContext>
+    <rsm:ExchangedDocument>
+        <ram:ID>TEST-BRCO20</ram:ID>
+        <ram:TypeCode>380</ram:TypeCode>
+        <ram:IssueDateTime><udt:DateTimeString format="102">20240101</udt:DateTimeString></ram:IssueDateTime>
+    </rsm:ExchangedDocument>
+    <rsm:SupplyChainTradeTransaction>
+        <ram:IncludedSupplyChainTradeLineItem>
+            <ram:AssociatedDocumentLineDocument>
+                <ram:LineID>1</ram:LineID>
+            </ram:AssociatedDocumentLineDocument>
+            <ram:SpecifiedTradeProduct>
+                <ram:Name>Test Item</ram:Name>
+            </ram:SpecifiedTradeProduct>
+            <ram:SpecifiedLineTradeAgreement>
+                <ram:NetPriceProductTradePrice>
+                    <ram:ChargeAmount>100.00</ram:ChargeAmount>
+                </ram:NetPriceProductTradePrice>
+            </ram:SpecifiedLineTradeAgreement>
+            <ram:SpecifiedLineTradeDelivery>
+                <ram:BilledQuantity unitCode="C62">1.00</ram:BilledQuantity>
+            </ram:SpecifiedLineTradeDelivery>
+            <ram:SpecifiedLineTradeSettlement>
+                <ram:BillingSpecifiedPeriod>
+                    <!-- Element exists but has no StartDateTime or EndDateTime children -->
+                </ram:BillingSpecifiedPeriod>
+                <ram:ApplicableTradeTax>
+                    <ram:TypeCode>VAT</ram:TypeCode>
+                    <ram:CategoryCode>S</ram:CategoryCode>
+                    <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
+                </ram:ApplicableTradeTax>
+                <ram:SpecifiedTradeSettlementLineMonetarySummation>
+                    <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
+                </ram:SpecifiedTradeSettlementLineMonetarySummation>
+            </ram:SpecifiedLineTradeSettlement>
+        </ram:IncludedSupplyChainTradeLineItem>
+        <ram:ApplicableHeaderTradeAgreement>
+            <ram:SellerTradeParty>
+                <ram:Name>Seller</ram:Name>
+                <ram:PostalTradeAddress><ram:CountryID>DE</ram:CountryID></ram:PostalTradeAddress>
+            </ram:SellerTradeParty>
+            <ram:BuyerTradeParty>
+                <ram:Name>Buyer</ram:Name>
+                <ram:PostalTradeAddress><ram:CountryID>FR</ram:CountryID></ram:PostalTradeAddress>
+            </ram:BuyerTradeParty>
+        </ram:ApplicableHeaderTradeAgreement>
+        <ram:ApplicableHeaderTradeSettlement>
+            <ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>
+            <ram:ApplicableTradeTax>
+                <ram:CalculatedAmount>19.00</ram:CalculatedAmount>
+                <ram:TypeCode>VAT</ram:TypeCode>
+                <ram:BasisAmount>100.00</ram:BasisAmount>
+                <ram:CategoryCode>S</ram:CategoryCode>
+                <ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>
+            </ram:ApplicableTradeTax>
+            <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
+                <ram:LineTotalAmount>100.00</ram:LineTotalAmount>
+                <ram:TaxBasisTotalAmount>100.00</ram:TaxBasisTotalAmount>
+                <ram:TaxTotalAmount currencyID="EUR">19.00</ram:TaxTotalAmount>
+                <ram:GrandTotalAmount>119.00</ram:GrandTotalAmount>
+                <ram:DuePayableAmount>119.00</ram:DuePayableAmount>
+            </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
+        </ram:ApplicableHeaderTradeSettlement>
+    </rsm:SupplyChainTradeTransaction>
+</rsm:CrossIndustryInvoice>`
 
-	inv := Invoice{
-		GuidelineSpecifiedDocumentContextParameter: SpecFacturXBasic,
-		InvoiceNumber:       "TEST-008",
-		InvoiceTypeCode:     380,
-		InvoiceDate:         time.Now(),
-		InvoiceCurrencyCode: "EUR",
-		LineTotal:           decimal.NewFromInt(100),
-		TaxBasisTotal:       decimal.NewFromInt(100),
-		GrandTotal:          decimal.NewFromInt(119),
-		DuePayableAmount:    decimal.NewFromInt(119),
-		Seller: Party{
-			Name: "Seller",
-			PostalAddress: &PostalAddress{
-				CountryID: "DE",
-			},
-		},
-		Buyer: Party{
-			Name: "Buyer",
-			PostalAddress: &PostalAddress{
-				CountryID: "FR",
-			},
-		},
-		InvoiceLines: []InvoiceLine{
-			{
-				LineID:          "1",
-				ItemName:        "Item",
-				BilledQuantity:  decimal.NewFromInt(1),
-				NetPrice:        decimal.NewFromInt(100),
-				Total:           decimal.NewFromInt(100),
-				TaxCategoryCode: "S",
-				// BillingSpecifiedPeriodStart and End are both zero - no period used
-			},
-		},
-		TradeTaxes: []TradeTax{
-			{
-				CategoryCode:     "S",
-				Percent:          decimal.NewFromInt(19),
-				BasisAmount:      decimal.NewFromInt(100),
-				CalculatedAmount: decimal.NewFromInt(19),
-			},
-		},
+	inv, err := ParseReader(strings.NewReader(xml))
+	if err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
 	}
 
+	// Verify that linePeriodPresent flag was set
+	if len(inv.InvoiceLines) == 0 {
+		t.Fatal("No invoice lines parsed")
+	}
+	if !inv.InvoiceLines[0].linePeriodPresent {
+		t.Error("linePeriodPresent should be true when BG-26 element exists in XML")
+	}
+
+	// Verify both dates are zero
+	if !inv.InvoiceLines[0].BillingSpecifiedPeriodStart.IsZero() || !inv.InvoiceLines[0].BillingSpecifiedPeriodEnd.IsZero() {
+		t.Error("Both line BillingSpecifiedPeriod dates should be zero")
+	}
+
+	// Run validation
 	_ = inv.Validate()
 
-	// Should NOT find BR-CO-20 violation
+	// Should find BR-CO-20 violation
+	found := false
 	for _, v := range inv.violations {
 		if v.Rule.Code == "BR-CO-20" {
-			t.Error("Should not have BR-CO-20 violation when no line period is used")
+			found = true
+			break
 		}
+	}
+
+	if !found {
+		t.Error("Expected BR-CO-20 violation when BG-26 exists but has no dates")
 	}
 }
 

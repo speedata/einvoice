@@ -222,10 +222,11 @@ type InvoiceLine struct {
 	TaxRateApplicablePercent                  decimal.Decimal   // BT-152
 	Total                                     decimal.Decimal   // BT-131
 
-	// Private fields for tracking XML element presence (BR-24, BR-26)
+	// Private fields for tracking XML element presence (BR-24, BR-26, BR-CO-20)
 	// These are set during parsing to distinguish between missing elements and zero values
 	hasLineTotalInXML bool
 	hasNetPriceInXML  bool
+	linePeriodPresent bool // true if BG-26 (INVOICE LINE PERIOD) was present in source XML
 }
 
 // PaymentMeans represents a payment means.
@@ -371,12 +372,13 @@ type Invoice struct {
 	InvoiceReferencedDocument                 []ReferencedDocument         // BG-3
 	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
 
-	// Private fields for tracking XML element presence (BR-12 through BR-15)
+	// Private fields for tracking XML element presence (BR-12 through BR-15, BR-CO-19)
 	// These are set during parsing to distinguish between missing elements and zero values
 	hasLineTotalInXML        bool
 	hasTaxBasisTotalInXML    bool
 	hasGrandTotalInXML       bool
 	hasDuePayableAmountInXML bool
+	billingPeriodPresent     bool // true if BG-14 (INVOICING PERIOD) was present in source XML
 
 	// Private field for tracking unexpected TaxTotalAmount currencies during parsing
 	unexpectedTaxCurrencies []string
