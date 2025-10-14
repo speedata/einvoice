@@ -40,10 +40,10 @@ func writeUBL(inv *Invoice, writer io.Writer) error {
 	writeUBLHeader(inv, root, prefix)
 	writeUBLParties(inv, root, prefix)
 	writeUBLAllowanceCharge(inv, root, prefix)
-	writeUBLTaxTotal(inv, root, prefix)
-	writeUBLMonetarySummation(inv, root, prefix)
 	writeUBLPaymentMeans(inv, root, prefix)
 	writeUBLPaymentTerms(inv, root, prefix)
+	writeUBLTaxTotal(inv, root, prefix)
+	writeUBLMonetarySummation(inv, root, prefix)
 	writeUBLLines(inv, root, prefix)
 
 	doc.Indent(2)
@@ -295,6 +295,19 @@ func writeUBLParty(parent *etree.Element, party Party, isSeller bool) {
 		}
 	}
 
+	// Tax registration (before legal organization per standard UBL order)
+	if party.VATaxRegistration != "" {
+		taxScheme := parent.CreateElement("cac:PartyTaxScheme")
+		taxScheme.CreateElement("cbc:CompanyID").SetText(party.VATaxRegistration)
+		taxScheme.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText("VAT")
+	}
+
+	if party.FCTaxRegistration != "" {
+		taxScheme := parent.CreateElement("cac:PartyTaxScheme")
+		taxScheme.CreateElement("cbc:CompanyID").SetText(party.FCTaxRegistration)
+		taxScheme.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText("FC")
+	}
+
 	// Legal organization
 	if party.SpecifiedLegalOrganization != nil {
 		legalEntity := parent.CreateElement("cac:PartyLegalEntity")
@@ -310,19 +323,6 @@ func writeUBLParty(parent *etree.Element, party Party, isSeller bool) {
 			}
 			companyID.SetText(party.SpecifiedLegalOrganization.ID)
 		}
-	}
-
-	// Tax registration
-	if party.VATaxRegistration != "" {
-		taxScheme := parent.CreateElement("cac:PartyTaxScheme")
-		taxScheme.CreateElement("cbc:CompanyID").SetText(party.VATaxRegistration)
-		taxScheme.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText("VAT")
-	}
-
-	if party.FCTaxRegistration != "" {
-		taxScheme := parent.CreateElement("cac:PartyTaxScheme")
-		taxScheme.CreateElement("cbc:CompanyID").SetText(party.FCTaxRegistration)
-		taxScheme.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText("FC")
 	}
 
 	// Contact information
@@ -362,10 +362,16 @@ func writeUBLAllowanceCharge(inv *Invoice, root *etree.Element, prefix string) {
 			acElt.CreateElement("cbc:MultiplierFactorNumeric").SetText(formatPercent(ac.CalculationPercent))
 		}
 
-		acElt.CreateElement("cbc:Amount").SetText(ac.ActualAmount.StringFixed(2))
+		// BT-92/BT-99: Allowance/Charge amount with currency
+		amt := acElt.CreateElement("cbc:Amount")
+		amt.CreateAttr("currencyID", inv.InvoiceCurrencyCode)
+		amt.SetText(ac.ActualAmount.StringFixed(2))
 
+		// BT-93/BT-100: Allowance/Charge base amount with currency
 		if !ac.BasisAmount.IsZero() {
-			acElt.CreateElement("cbc:BaseAmount").SetText(ac.BasisAmount.StringFixed(2))
+			baseAmt := acElt.CreateElement("cbc:BaseAmount")
+			baseAmt.CreateAttr("currencyID", inv.InvoiceCurrencyCode)
+			baseAmt.SetText(ac.BasisAmount.StringFixed(2))
 		}
 
 		// Tax category
@@ -396,10 +402,14 @@ func writeUBLTaxTotal(inv *Invoice, root *etree.Element, prefix string) {
 		subtotal := taxTotal.CreateElement("cac:TaxSubtotal")
 
 		// Taxable amount
-		subtotal.CreateElement("cbc:TaxableAmount").SetText(tradeTax.BasisAmount.StringFixed(2))
+		taxableAmt := subtotal.CreateElement("cbc:TaxableAmount")
+		taxableAmt.CreateAttr("currencyID", currency)
+		taxableAmt.SetText(tradeTax.BasisAmount.StringFixed(2))
 
 		// Tax amount
-		subtotal.CreateElement("cbc:TaxAmount").SetText(tradeTax.CalculatedAmount.StringFixed(2))
+		taxAmt := subtotal.CreateElement("cbc:TaxAmount")
+		taxAmt.CreateAttr("currencyID", currency)
+		taxAmt.SetText(tradeTax.CalculatedAmount.StringFixed(2))
 
 		// Tax category
 		taxCat := subtotal.CreateElement("cac:TaxCategory")
@@ -430,38 +440,55 @@ func writeUBLTaxTotal(inv *Invoice, root *etree.Element, prefix string) {
 // writeUBLMonetarySummation writes the monetary totals (BT-106 to BT-115)
 func writeUBLMonetarySummation(inv *Invoice, root *etree.Element, prefix string) {
 	lmt := root.CreateElement("cac:LegalMonetaryTotal")
+	currency := inv.InvoiceCurrencyCode
 
 	// BT-106: Sum of Invoice line net amount
-	lmt.CreateElement("cbc:LineExtensionAmount").SetText(inv.LineTotal.StringFixed(2))
+	lineExt := lmt.CreateElement("cbc:LineExtensionAmount")
+	lineExt.CreateAttr("currencyID", currency)
+	lineExt.SetText(inv.LineTotal.StringFixed(2))
 
 	// BT-107: Sum of allowances on document level
 	if !inv.AllowanceTotal.IsZero() {
-		lmt.CreateElement("cbc:AllowanceTotalAmount").SetText(inv.AllowanceTotal.StringFixed(2))
+		allowTotal := lmt.CreateElement("cbc:AllowanceTotalAmount")
+		allowTotal.CreateAttr("currencyID", currency)
+		allowTotal.SetText(inv.AllowanceTotal.StringFixed(2))
 	}
 
 	// BT-108: Sum of charges on document level
 	if !inv.ChargeTotal.IsZero() {
-		lmt.CreateElement("cbc:ChargeTotalAmount").SetText(inv.ChargeTotal.StringFixed(2))
+		chargeTotal := lmt.CreateElement("cbc:ChargeTotalAmount")
+		chargeTotal.CreateAttr("currencyID", currency)
+		chargeTotal.SetText(inv.ChargeTotal.StringFixed(2))
 	}
 
 	// BT-109: Invoice total amount without VAT
-	lmt.CreateElement("cbc:TaxExclusiveAmount").SetText(inv.TaxBasisTotal.StringFixed(2))
+	taxExcl := lmt.CreateElement("cbc:TaxExclusiveAmount")
+	taxExcl.CreateAttr("currencyID", currency)
+	taxExcl.SetText(inv.TaxBasisTotal.StringFixed(2))
 
 	// BT-112: Invoice total amount with VAT
-	lmt.CreateElement("cbc:TaxInclusiveAmount").SetText(inv.GrandTotal.StringFixed(2))
+	taxIncl := lmt.CreateElement("cbc:TaxInclusiveAmount")
+	taxIncl.CreateAttr("currencyID", currency)
+	taxIncl.SetText(inv.GrandTotal.StringFixed(2))
 
 	// BT-113: Paid amount
 	if !inv.TotalPrepaid.IsZero() {
-		lmt.CreateElement("cbc:PrepaidAmount").SetText(inv.TotalPrepaid.StringFixed(2))
+		prepaid := lmt.CreateElement("cbc:PrepaidAmount")
+		prepaid.CreateAttr("currencyID", currency)
+		prepaid.SetText(inv.TotalPrepaid.StringFixed(2))
 	}
 
 	// BT-114: Rounding amount
 	if !inv.RoundingAmount.IsZero() {
-		lmt.CreateElement("cbc:PayableRoundingAmount").SetText(inv.RoundingAmount.StringFixed(2))
+		rounding := lmt.CreateElement("cbc:PayableRoundingAmount")
+		rounding.CreateAttr("currencyID", currency)
+		rounding.SetText(inv.RoundingAmount.StringFixed(2))
 	}
 
 	// BT-115: Amount due for payment
-	lmt.CreateElement("cbc:PayableAmount").SetText(inv.DuePayableAmount.StringFixed(2))
+	payable := lmt.CreateElement("cbc:PayableAmount")
+	payable.CreateAttr("currencyID", currency)
+	payable.SetText(inv.DuePayableAmount.StringFixed(2))
 }
 
 // writeUBLPaymentMeans writes payment means elements (BG-16, BG-17, BG-18, BG-19)
@@ -563,11 +590,13 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 		qty.SetText(line.BilledQuantity.StringFixed(4))
 
 		// BT-131: Invoice line net amount
-		lineElt.CreateElement("cbc:LineExtensionAmount").SetText(line.Total.StringFixed(2))
+		lineExtAmt := lineElt.CreateElement("cbc:LineExtensionAmount")
+		lineExtAmt.CreateAttr("currencyID", inv.InvoiceCurrencyCode)
+		lineExtAmt.SetText(line.Total.StringFixed(2))
 
-		// BT-19: Buyer accounting reference
+		// BT-133: Invoice line Buyer accounting reference
 		if line.ReceivableSpecifiedTradeAccountingAccount != "" {
-			lineElt.CreateElement("cac:AccountingCost").SetText(line.ReceivableSpecifiedTradeAccountingAccount)
+			lineElt.CreateElement("cbc:AccountingCost").SetText(line.ReceivableSpecifiedTradeAccountingAccount)
 		}
 
 		// BG-26: Invoice line period
@@ -596,23 +625,23 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 		// BG-27: Line level allowances (BT-136 - must be rounded to 2 decimals)
 		// BG-28: Line level charges (BT-141 - must be rounded to 2 decimals)
 		for _, ac := range line.InvoiceLineAllowances {
-			writeUBLLineAllowanceCharge(lineElt, ac, false, true)
+			writeUBLLineAllowanceCharge(lineElt, ac, false, true, inv.InvoiceCurrencyCode)
 		}
 		for _, ac := range line.InvoiceLineCharges {
-			writeUBLLineAllowanceCharge(lineElt, ac, true, true)
+			writeUBLLineAllowanceCharge(lineElt, ac, true, true, inv.InvoiceCurrencyCode)
 		}
 
 		// Item information
 		writeUBLLineItem(lineElt, line)
 
 		// Price information
-		writeUBLLinePrice(lineElt, line)
+		writeUBLLinePrice(lineElt, line, inv.InvoiceCurrencyCode)
 	}
 }
 
 // writeUBLLineAllowanceCharge writes a line-level allowance or charge
 // roundAmount: true for BT-136/BT-141 (line allowances/charges), false for BT-147 (item price discounts)
-func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCharge bool, roundAmount bool) {
+func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCharge bool, roundAmount bool, currency string) {
 	acElt := parent.CreateElement("cac:AllowanceCharge")
 	acElt.CreateElement("cbc:ChargeIndicator").SetText(fmt.Sprintf("%t", isCharge))
 
@@ -628,16 +657,22 @@ func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCh
 		acElt.CreateElement("cbc:MultiplierFactorNumeric").SetText(formatPercent(ac.CalculationPercent))
 	}
 
+	// BT-136/BT-141/BT-147: Amount with currency
+	amt := acElt.CreateElement("cbc:Amount")
+	amt.CreateAttr("currencyID", currency)
 	// BT-136/BT-141 (line allowances/charges) must be 2 decimals (BR-DEC-24, BR-DEC-27)
 	// BT-147 (item price discount) has no decimal restriction per EN 16931
 	if roundAmount {
-		acElt.CreateElement("cbc:Amount").SetText(ac.ActualAmount.StringFixed(2))
+		amt.SetText(ac.ActualAmount.StringFixed(2))
 	} else {
-		acElt.CreateElement("cbc:Amount").SetText(ac.ActualAmount.String())
+		amt.SetText(ac.ActualAmount.String())
 	}
 
+	// BT-148 discount base (for price allowances): Base amount with currency
 	if !ac.BasisAmount.IsZero() {
-		acElt.CreateElement("cbc:BaseAmount").SetText(ac.BasisAmount.StringFixed(2))
+		baseAmt := acElt.CreateElement("cbc:BaseAmount")
+		baseAmt.CreateAttr("currencyID", currency)
+		baseAmt.SetText(ac.BasisAmount.StringFixed(2))
 	}
 }
 
@@ -645,13 +680,13 @@ func writeUBLLineAllowanceCharge(parent *etree.Element, ac AllowanceCharge, isCh
 func writeUBLLineItem(parent *etree.Element, line InvoiceLine) {
 	item := parent.CreateElement("cac:Item")
 
-	// BT-153: Item name
-	item.CreateElement("cbc:Name").SetText(line.ItemName)
-
-	// BT-154: Item description
+	// BT-154: Item description (before name per UBL ordering)
 	if line.Description != "" {
 		item.CreateElement("cbc:Description").SetText(line.Description)
 	}
+
+	// BT-153: Item name
+	item.CreateElement("cbc:Name").SetText(line.ItemName)
 
 	// BT-155: Item Seller's identifier
 	if line.ArticleNumber != "" {
@@ -694,26 +729,28 @@ func writeUBLLineItem(parent *etree.Element, line InvoiceLine) {
 		classCode.SetText(class.ClassCode)
 	}
 
+	// Tax information (before additional properties per UBL ordering)
+	taxCat := item.CreateElement("cac:ClassifiedTaxCategory")
+	taxCat.CreateElement("cbc:ID").SetText(line.TaxCategoryCode)
+	taxCat.CreateElement("cbc:Percent").SetText(formatPercent(line.TaxRateApplicablePercent))
+	taxCat.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText(line.TaxTypeCode)
+
 	// BG-32: Item attributes
 	for _, char := range line.Characteristics {
 		prop := item.CreateElement("cac:AdditionalItemProperty")
 		prop.CreateElement("cbc:Name").SetText(char.Description)
 		prop.CreateElement("cbc:Value").SetText(char.Value)
 	}
-
-	// Tax information
-	taxCat := item.CreateElement("cac:ClassifiedTaxCategory")
-	taxCat.CreateElement("cbc:ID").SetText(line.TaxCategoryCode)
-	taxCat.CreateElement("cbc:Percent").SetText(formatPercent(line.TaxRateApplicablePercent))
-	taxCat.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText(line.TaxTypeCode)
 }
 
 // writeUBLLinePrice writes price information within a line
-func writeUBLLinePrice(parent *etree.Element, line InvoiceLine) {
+func writeUBLLinePrice(parent *etree.Element, line InvoiceLine, currency string) {
 	price := parent.CreateElement("cac:Price")
 
 	// BT-146: Item net price (no decimal restriction per EN 16931)
-	price.CreateElement("cbc:PriceAmount").SetText(line.NetPrice.String())
+	priceAmt := price.CreateElement("cbc:PriceAmount")
+	priceAmt.CreateAttr("currencyID", currency)
+	priceAmt.SetText(line.NetPrice.String())
 
 	// BT-149: Item price base quantity with unit code
 	if !line.BasisQuantity.IsZero() {
@@ -729,6 +766,6 @@ func writeUBLLinePrice(parent *etree.Element, line InvoiceLine) {
 
 	// BT-147: Item price allowances/discounts (no decimal restriction per EN 16931)
 	for _, ac := range line.AppliedTradeAllowanceCharge {
-		writeUBLLineAllowanceCharge(price, ac, ac.ChargeIndicator, false)
+		writeUBLLineAllowanceCharge(price, ac, ac.ChargeIndicator, false, currency)
 	}
 }

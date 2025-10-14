@@ -107,6 +107,10 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 		// Try CreditNoteTypeCode for credit notes
 		inv.InvoiceTypeCode = CodeDocument(root.Eval("cbc:CreditNoteTypeCode").Int())
 	}
+	// If still 0 and this is a CreditNote document, default to 381
+	if inv.InvoiceTypeCode == 0 && prefix == "cn:" {
+		inv.InvoiceTypeCode = 381
+	}
 
 	// BT-2: Invoice date
 	var err error
@@ -680,7 +684,7 @@ func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 		invoiceLine.BuyerOrderReferencedDocument = lineItem.Eval("cac:OrderLineReference/cbc:LineID").String()
 
 		// BT-133: Invoice line Buyer accounting reference
-		invoiceLine.ReceivableSpecifiedTradeAccountingAccount = lineItem.Eval("cac:AccountingCost").String()
+		invoiceLine.ReceivableSpecifiedTradeAccountingAccount = lineItem.Eval("cbc:AccountingCost").String()
 
 		// BT-129: Invoiced quantity (or Credited quantity for credit notes)
 		invoiceLine.BilledQuantity, err = getDecimal(lineItem, quantityElementName)
