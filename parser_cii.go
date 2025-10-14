@@ -220,6 +220,8 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		if err != nil {
 			return err
 		}
+		// BR-CO-20: Track BG-26 (INVOICE LINE PERIOD) presence to validate later
+		invoiceLine.linePeriodPresent = lineItem.Eval("count(ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod)").Int() > 0
 		invoiceLine.BillingSpecifiedPeriodStart, err = parseCIITime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
 		if err != nil {
 			return fmt.Errorf("invalid line billing period start date for line %s: %w", invoiceLine.LineID, err)
@@ -408,6 +410,8 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, charge)
 	}
 
+	// BR-CO-19: Track BG-14 (INVOICING PERIOD) presence to validate later
+	inv.billingPeriodPresent = applicableHeaderTradeSettlement.Eval("count(ram:BillingSpecifiedPeriod)").Int() > 0
 	inv.BillingSpecifiedPeriodStart, err = parseCIITime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
 	if err != nil {
 		return fmt.Errorf("invalid billing period start date: %w", err)
