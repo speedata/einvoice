@@ -117,6 +117,11 @@ func (inv *Invoice) updateAllowancesAndCharges() {
 			inv.AllowanceTotal = inv.AllowanceTotal.Add(ac.ActualAmount)
 		}
 	}
+
+	// BR-DEC-10: AllowanceTotal (BT-107) must have max 2 decimal places
+	inv.AllowanceTotal = roundHalfUp(inv.AllowanceTotal, 2)
+	// BR-DEC-11: ChargeTotal (BT-108) must have max 2 decimal places
+	inv.ChargeTotal = roundHalfUp(inv.ChargeTotal, 2)
 }
 
 // UpdateTotals recalculates all monetary totals according to EN 16931 business rules.
@@ -146,6 +151,8 @@ func (inv *Invoice) UpdateTotals() {
 	for _, line := range inv.InvoiceLines {
 		inv.LineTotal = inv.LineTotal.Add(line.Total)
 	}
+	// BR-DEC-09: LineTotal (BT-106) must have max 2 decimal places
+	inv.LineTotal = roundHalfUp(inv.LineTotal, 2)
 
 	// BR-CO-11 & BR-CO-12: Calculate allowance and charge totals from document-level items
 	inv.updateAllowancesAndCharges()
@@ -155,13 +162,21 @@ func (inv *Invoice) UpdateTotals() {
 	for _, v := range inv.TradeTaxes {
 		inv.TaxTotal = inv.TaxTotal.Add(v.CalculatedAmount)
 	}
+	// BR-DEC-13: TaxTotal (BT-110) must have max 2 decimal places
+	inv.TaxTotal = roundHalfUp(inv.TaxTotal, 2)
 
 	// BR-CO-13: TaxBasisTotal = LineTotal - AllowanceTotal + ChargeTotal
 	inv.TaxBasisTotal = inv.LineTotal.Sub(inv.AllowanceTotal).Add(inv.ChargeTotal)
+	// BR-DEC-12: TaxBasisTotal (BT-109) must have max 2 decimal places
+	inv.TaxBasisTotal = roundHalfUp(inv.TaxBasisTotal, 2)
 
 	// BR-CO-15: GrandTotal = TaxBasisTotal + TaxTotal
 	inv.GrandTotal = inv.TaxBasisTotal.Add(inv.TaxTotal)
+	// BR-DEC-14: GrandTotal (BT-112) must have max 2 decimal places
+	inv.GrandTotal = roundHalfUp(inv.GrandTotal, 2)
 
 	// BR-CO-16: DuePayableAmount = GrandTotal - TotalPrepaid + RoundingAmount
 	inv.DuePayableAmount = inv.GrandTotal.Sub(inv.TotalPrepaid).Add(inv.RoundingAmount)
+	// BR-DEC-18: DuePayableAmount (BT-115) must have max 2 decimal places
+	inv.DuePayableAmount = roundHalfUp(inv.DuePayableAmount, 2)
 }
