@@ -164,11 +164,7 @@ func (inv *Invoice) Validate() error {
 		}
 
 		// Auto-detect country-specific rules
-		// BR-DE-21: Validate German sellers use XRechnung spec ID (warning level)
-		// This applies to ALL German sellers, not just XRechnung invoices
-		inv.validateGermanSpecID()
-
-		// BR-DE-1 through BR-DE-31 (except BR-DE-21): Only for XRechnung invoices
+		// BR-DE-1 through BR-DE-31: Only for XRechnung invoices
 		if inv.isGerman() {
 			inv.validateGerman()
 		}

@@ -372,22 +372,3 @@ func isDigit(b byte) bool {
 func isAlphanumeric(b byte) bool {
 	return isDigit(b) || isUppercaseLetter(b)
 }
-
-// validateGermanSpecID validates BR-DE-21 for German sellers.
-// BR-DE-21 applies to German suppliers regardless of their chosen profile,
-// checking that they use an XRechnung specification identifier.
-//
-// This is separate from validateGerman() because:
-// - BR-DE-21 applies to ALL German sellers (regardless of profile)
-// - Other BR-DE rules only apply to invoices explicitly using XRechnung
-func (inv *Invoice) validateGermanSpecID() {
-	// Only check if seller is in Germany
-	if inv.Seller.PostalAddress == nil || inv.Seller.PostalAddress.CountryID != "DE" {
-		return
-	}
-
-	// BR-DE-21: German sellers should use XRechnung specification identifier
-	if !inv.IsXRechnung() {
-		inv.addViolation(rules.BRDE21, "The element 'Specification identifier' (BT-24) should syntactically correspond to the identifier of the XRechnung standard")
-	}
-}

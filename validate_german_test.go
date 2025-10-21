@@ -447,10 +447,10 @@ func TestGermanValidation_BRDE21_SpecificationIdentifier(t *testing.T) {
 			wantViolation: false,
 		},
 		{
-			name:          "invalid: Factur-X Extended for DE seller",
+			name:          "valid: Factur-X Extended for DE seller (BR-DE rules don't apply)",
 			specID:        SpecFacturXExtended,
 			sellerCountry: "DE",
-			wantViolation: true,
+			wantViolation: false, // BR-DE-21 only applies to XRechnung invoices
 		},
 		{
 			name:          "valid: Factur-X Extended for FR seller",
