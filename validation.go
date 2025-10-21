@@ -163,8 +163,13 @@ func (inv *Invoice) Validate() error {
 			inv.validatePEPPOL()
 		}
 
-		// Auto-detect country-specific rules based on seller location
-		// TODO: Implement country-specific validation rules for:
+		// Auto-detect country-specific rules
+		// BR-DE-1 through BR-DE-31: Only for XRechnung invoices
+		if inv.isGerman() {
+			inv.validateGerman()
+		}
+
+		// TODO: Implement additional country-specific validation rules for:
 		//   - Denmark (isDanish)
 		//   - Italy (isItalian)
 		//   - Netherlands (isDutch)
@@ -220,6 +225,17 @@ func contains(s, substr string) bool {
 // SpecPEPPOLBilling30 constant (peppol_constants.go).
 func (inv *Invoice) isPEPPOL() bool {
 	return inv.GuidelineSpecifiedDocumentContextParameter == SpecPEPPOLBilling30
+}
+
+// isGerman checks if the invoice uses an XRechnung specification identifier.
+// Used for auto-detection of German XRechnung-specific validation rules (BR-DE-*).
+//
+// Note: BR-DE rules apply specifically to XRechnung invoices, not to all German
+// invoices. German sellers using Factur-X, PEPPOL, or plain EN 16931 profiles
+// are not subject to BR-DE rules unless they explicitly use an XRechnung spec ID.
+func (inv *Invoice) isGerman() bool {
+	// Only apply German BR-DE validation when invoice explicitly uses XRechnung
+	return inv.IsXRechnung()
 }
 
 // isDanish checks if the seller is located in Denmark (DK).
