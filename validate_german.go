@@ -1,7 +1,6 @@
 package einvoice
 
 import (
-	"regexp"
 	"strings"
 	"unicode"
 
@@ -372,21 +371,6 @@ func isDigit(b byte) bool {
 // isAlphanumeric checks if a byte represents an alphanumeric character (0-9, A-Z).
 func isAlphanumeric(b byte) bool {
 	return isDigit(b) || isUppercaseLetter(b)
-}
-
-// isValidSkontoFormat validates the structured Skonto format for BR-DE-18.
-// Format: #SKONTO#TAGE=n#PROZENT=n#[BASISBETRAG=n]#
-// This is a placeholder for future implementation.
-var skontoRegex = regexp.MustCompile(`(?i)#SKONTO#TAGE=\d+#PROZENT=\d+(\.\d{1,2})?#(BASISBETRAG=\d+(\.\d{1,2})?#)?`)
-
-func isValidSkontoFormat(paymentTerms string) bool {
-	// If payment terms don't contain SKONTO, they're not required to follow the format
-	if !strings.Contains(strings.ToUpper(paymentTerms), "SKONTO") {
-		return true
-	}
-
-	// If they mention SKONTO, they must follow the structured format
-	return skontoRegex.MatchString(paymentTerms)
 }
 
 // validateGermanSpecID validates BR-DE-21 for German sellers.
