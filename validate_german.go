@@ -319,24 +319,6 @@ func isValidEmail(email string) bool {
 	return true
 }
 
-// hasISOCountryPrefix checks if a VAT identifier has an ISO 3166-1 alpha-2 country code prefix.
-// Valid format: Two uppercase letters followed by alphanumeric characters (e.g., DE123456789).
-func hasISOCountryPrefix(vatID string) bool {
-	if len(vatID) < 3 {
-		return false
-	}
-
-	// First two characters must be uppercase letters (ISO 3166-1 alpha-2 code)
-	first := vatID[0]
-	second := vatID[1]
-
-	if !isUppercaseLetter(first) || !isUppercaseLetter(second) {
-		return false
-	}
-
-	return true
-}
-
 // isUppercaseLetter checks if a byte represents an uppercase ASCII letter (A-Z).
 func isUppercaseLetter(b byte) bool {
 	return b >= 'A' && b <= 'Z'
