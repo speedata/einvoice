@@ -34,11 +34,11 @@ import (
 //   - BR-DE-10: Deliver to city (BT-77) must be provided if delivery address exists
 //   - BR-DE-11: Deliver to post code (BT-78) must be provided if delivery address exists
 //   - BR-DE-15: Buyer reference (BT-10) must be provided (Leitweg-ID)
+//   - BR-DE-16: Seller identification required when using certain tax codes
 //   - BR-DE-30: Bank assigned creditor identifier (BT-90) for direct debit
 //   - BR-DE-31: Debited account identifier (BT-91) for direct debit
 //
 // Validation Tests (format and logic):
-//   - BR-DE-16: VAT identifiers must have ISO 3166-1 alpha-2 country prefix
 //   - BR-DE-17: Invoice type code validation (UNTDID 1001)
 //   - BR-DE-18: Payment terms structured format (Skonto)
 //   - BR-DE-19: IBAN validation for SEPA credit transfer (code 58)
@@ -132,24 +132,42 @@ func (inv *Invoice) validateGerman() {
 		inv.addViolation(rules.BRDE15, "The element 'Buyer reference' (BT-10) must be transmitted")
 	}
 
-	// BR-DE-16: VAT identifier must have ISO country code prefix
-	if inv.Seller.VATaxRegistration != "" {
-		if !hasISOCountryPrefix(inv.Seller.VATaxRegistration) {
-			inv.addViolation(rules.BRDE16, "Seller VAT identifier (BT-31) must have a prefix in accordance with ISO code list 3166-1 alpha-2")
+	// BR-DE-16: When tax codes S, Z, E, AE, K, G, L or M are used, at least one of
+	// Seller VAT identifier (BT-31), Seller tax registration identifier (BT-32)
+	// or SELLER TAX REPRESENTATIVE PARTY (BG-11) must be provided
+	relevantTaxCodes := map[string]bool{
+		"S": true, "Z": true, "E": true, "AE": true,
+		"K": true, "G": true, "L": true, "M": true,
+	}
+
+	hasRelevantTaxCode := false
+	for _, line := range inv.InvoiceLines {
+		if relevantTaxCodes[line.TaxCategoryCode] {
+			hasRelevantTaxCode = true
+			break
+		}
+	}
+	if !hasRelevantTaxCode {
+		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+			if relevantTaxCodes[ac.CategoryTradeTaxCategoryCode] {
+				hasRelevantTaxCode = true
+				break
+			}
 		}
 	}
 
-	if inv.Buyer.VATaxRegistration != "" {
-		if !hasISOCountryPrefix(inv.Buyer.VATaxRegistration) {
-			inv.addViolation(rules.BRDE16, "Buyer VAT identifier (BT-48) must have a prefix in accordance with ISO code list 3166-1 alpha-2")
+	if hasRelevantTaxCode {
+		hasSellerVATID := inv.Seller.VATaxRegistration != ""
+		hasSellerTaxReg := inv.Seller.FCTaxRegistration != ""
+		hasTaxRep := inv.SellerTaxRepresentativeTradeParty != nil
+
+		if !hasSellerVATID && !hasSellerTaxReg && !hasTaxRep {
+			inv.addViolation(rules.BRDE16, "When tax codes S, Z, E, AE, K, G, L or M are used, at least one of Seller VAT identifier (BT-31), Seller tax registration identifier (BT-32) or SELLER TAX REPRESENTATIVE PARTY (BG-11) must be provided")
 		}
 	}
 
-	if inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "" {
-		if !hasISOCountryPrefix(inv.SellerTaxRepresentativeTradeParty.VATaxRegistration) {
-			inv.addViolation(rules.BRDE16, "Tax representative VAT identifier (BT-63) must have a prefix in accordance with ISO code list 3166-1 alpha-2")
-		}
-	}
+	// Note: VAT identifier format validation (ISO 3166-1 alpha-2 prefix) is handled
+	// by BR-CO-09 in validate_core.go, not here.
 
 	// BR-DE-21 is handled separately in validateGermanSpecID() because it applies
 	// to ALL German sellers, not just XRechnung invoices.

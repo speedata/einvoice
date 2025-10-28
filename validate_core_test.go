@@ -2127,3 +2127,168 @@ func mustNewFromString(s string) decimal.Decimal {
 	return d
 }
 
+// TestBRCO9_VATIdentifierPrefix tests BR-CO-9:
+// VAT identifiers must have ISO 3166-1 alpha-2 country prefix.
+// This test verifies that VAT ID format validation uses BR-CO-09, not BR-DE-16.
+func TestBRCO9_VATIdentifierPrefix(t *testing.T) {
+	tests := []struct {
+		name          string
+		sellerVAT     string
+		buyerVAT      string
+		taxRepVAT     string
+		wantViolation bool
+		checkField    string // which field to check: "seller", "buyer", "taxrep"
+	}{
+		{
+			name:          "valid: seller with DE prefix",
+			sellerVAT:     "DE123456789",
+			buyerVAT:      "",
+			taxRepVAT:     "",
+			wantViolation: false,
+			checkField:    "seller",
+		},
+		{
+			name:          "valid: buyer with FR prefix",
+			sellerVAT:     "",
+			buyerVAT:      "FR12345678901",
+			taxRepVAT:     "",
+			wantViolation: false,
+			checkField:    "buyer",
+		},
+		{
+			name:          "invalid: seller starts with digit",
+			sellerVAT:     "30123456789",
+			buyerVAT:      "",
+			taxRepVAT:     "",
+			wantViolation: true,
+			checkField:    "seller",
+		},
+		{
+			name:          "invalid: buyer starts with digit",
+			sellerVAT:     "",
+			buyerVAT:      "30123456789",
+			taxRepVAT:     "",
+			wantViolation: true,
+			checkField:    "buyer",
+		},
+		{
+			name:          "invalid: seller with lowercase prefix",
+			sellerVAT:     "de123456789",
+			buyerVAT:      "",
+			taxRepVAT:     "",
+			wantViolation: true,
+			checkField:    "seller",
+		},
+		{
+			name:          "invalid: buyer with mixed case",
+			sellerVAT:     "",
+			buyerVAT:      "De123456789",
+			taxRepVAT:     "",
+			wantViolation: true,
+			checkField:    "buyer",
+		},
+		{
+			name:          "invalid: tax rep with digit in prefix",
+			sellerVAT:     "",
+			buyerVAT:      "",
+			taxRepVAT:     "D1123456789",
+			wantViolation: true,
+			checkField:    "taxrep",
+		},
+		{
+			name:          "invalid: seller too short",
+			sellerVAT:     "D",
+			buyerVAT:      "",
+			taxRepVAT:     "",
+			wantViolation: true,
+			checkField:    "seller",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				GuidelineSpecifiedDocumentContextParameter: SpecFacturXBasic,
+				InvoiceNumber:       "TEST-BRCO9",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				TaxBasisTotal:       decimal.NewFromInt(100),
+				GrandTotal:          decimal.NewFromInt(119),
+				DuePayableAmount:    decimal.NewFromInt(119),
+				Seller: Party{
+					Name:              "Seller",
+					VATaxRegistration: tt.sellerVAT,
+					PostalAddress: &PostalAddress{
+						CountryID: "DE",
+					},
+				},
+				Buyer: Party{
+					Name:              "Buyer",
+					VATaxRegistration: tt.buyerVAT,
+					PostalAddress: &PostalAddress{
+						CountryID: "FR",
+					},
+				},
+				InvoiceLines: []InvoiceLine{
+					{
+						LineID:          "1",
+						ItemName:        "Item",
+						BilledQuantity:  decimal.NewFromInt(1),
+						NetPrice:        decimal.NewFromInt(100),
+						Total:           decimal.NewFromInt(100),
+						TaxCategoryCode: "S",
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(100),
+						CalculatedAmount: decimal.NewFromInt(19),
+					},
+				},
+			}
+
+			// Add tax representative if needed
+			if tt.taxRepVAT != "" {
+				inv.SellerTaxRepresentativeTradeParty = &Party{
+					Name:              "Tax Rep",
+					VATaxRegistration: tt.taxRepVAT,
+					PostalAddress: &PostalAddress{
+						CountryID: "FR",
+					},
+				}
+			}
+
+			err := inv.Validate()
+
+			// Check for BR-CO-9 violation
+			var foundBRCO9 bool
+			var violationText string
+			for _, v := range inv.violations {
+				if v.Rule.Code == "BR-CO-09" {
+					foundBRCO9 = true
+					violationText = v.Text
+					t.Logf("BR-CO-09 violation: %s", v.Text)
+				}
+			}
+
+			if tt.wantViolation && !foundBRCO9 {
+				t.Errorf("Expected BR-CO-09 violation but got none. Error: %v", err)
+			}
+			if !tt.wantViolation && foundBRCO9 {
+				t.Errorf("Expected no BR-CO-09 violation but got: %s", violationText)
+			}
+
+			// Verify it's NOT reported as BR-DE-16
+			for _, v := range inv.violations {
+				if v.Rule.Code == "BR-DE-16" && strings.Contains(v.Text, "prefix") {
+					t.Errorf("VAT ID format validation incorrectly uses BR-DE-16, should use BR-CO-09. Violation: %s", v.Text)
+				}
+			}
+		})
+	}
+}
+

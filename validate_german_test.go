@@ -3,6 +3,7 @@ package einvoice
 import (
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/speedata/einvoice/rules"
 )
 
@@ -381,51 +382,133 @@ func TestGermanValidation_BRDE15_BuyerReference(t *testing.T) {
 	}
 }
 
-// TestGermanValidation_BRDE16_VATIdentifierPrefix tests BR-DE-16:
-// VAT identifier must have ISO country code prefix.
-func TestGermanValidation_BRDE16_VATIdentifierPrefix(t *testing.T) {
+// TestGermanValidation_BRDE16_SellerIdentification tests BR-DE-16:
+// When tax codes S, Z, E, AE, K, G, L or M are used, at least one of
+// Seller VAT identifier (BT-31), Seller tax registration identifier (BT-32)
+// or SELLER TAX REPRESENTATIVE PARTY (BG-11) must be provided.
+func TestGermanValidation_BRDE16_SellerIdentification(t *testing.T) {
 	tests := []struct {
 		name          string
-		vatID         string
+		taxCode       string
+		hasVATID      bool
+		hasTaxReg     bool
+		hasTaxRep     bool
 		wantViolation bool
 	}{
 		{
-			name:          "valid: DE prefix",
-			vatID:         "DE123456789",
+			name:          "valid: has VAT ID with tax code S",
+			taxCode:       "S",
+			hasVATID:      true,
+			hasTaxReg:     false,
+			hasTaxRep:     false,
 			wantViolation: false,
 		},
 		{
-			name:          "valid: FR prefix",
-			vatID:         "FR12345678901",
+			name:          "valid: has tax registration with tax code E",
+			taxCode:       "E",
+			hasVATID:      false,
+			hasTaxReg:     true,
+			hasTaxRep:     false,
 			wantViolation: false,
 		},
 		{
-			name:          "invalid: no prefix",
-			vatID:         "123456789",
+			name:          "valid: has tax representative with tax code Z",
+			taxCode:       "Z",
+			hasVATID:      false,
+			hasTaxReg:     false,
+			hasTaxRep:     true,
+			wantViolation: false,
+		},
+		{
+			name:          "invalid: no identification with tax code S",
+			taxCode:       "S",
+			hasVATID:      false,
+			hasTaxReg:     false,
+			hasTaxRep:     false,
 			wantViolation: true,
 		},
 		{
-			name:          "invalid: lowercase prefix",
-			vatID:         "de123456789",
+			name:          "invalid: no identification with tax code AE",
+			taxCode:       "AE",
+			hasVATID:      false,
+			hasTaxReg:     false,
+			hasTaxRep:     false,
 			wantViolation: true,
 		},
 		{
-			name:          "invalid: digit in prefix",
-			vatID:         "D1123456789",
-			wantViolation: true,
+			name:          "valid: no identification with tax code O (not relevant)",
+			taxCode:       "O",
+			hasVATID:      false,
+			hasTaxReg:     false,
+			hasTaxRep:     false,
+			wantViolation: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := createGermanTestInvoice()
-			inv.Seller.VATaxRegistration = tt.vatID
+
+			// Add invoice lines and trade taxes with the specified tax code
+			inv.InvoiceLines = []InvoiceLine{
+				{
+					LineID:                   "1",
+					ItemName:                 "Test Item",
+					BilledQuantity:           decimal.NewFromInt(1),
+					BilledQuantityUnit:       "C62",
+					NetPrice:                 decimal.NewFromInt(100),
+					Total:                    decimal.NewFromInt(100),
+					TaxCategoryCode:          tt.taxCode,
+					TaxRateApplicablePercent: decimal.NewFromInt(19),
+				},
+			}
+			inv.TradeTaxes = []TradeTax{
+				{
+					CategoryCode:     tt.taxCode,
+					Percent:          decimal.NewFromInt(19),
+					BasisAmount:      decimal.NewFromInt(100),
+					CalculatedAmount: decimal.NewFromInt(19),
+				},
+			}
+			inv.LineTotal = decimal.NewFromInt(100)
+			inv.TaxBasisTotal = decimal.NewFromInt(100)
+			inv.TaxTotal = decimal.NewFromInt(19)
+			inv.GrandTotal = decimal.NewFromInt(119)
+			inv.DuePayableAmount = decimal.NewFromInt(119)
+
+			// Set seller identifications based on test case
+			if tt.hasVATID {
+				inv.Seller.VATaxRegistration = "DE123456789"
+			} else {
+				inv.Seller.VATaxRegistration = ""
+			}
+
+			if tt.hasTaxReg {
+				inv.Seller.FCTaxRegistration = "12345678"
+			} else {
+				inv.Seller.FCTaxRegistration = ""
+			}
+
+			if tt.hasTaxRep {
+				inv.SellerTaxRepresentativeTradeParty = &Party{
+					Name: "Tax Rep",
+					VATaxRegistration: "FR12345678901",
+					PostalAddress: &PostalAddress{
+						CountryID: "FR",
+					},
+				}
+			} else {
+				inv.SellerTaxRepresentativeTradeParty = nil
+			}
 
 			err := inv.Validate()
 			hasViolation := hasRuleViolation(err, rules.BRDE16)
 
 			if hasViolation != tt.wantViolation {
 				t.Errorf("BR-DE-16 violation = %v, want %v", hasViolation, tt.wantViolation)
+				if err != nil {
+					t.Logf("Validation error: %v", err)
+				}
 			}
 		})
 	}
