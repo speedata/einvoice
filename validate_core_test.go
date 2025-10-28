@@ -2017,3 +2017,113 @@ func TestBR65_ItemClassificationRequiresScheme(t *testing.T) {
 	}
 }
 
+// TestBRDEC_DecimalPrecisionWithCalculations tests that BR-DEC rules correctly handle
+// values with internal precision > 2 decimals from calculations (e.g., multiplication, division)
+// but that are mathematically equivalent to values with ≤ 2 decimal places.
+// Regression test for issue where 370.000 (exponent -3) or 370 (exponent -16 from division)
+// incorrectly triggered BR-DEC-16 violation.
+func TestBRDEC_DecimalPrecisionWithCalculations(t *testing.T) {
+	tests := []struct {
+		name          string
+		value         decimal.Decimal
+		shouldBeValid bool
+		description   string
+	}{
+		{
+			name:          "Multiplication result with internal precision",
+			value:         mustNewFromString("185.00").Mul(mustNewFromString("2.0")),
+			shouldBeValid: true,
+			description:   "185.00 * 2.0 = 370 with exponent -3 (internal precision)",
+		},
+		{
+			name:          "Division result with high internal precision",
+			value:         decimal.NewFromInt(740).Div(decimal.NewFromInt(2)),
+			shouldBeValid: true,
+			description:   "740 / 2 = 370 with exponent -16 (division precision)",
+		},
+		{
+			name:          "Valid 2 decimal value",
+			value:         mustNewFromString("370.00"),
+			shouldBeValid: true,
+			description:   "Standard 370.00 value",
+		},
+		{
+			name:          "Whole number",
+			value:         decimal.NewFromInt(370),
+			shouldBeValid: true,
+			description:   "Whole number 370",
+		},
+		{
+			name:          "Invalid 3 decimal places",
+			value:         mustNewFromString("370.001"),
+			shouldBeValid: false,
+			description:   "370.001 has 3 significant decimal places",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := Invoice{
+				GuidelineSpecifiedDocumentContextParameter: SpecFacturXBasic,
+				InvoiceNumber:       "TEST-BRDEC",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Now(),
+				InvoiceCurrencyCode: "EUR",
+				LineTotal:           decimal.NewFromInt(100),
+				TaxBasisTotal:       decimal.NewFromInt(100),
+				GrandTotal:          mustNewFromString("440.30"),
+				DuePayableAmount:    mustNewFromString("70.30"),
+				TotalPrepaid:        tt.value, // Test value
+				Seller: Party{
+					Name: "Seller",
+					PostalAddress: &PostalAddress{
+						CountryID: "DE",
+					},
+				},
+				Buyer: Party{
+					Name: "Buyer",
+					PostalAddress: &PostalAddress{
+						CountryID: "FR",
+					},
+				},
+				TradeTaxes: []TradeTax{
+					{
+						CategoryCode:     "S",
+						Percent:          decimal.NewFromInt(19),
+						BasisAmount:      decimal.NewFromInt(100),
+						CalculatedAmount: decimal.NewFromInt(19),
+					},
+				},
+			}
+
+			_ = inv.Validate()
+
+			// Check for BR-DEC-16 violation (Paid amount)
+			var foundBRDEC16 bool
+			for _, v := range inv.violations {
+				if v.Rule.Code == "BR-DEC-16" {
+					foundBRDEC16 = true
+					t.Logf("BR-DEC-16 violation: %s", v.Text)
+				}
+			}
+
+			if tt.shouldBeValid && foundBRDEC16 {
+				t.Errorf("Expected no BR-DEC-16 violation for %s (value=%s, exponent=%d)",
+					tt.description, tt.value.String(), tt.value.Exponent())
+			}
+			if !tt.shouldBeValid && !foundBRDEC16 {
+				t.Errorf("Expected BR-DEC-16 violation for %s (value=%s, exponent=%d)",
+					tt.description, tt.value.String(), tt.value.Exponent())
+			}
+		})
+	}
+}
+
+func mustNewFromString(s string) decimal.Decimal {
+	d, err := decimal.NewFromString(s)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+

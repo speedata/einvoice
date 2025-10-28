@@ -854,10 +854,13 @@ func (inv *Invoice) validateCore() {
 
 // hasMaxDecimals checks if a decimal value has at most maxDecimals decimal places.
 // Returns true if the value has maxDecimals or fewer decimal places.
+// This handles cases where operations like multiplication or division introduce
+// extra precision that doesn't affect the actual value (e.g., 370.000 should pass for maxDecimals=2).
 func hasMaxDecimals(value decimal.Decimal, maxDecimals int) bool {
-	// The exponent is the negative of the number of decimal places
-	// e.g., 123.45 has exponent -2, 123.456 has exponent -3
-	return value.Exponent() >= -int32(maxDecimals)
+	// Round the value to maxDecimals places and check if it equals the original
+	// If they're equal, the extra precision was just trailing zeros
+	rounded := value.Round(int32(maxDecimals))
+	return value.Equal(rounded)
 }
 
 func (inv *Invoice) validateDecimals() {
