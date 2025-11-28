@@ -282,3 +282,423 @@ func TestValidatePEPPOL_DecimalPrecisionViolations(t *testing.T) {
 		t.Errorf("Expected BR-DEC violations in PEPPOL validation, but none found. Got violations: %v", violations)
 	}
 }
+
+// TestValidatePEPPOL_R120_LineNetAmountCalculation tests line net amount calculation validation
+func TestValidatePEPPOL_R120_LineNetAmountCalculation(t *testing.T) {
+	tests := []struct {
+		name          string
+		line          InvoiceLine
+		wantViolation bool
+	}{
+		{
+			name: "valid - simple calculation",
+			line: InvoiceLine{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromInt(10),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromInt(100),
+				Total:             decimal.NewFromInt(1000), // 10 × 100 = 1000 ✓
+				TaxCategoryCode:   "S",
+			},
+			wantViolation: false,
+		},
+		{
+			name: "valid - with base quantity",
+			line: InvoiceLine{
+				LineID:             "1",
+				ItemName:           "Test Item",
+				BilledQuantity:     decimal.NewFromInt(5),
+				BilledQuantityUnit: "C62",
+				NetPrice:           decimal.NewFromInt(100),
+				BasisQuantity:      decimal.NewFromInt(10),
+				BasisQuantityUnit:  "C62",
+				Total:              decimal.NewFromInt(50), // 5 × 100 / 10 = 50 ✓
+				TaxCategoryCode:    "S",
+			},
+			wantViolation: false,
+		},
+		{
+			name: "valid - fractional quantity with rounding",
+			line: InvoiceLine{
+				LineID:             "1",
+				ItemName:           "Hourly Work",
+				BilledQuantity:     decimal.RequireFromString("0.0830"),
+				BilledQuantityUnit: "HUR",
+				NetPrice:           decimal.NewFromInt(110),
+				BasisQuantity:      decimal.NewFromInt(1),
+				BasisQuantityUnit:  "HUR",
+				Total:              decimal.RequireFromString("9.13"), // 0.0830 × 110 / 1 = 9.13 ✓
+				TaxCategoryCode:    "S",
+			},
+			wantViolation: false,
+		},
+		{
+			name: "invalid - issue #127 example",
+			line: InvoiceLine{
+				LineID:             "1",
+				ItemName:           "Hourly Work",
+				BilledQuantity:     decimal.RequireFromString("0.0830"),
+				BilledQuantityUnit: "HUR",
+				NetPrice:           decimal.NewFromInt(110),
+				BasisQuantity:      decimal.NewFromInt(1),
+				BasisQuantityUnit:  "HUR",
+				Total:              decimal.RequireFromString("9.17"), // Wrong! Should be 9.13
+				TaxCategoryCode:    "S",
+			},
+			wantViolation: true,
+		},
+		{
+			name: "valid - with line allowance",
+			line: InvoiceLine{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromInt(10),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromInt(100),
+				Total:             decimal.NewFromInt(900), // 10 × 100 - 100 = 900 ✓
+				TaxCategoryCode:   "S",
+				InvoiceLineAllowances: []AllowanceCharge{
+					{ActualAmount: decimal.NewFromInt(100)},
+				},
+			},
+			wantViolation: false,
+		},
+		{
+			name: "valid - with line charge",
+			line: InvoiceLine{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromInt(10),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromInt(100),
+				Total:             decimal.NewFromInt(1050), // 10 × 100 + 50 = 1050 ✓
+				TaxCategoryCode:   "S",
+				InvoiceLineCharges: []AllowanceCharge{
+					{ActualAmount: decimal.NewFromInt(50)},
+				},
+			},
+			wantViolation: false,
+		},
+		{
+			name: "valid - with both allowance and charge",
+			line: InvoiceLine{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromInt(10),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromInt(100),
+				Total:             decimal.NewFromInt(970), // 10 × 100 + 50 - 80 = 970 ✓
+				TaxCategoryCode:   "S",
+				InvoiceLineCharges: []AllowanceCharge{
+					{ActualAmount: decimal.NewFromInt(50)},
+				},
+				InvoiceLineAllowances: []AllowanceCharge{
+					{ActualAmount: decimal.NewFromInt(80)},
+				},
+			},
+			wantViolation: false,
+		},
+		{
+			name: "invalid - calculation mismatch with allowances",
+			line: InvoiceLine{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromInt(10),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromInt(100),
+				Total:             decimal.NewFromInt(1000), // Wrong! Should be 900 with allowance
+				TaxCategoryCode:   "S",
+				InvoiceLineAllowances: []AllowanceCharge{
+					{ActualAmount: decimal.NewFromInt(100)},
+				},
+			},
+			wantViolation: true,
+		},
+		{
+			name: "valid - zero price free item",
+			line: InvoiceLine{
+				LineID:            "1",
+				ItemName:          "Free Sample",
+				BilledQuantity:    decimal.NewFromInt(1),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.Zero,
+				Total:             decimal.Zero, // 1 × 0 = 0 ✓
+				TaxCategoryCode:   "Z",
+			},
+			wantViolation: false,
+		},
+		{
+			name: "valid - base quantity not specified defaults to 1",
+			line: InvoiceLine{
+				LineID:            "1",
+				ItemName:          "Test Item",
+				BilledQuantity:    decimal.NewFromInt(5),
+				BilledQuantityUnit: "C62",
+				NetPrice:          decimal.NewFromInt(20),
+				// BasisQuantity not set (zero) - defaults to 1
+				Total:           decimal.NewFromInt(100), // 5 × 20 / 1 = 100 ✓
+				TaxCategoryCode: "S",
+			},
+			wantViolation: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := createPEPPOLTestInvoice()
+			inv.InvoiceLines = []InvoiceLine{tt.line}
+			inv.LineTotal = tt.line.Total
+			inv.TaxBasisTotal = tt.line.Total
+			inv.TaxTotal = decimal.Zero
+			inv.GrandTotal = tt.line.Total
+			inv.DuePayableAmount = tt.line.Total
+
+			err := inv.Validate()
+
+			var valErr *ValidationError
+			hasR120Violation := false
+			if errors.As(err, &valErr) {
+				hasR120Violation = valErr.HasRule(rules.PEPPOLEN16931R120)
+			}
+
+			if tt.wantViolation && !hasR120Violation {
+				t.Errorf("Expected PEPPOL-EN16931-R120 violation, but not found")
+				if valErr != nil {
+					t.Logf("Violations found: %v", valErr.Violations())
+				}
+			}
+			if !tt.wantViolation && hasR120Violation {
+				t.Errorf("Did not expect PEPPOL-EN16931-R120 violation, but found one")
+				if valErr != nil {
+					for _, v := range valErr.Violations() {
+						if v.Rule.Code == "PEPPOL-EN16931-R120" {
+							t.Logf("Violation: %s", v.Text)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestValidatePEPPOL_R121_BaseQuantityPositive tests base quantity validation
+func TestValidatePEPPOL_R121_BaseQuantityPositive(t *testing.T) {
+	tests := []struct {
+		name          string
+		basisQty      decimal.Decimal
+		wantViolation bool
+	}{
+		{
+			name:          "valid - positive base quantity",
+			basisQty:      decimal.NewFromInt(1),
+			wantViolation: false,
+		},
+		{
+			name:          "valid - larger base quantity",
+			basisQty:      decimal.NewFromInt(10),
+			wantViolation: false,
+		},
+		{
+			name:          "valid - fractional base quantity",
+			basisQty:      decimal.RequireFromString("0.5"),
+			wantViolation: false,
+		},
+		{
+			name:          "valid - not specified (zero defaults to 1)",
+			basisQty:      decimal.Zero,
+			wantViolation: false, // Zero means not specified, defaults to 1
+		},
+		{
+			name:          "invalid - negative base quantity",
+			basisQty:      decimal.NewFromInt(-1),
+			wantViolation: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := createPEPPOLTestInvoice()
+
+			// Calculate expected total based on basis quantity
+			billedQty := decimal.NewFromInt(10)
+			netPrice := decimal.NewFromInt(100)
+			baseQty := tt.basisQty
+			if baseQty.IsZero() {
+				baseQty = decimal.NewFromInt(1)
+			}
+			// For negative, we still need to calculate for the line
+			var expectedTotal decimal.Decimal
+			if !baseQty.IsZero() {
+				expectedTotal = billedQty.Mul(netPrice).Div(baseQty)
+			} else {
+				expectedTotal = billedQty.Mul(netPrice)
+			}
+			expectedTotal = roundHalfUp(expectedTotal, 2)
+
+			inv.InvoiceLines = []InvoiceLine{
+				{
+					LineID:             "1",
+					ItemName:           "Test Item",
+					BilledQuantity:     billedQty,
+					BilledQuantityUnit: "C62",
+					NetPrice:           netPrice,
+					BasisQuantity:      tt.basisQty,
+					BasisQuantityUnit:  "C62",
+					Total:              expectedTotal,
+					TaxCategoryCode:    "S",
+				},
+			}
+			inv.LineTotal = expectedTotal
+			inv.TaxBasisTotal = expectedTotal
+			inv.GrandTotal = expectedTotal
+			inv.DuePayableAmount = expectedTotal
+
+			err := inv.Validate()
+
+			var valErr *ValidationError
+			hasR121Violation := false
+			if errors.As(err, &valErr) {
+				hasR121Violation = valErr.HasRule(rules.PEPPOLEN16931R121)
+			}
+
+			if tt.wantViolation && !hasR121Violation {
+				t.Errorf("Expected PEPPOL-EN16931-R121 violation, but not found")
+			}
+			if !tt.wantViolation && hasR121Violation {
+				t.Errorf("Did not expect PEPPOL-EN16931-R121 violation, but found one")
+			}
+		})
+	}
+}
+
+// TestValidatePEPPOL_R130_UnitCodeConsistency tests unit code consistency validation
+func TestValidatePEPPOL_R130_UnitCodeConsistency(t *testing.T) {
+	tests := []struct {
+		name              string
+		billedUnit        string
+		basisUnit         string
+		wantViolation     bool
+	}{
+		{
+			name:          "valid - same unit codes",
+			billedUnit:    "C62",
+			basisUnit:     "C62",
+			wantViolation: false,
+		},
+		{
+			name:          "valid - both HUR",
+			billedUnit:    "HUR",
+			basisUnit:     "HUR",
+			wantViolation: false,
+		},
+		{
+			name:          "valid - basis unit not specified",
+			billedUnit:    "C62",
+			basisUnit:     "", // Not specified, skip check
+			wantViolation: false,
+		},
+		{
+			name:          "invalid - different unit codes",
+			billedUnit:    "C62",
+			basisUnit:     "HUR",
+			wantViolation: true,
+		},
+		{
+			name:          "invalid - KGM vs C62",
+			billedUnit:    "KGM",
+			basisUnit:     "C62",
+			wantViolation: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := createPEPPOLTestInvoice()
+			inv.InvoiceLines = []InvoiceLine{
+				{
+					LineID:             "1",
+					ItemName:           "Test Item",
+					BilledQuantity:     decimal.NewFromInt(10),
+					BilledQuantityUnit: tt.billedUnit,
+					NetPrice:           decimal.NewFromInt(100),
+					BasisQuantity:      decimal.NewFromInt(1),
+					BasisQuantityUnit:  tt.basisUnit,
+					Total:              decimal.NewFromInt(1000),
+					TaxCategoryCode:    "S",
+				},
+			}
+
+			err := inv.Validate()
+
+			var valErr *ValidationError
+			hasR130Violation := false
+			if errors.As(err, &valErr) {
+				hasR130Violation = valErr.HasRule(rules.PEPPOLEN16931R130)
+			}
+
+			if tt.wantViolation && !hasR130Violation {
+				t.Errorf("Expected PEPPOL-EN16931-R130 violation, but not found")
+			}
+			if !tt.wantViolation && hasR130Violation {
+				t.Errorf("Did not expect PEPPOL-EN16931-R130 violation, but found one")
+			}
+		})
+	}
+}
+
+// createPEPPOLTestInvoice creates a minimal valid PEPPOL invoice for testing
+func createPEPPOLTestInvoice() *Invoice {
+	return &Invoice{
+		InvoiceNumber:       "INV-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Now(),
+		InvoiceCurrencyCode: "EUR",
+		GuidelineSpecifiedDocumentContextParameter: SpecPEPPOLBilling30,
+		BPSpecifiedDocumentContextParameter:        BPPEPPOLBilling01,
+		BuyerReference:                             "BR123",
+		Seller: Party{
+			Name: "Test Seller",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+			VATaxRegistration:         "DE123456789",
+			URIUniversalCommunication: "seller@example.com",
+		},
+		Buyer: Party{
+			Name: "Test Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "DE",
+			},
+			URIUniversalCommunication: "buyer@example.com",
+		},
+		LineTotal:        decimal.NewFromInt(1000),
+		TaxBasisTotal:    decimal.NewFromInt(1000),
+		TaxTotal:         decimal.Zero,
+		GrandTotal:       decimal.NewFromInt(1000),
+		DuePayableAmount: decimal.NewFromInt(1000),
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Item",
+				BilledQuantity:           decimal.NewFromInt(10),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(100),
+				Total:                    decimal.NewFromInt(1000),
+				TaxCategoryCode:          "Z",
+				TaxRateApplicablePercent: decimal.Zero,
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "Z",
+				BasisAmount:      decimal.NewFromInt(1000),
+				CalculatedAmount: decimal.Zero,
+				Percent:          decimal.Zero,
+			},
+		},
+		SpecifiedTradePaymentTerms: []SpecifiedTradePaymentTerms{
+			{Description: "Net 30"},
+		},
+	}
+}
