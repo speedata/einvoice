@@ -1085,3 +1085,157 @@ func hasRuleViolation(err error, rule rules.Rule) bool {
 
 	return valErr.HasRule(rule)
 }
+
+// hasRuleWarning checks if an invoice has a specific rule warning.
+func hasRuleWarning(inv *Invoice, rule rules.Rule) bool {
+	for _, w := range inv.Warnings() {
+		if w.Rule.Code == rule.Code {
+			return true
+		}
+	}
+	return false
+}
+
+// TestGermanValidation_BRDE21_SpecIDWarning tests BR-DE-21 as a warning:
+// German sellers should use XRechnung specification identifier.
+// This is a recommendation ("soll"), not a hard requirement.
+func TestGermanValidation_BRDE21_SpecIDWarning(t *testing.T) {
+	tests := []struct {
+		name        string
+		sellerDE    bool
+		specID      string
+		wantWarning bool
+	}{
+		{
+			name:        "German seller with pure EN16931: should warn",
+			sellerDE:    true,
+			specID:      SpecEN16931,
+			wantWarning: true,
+		},
+		{
+			name:        "German seller with PEPPOL: should warn",
+			sellerDE:    true,
+			specID:      SpecPEPPOLBilling30,
+			wantWarning: true,
+		},
+		{
+			name:        "German seller with Factur-X Extended: should warn",
+			sellerDE:    true,
+			specID:      SpecFacturXExtended,
+			wantWarning: true,
+		},
+		{
+			name:        "German seller with XRechnung 3.0: no warning (already compliant)",
+			sellerDE:    true,
+			specID:      SpecXRechnung30,
+			wantWarning: false,
+		},
+		{
+			name:        "German seller with XRechnung 2.3: no warning (already compliant)",
+			sellerDE:    true,
+			specID:      SpecXRechnung23,
+			wantWarning: false,
+		},
+		{
+			name:        "Non-German seller with EN16931: no warning",
+			sellerDE:    false,
+			specID:      SpecEN16931,
+			wantWarning: false,
+		},
+		{
+			name:        "Non-German seller with PEPPOL: no warning",
+			sellerDE:    false,
+			specID:      SpecPEPPOLBilling30,
+			wantWarning: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv := createGermanTestInvoice()
+			inv.GuidelineSpecifiedDocumentContextParameter = tt.specID
+
+			if !tt.sellerDE {
+				// Change seller country to France
+				inv.Seller.PostalAddress.CountryID = "FR"
+			}
+
+			_ = inv.Validate() // May return error if not XRechnung, we only care about warnings
+
+			hasWarning := hasRuleWarning(inv, rules.BRDE21)
+			if hasWarning != tt.wantWarning {
+				t.Errorf("BR-DE-21 warning = %v, want %v", hasWarning, tt.wantWarning)
+			}
+		})
+	}
+}
+
+// TestGermanValidation_BRDE21_WarningVsError tests that BR-DE-21:
+// - Is a WARNING for German sellers not using XRechnung
+// - Does NOT cause validation to fail
+func TestGermanValidation_BRDE21_WarningVsError(t *testing.T) {
+	t.Run("warning does not fail validation", func(t *testing.T) {
+		// Create a valid invoice for a German seller using pure EN 16931
+		inv := createGermanTestInvoice()
+		inv.GuidelineSpecifiedDocumentContextParameter = SpecEN16931
+		inv.Seller.PostalAddress.CountryID = "DE"
+
+		err := inv.Validate()
+
+		// The invoice should have validation errors due to XRechnung-specific
+		// rules NOT being applied (since it's EN 16931, not XRechnung).
+		// But let's verify the warning is there.
+		hasWarning := hasRuleWarning(inv, rules.BRDE21)
+		if !hasWarning {
+			t.Error("BR-DE-21 warning should be present for German EN 16931 invoice")
+		}
+
+		// The validation error should NOT be caused by BR-DE-21
+		if err != nil {
+			valErr, ok := err.(*ValidationError)
+			if ok && valErr.HasRule(rules.BRDE21) {
+				t.Error("BR-DE-21 should be a warning, not an error")
+			}
+		}
+	})
+
+	t.Run("no warning for XRechnung invoice", func(t *testing.T) {
+		inv := createGermanTestInvoice()
+		inv.GuidelineSpecifiedDocumentContextParameter = SpecXRechnung30
+
+		_ = inv.Validate()
+
+		hasWarning := hasRuleWarning(inv, rules.BRDE21)
+		if hasWarning {
+			t.Error("BR-DE-21 warning should NOT be present for XRechnung invoice")
+		}
+	})
+}
+
+// TestGermanValidation_BRDE21_NilSellerAddress tests edge case where seller has no address.
+func TestGermanValidation_BRDE21_NilSellerAddress(t *testing.T) {
+	inv := &Invoice{
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+		InvoiceNumber:       "INV-001",
+		InvoiceTypeCode:     380,
+		InvoiceCurrencyCode: "EUR",
+		Seller: Party{
+			Name:          "Test Seller",
+			PostalAddress: nil, // No address
+		},
+		Buyer: Party{
+			Name: "Test Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID: "FR",
+			},
+		},
+	}
+
+	_ = inv.Validate()
+
+	// Should not have warning since we can't determine seller is German
+	hasWarning := hasRuleWarning(inv, rules.BRDE21)
+	if hasWarning {
+		t.Error("BR-DE-21 warning should not be present when seller address is nil")
+	}
+}

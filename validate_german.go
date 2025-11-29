@@ -372,3 +372,38 @@ func isDigit(b byte) bool {
 func isAlphanumeric(b byte) bool {
 	return isDigit(b) || isUppercaseLetter(b)
 }
+
+// validateGermanSpecIDWarning checks BR-DE-21 for German sellers as a warning.
+//
+// BR-DE-21: Das Element "Specification identifier" (BT-24) soll syntaktisch
+// der Kennung des Standards XRechnung entsprechen.
+//
+// Translation: The element 'Specification identifier' (BT-24) should syntactically
+// correspond to the identifier of the XRechnung standard.
+//
+// Note the keyword "soll" (should) - this is a recommendation, not a hard requirement.
+// This applies to ALL German sellers, regardless of which profile they use.
+//
+// Behavior:
+// - For XRechnung invoices: No warning (they already use XRechnung spec ID)
+// - For other German sellers: Add warning to use XRechnung spec ID
+// - For non-German sellers: No warning
+//
+// This differs from validateGerman() which applies BR-DE rules as errors only
+// for invoices that explicitly use XRechnung specification identifier.
+func (inv *Invoice) validateGermanSpecIDWarning() {
+	// Only applies to German sellers
+	if inv.Seller.PostalAddress == nil || inv.Seller.PostalAddress.CountryID != "DE" {
+		return
+	}
+
+	// If already using XRechnung, no warning needed
+	// (BR-DE-21 is enforced as part of the XRechnung profile contract)
+	if inv.IsXRechnung() {
+		return
+	}
+
+	// German seller not using XRechnung - add recommendation warning
+	inv.addWarning(rules.BRDE21,
+		"German sellers should use XRechnung specification identifier (BT-24) for invoices to German recipients")
+}

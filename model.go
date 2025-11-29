@@ -384,6 +384,7 @@ type Invoice struct {
 	unexpectedTaxCurrencies []string
 
 	violations []SemanticError // Private field - use Validate() and check error instead
+	warnings   []SemanticError // Private field - use Warnings() accessor
 }
 
 // Profile helper methods for Invoice
