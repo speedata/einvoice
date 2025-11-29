@@ -13,7 +13,8 @@ type SemanticError struct {
 }
 
 // ValidationError is returned when invoice validation fails.
-// It contains all EN 16931 business rule violations found during validation.
+// It contains all EN 16931 business rule violations found during validation,
+// as well as any warnings (recommendation violations).
 //
 // Example usage:
 //
@@ -22,12 +23,16 @@ type SemanticError struct {
 //	    var valErr *ValidationError
 //	    if errors.As(err, &valErr) {
 //	        for _, v := range valErr.Violations() {
-//	            fmt.Printf("Rule %s: %s\n", v.Rule.Code, v.Text)
+//	            fmt.Printf("Error: %s - %s\n", v.Rule.Code, v.Text)
+//	        }
+//	        for _, w := range valErr.Warnings() {
+//	            fmt.Printf("Warning: %s - %s\n", w.Rule.Code, w.Text)
 //	        }
 //	    }
 //	}
 type ValidationError struct {
 	violations []SemanticError
+	warnings   []SemanticError
 }
 
 // Error implements the error interface.
@@ -61,9 +66,34 @@ func (e *ValidationError) Violations() []SemanticError {
 	return violations
 }
 
-// Count returns the number of validation violations.
+// Count returns the number of validation violations (errors).
 func (e *ValidationError) Count() int {
 	return len(e.violations)
+}
+
+// Warnings returns a copy of all validation warnings.
+// Warnings are recommendation violations ("soll"/"should") that don't cause
+// validation to fail but are reported for user attention.
+// This ensures the internal warnings slice cannot be modified externally.
+func (e *ValidationError) Warnings() []SemanticError {
+	if e.warnings == nil {
+		return nil
+	}
+
+	// Return a copy to prevent external modification
+	warnings := make([]SemanticError, len(e.warnings))
+	copy(warnings, e.warnings)
+	return warnings
+}
+
+// WarningCount returns the number of validation warnings.
+func (e *ValidationError) WarningCount() int {
+	return len(e.warnings)
+}
+
+// HasWarnings returns true if there are any warnings.
+func (e *ValidationError) HasWarnings() bool {
+	return len(e.warnings) > 0
 }
 
 // HasRule checks if a specific business rule violation exists.
@@ -115,6 +145,52 @@ func (inv *Invoice) addViolation(rule rules.Rule, text string) {
 	})
 }
 
+// addWarning is a helper method that appends a recommendation violation (warning) to the invoice.
+// Warnings are for "soll"/"should" requirements that don't cause validation to fail
+// but should be reported to the user for attention.
+//
+// Example:
+//
+//	inv.addWarning(rules.BRDE21, "German sellers should use XRechnung specification identifier")
+func (inv *Invoice) addWarning(rule rules.Rule, text string) {
+	inv.warnings = append(inv.warnings, SemanticError{
+		Rule: rule,
+		Text: text,
+	})
+}
+
+// Warnings returns a copy of all validation warnings found during the last Validate() call.
+// Warnings are recommendation violations ("soll"/"should") that don't cause validation
+// to fail but are reported for user attention.
+//
+// This method should be called after Validate() to check for recommendations even when
+// validation passes (returns nil).
+//
+// Example:
+//
+//	err := inv.Validate()
+//	if err == nil {
+//	    // Validation passed, but check for recommendations
+//	    for _, w := range inv.Warnings() {
+//	        fmt.Printf("Recommendation: %s - %s\n", w.Rule.Code, w.Text)
+//	    }
+//	}
+func (inv *Invoice) Warnings() []SemanticError {
+	if inv.warnings == nil {
+		return nil
+	}
+
+	// Return a copy to prevent external modification
+	warnings := make([]SemanticError, len(inv.warnings))
+	copy(warnings, inv.warnings)
+	return warnings
+}
+
+// HasWarnings returns true if there are any warnings from the last Validate() call.
+func (inv *Invoice) HasWarnings() bool {
+	return len(inv.warnings) > 0
+}
+
 // Validate checks the invoice against applicable business rules with intelligent auto-detection.
 //
 // The method automatically detects which validation rules to apply based on:
@@ -124,8 +200,10 @@ func (inv *Invoice) addViolation(rule rules.Rule, text string) {
 // All invoices are validated against EN 16931 core rules. Additional rules are applied
 // automatically when the invoice metadata indicates they are required.
 //
-// This method clears any previous violations and performs a fresh validation.
-// Returns a ValidationError if violations exist, nil if invoice is valid.
+// This method clears any previous violations and warnings, then performs a fresh validation.
+// Returns a ValidationError if violations (errors) exist, nil if invoice is valid.
+// Warnings do NOT cause validation to fail - use Invoice.Warnings() or
+// ValidationError.Warnings() to access them.
 //
 // This method should be called:
 // - After building an invoice programmatically
@@ -139,14 +217,23 @@ func (inv *Invoice) addViolation(rule rules.Rule, text string) {
 //	    var valErr *ValidationError
 //	    if errors.As(err, &valErr) {
 //	        for _, v := range valErr.Violations() {
-//	            fmt.Printf("Rule %s: %s\n", v.Rule.Code, v.Text)
+//	            fmt.Printf("Error: %s - %s\n", v.Rule.Code, v.Text)
+//	        }
+//	        for _, w := range valErr.Warnings() {
+//	            fmt.Printf("Warning: %s - %s\n", w.Rule.Code, w.Text)
 //	        }
 //	    }
 //	    return err
+//	} else {
+//	    // Validation passed, but check for recommendations
+//	    for _, w := range inv.Warnings() {
+//	        fmt.Printf("Recommendation: %s - %s\n", w.Rule.Code, w.Text)
+//	    }
 //	}
 func (inv *Invoice) Validate() error {
-	// Always clear previous violations to ensure idempotency
+	// Always clear previous violations and warnings to ensure idempotency
 	inv.violations = []SemanticError{}
+	inv.warnings = []SemanticError{}
 
 	// Determine if we should validate:
 	// - For parsed invoices (CII/UBL): Only validate if they claim EN 16931 compliance via BT-24
@@ -164,10 +251,14 @@ func (inv *Invoice) Validate() error {
 		}
 
 		// Auto-detect country-specific rules
-		// BR-DE-1 through BR-DE-31: Only for XRechnung invoices
+		// BR-DE-1 through BR-DE-31: Only for XRechnung invoices (errors)
 		if inv.isGerman() {
 			inv.validateGerman()
 		}
+
+		// BR-DE-21 warning: Applies to ALL German sellers, not just XRechnung
+		// This is a recommendation ("soll") that German sellers should use XRechnung
+		inv.validateGermanSpecIDWarning()
 
 		// TODO: Implement additional country-specific validation rules for:
 		//   - Denmark (isDanish)
@@ -177,11 +268,16 @@ func (inv *Invoice) Validate() error {
 		//   - Sweden (isSwedish)
 	}
 
-	// Return error if violations exist
+	// Return error if violations exist (include warnings for convenience)
 	if len(inv.violations) > 0 {
-		return &ValidationError{violations: inv.violations}
+		return &ValidationError{
+			violations: inv.violations,
+			warnings:   inv.warnings,
+		}
 	}
 
+	// No violations = success, even if warnings exist
+	// User can call inv.Warnings() to check for recommendations
 	return nil
 }
 
