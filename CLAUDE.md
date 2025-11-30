@@ -114,7 +114,7 @@ Each validation file contains a single method (e.g., `validateVATStandard()`) wi
 **Warnings vs Errors:**
 - Errors ("muss"/"must"): Hard requirement violations that fail validation
 - Warnings ("soll"/"should"): Recommendation violations reported but don't fail validation
-- Example: BR-DE-21 is a warning for German sellers not using XRechnung
+- Warning infrastructure available for future "soll" rules from various CIUS specifications
 - Access warnings via `Invoice.Warnings()` or `ValidationError.Warnings()`
 
 **Auto-Detection:**

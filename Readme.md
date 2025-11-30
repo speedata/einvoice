@@ -107,7 +107,7 @@ No need to call separate validation methods - `Validate()` handles everything au
 
 ### Warnings vs Errors
 
-The validation distinguishes between **errors** (hard requirements) and **warnings** (recommendations):
+The validation framework distinguishes between **errors** (hard requirements) and **warnings** (recommendations):
 
 - **Errors**: Violations of "must" requirements cause `Validate()` to return an error
 - **Warnings**: Violations of "should" recommendations don't fail validation but are reported
@@ -124,7 +124,7 @@ if err == nil {
 }
 ```
 
-For example, BR-DE-21 recommends that German sellers use XRechnung specification identifier. This is reported as a warning for German sellers using other profiles (Factur-X, PEPPOL), but doesn't fail validation.
+The warning infrastructure is available for future "should" (German: "soll") rules from various CIUS specifications.
 
 There is a [dedicated example](https://pkg.go.dev/github.com/speedata/einvoice#example-Invoice.Write) in [the documentation](https://pkg.go.dev/github.com/speedata/einvoice).
 

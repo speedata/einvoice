@@ -251,14 +251,10 @@ func (inv *Invoice) Validate() error {
 		}
 
 		// Auto-detect country-specific rules
-		// BR-DE-1 through BR-DE-31: Only for XRechnung invoices (errors)
+		// BR-DE-1 through BR-DE-31: Only for XRechnung invoices
 		if inv.isGerman() {
 			inv.validateGerman()
 		}
-
-		// BR-DE-21 warning: Applies to ALL German sellers, not just XRechnung
-		// This is a recommendation ("soll") that German sellers should use XRechnung
-		inv.validateGermanSpecIDWarning()
 
 		// TODO: Implement additional country-specific validation rules for:
 		//   - Denmark (isDanish)
