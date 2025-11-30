@@ -103,9 +103,19 @@ Each validation file contains a single method (e.g., `validateVATStandard()`) wi
   - Always validates EN 16931 core rules
   - Auto-detects PEPPOL based on specification identifier (BT-24)
   - Auto-detects country rules based on seller location (future: DK, IT, NL, NO, SE)
-  - Returns `ValidationError` if violations exist, nil if valid
+  - Returns `ValidationError` if violations (errors) exist, nil if valid
+  - Warnings do NOT cause validation to fail
+- Public: `Invoice.Warnings() []SemanticError` - Returns warnings from last Validate() call
+- Public: `Invoice.HasWarnings() bool` - Checks if warnings exist
 - Private: `Invoice.violations` field - use `Validate()` accessor
+- Private: `Invoice.warnings` field - use `Warnings()` accessor
 - Automatically runs during parsing; call explicitly when building invoices programmatically
+
+**Warnings vs Errors:**
+- Errors ("muss"/"must"): Hard requirement violations that fail validation
+- Warnings ("soll"/"should"): Recommendation violations reported but don't fail validation
+- Example: BR-DE-21 is a warning for German sellers not using XRechnung
+- Access warnings via `Invoice.Warnings()` or `ValidationError.Warnings()`
 
 **Auto-Detection:**
 The `Validate()` method uses intelligent auto-detection:
@@ -159,8 +169,15 @@ Profiles are ordered by inclusiveness: Extended (5) > EN16931/PEPPOL/XRechnung (
 **Business Rule Validation**
 - Rules are named per EN 16931 spec: BR-1, BR-CO-10, BR-S-8, etc.
 - `Validate()` returns `ValidationError` containing violations, or nil if valid
+- Warnings don't cause `Validate()` to return an error
 - Parsing succeeds even with violations (allows partial data recovery)
 - Access violations via `ValidationError.Violations()` or deprecated `Invoice.Violations()`
+- Access warnings via `Invoice.Warnings()` or `ValidationError.Warnings()`
+
+**Severity Levels (`rules/types.go`):**
+- `SeverityError`: Hard requirement violation ("muss"/"must") - fails validation
+- `SeverityWarning`: Recommendation violation ("soll"/"should") - reported but passes
+- `SeverityInfo`: Reserved for future use
 
 **Decimal Precision**
 All monetary amounts use `github.com/shopspring/decimal` for exact arithmetic. Tax calculations round to 2 decimal places. VAT percentage formatting removes trailing zeros via regex.
