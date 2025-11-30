@@ -26,8 +26,16 @@ if err != nil {
 	var valErr *einvoice.ValidationError
 	if errors.As(err, &valErr) {
 		for _, v := range valErr.Violations() {
-			fmt.Printf("Rule %s: %s\n", v.Rule, v.Text)
+			fmt.Printf("Error: %s - %s\n", v.Rule.Code, v.Text)
 		}
+		for _, w := range valErr.Warnings() {
+			fmt.Printf("Warning: %s - %s\n", w.Rule.Code, w.Text)
+		}
+	}
+} else {
+	// Validation passed - check for recommendations
+	for _, w := range invoice.Warnings() {
+		fmt.Printf("Recommendation: %s - %s\n", w.Rule.Code, w.Text)
 	}
 }
 ```
@@ -96,6 +104,27 @@ if err := inv.Validate(); err != nil {
 ```
 
 No need to call separate validation methods - `Validate()` handles everything automatically!
+
+### Warnings vs Errors
+
+The validation framework distinguishes between **errors** (hard requirements) and **warnings** (recommendations):
+
+- **Errors**: Violations of "must" requirements cause `Validate()` to return an error
+- **Warnings**: Violations of "should" recommendations don't fail validation but are reported
+
+```go
+err := invoice.Validate()
+if err == nil {
+	// Validation passed - but check for recommendations
+	if invoice.HasWarnings() {
+		for _, w := range invoice.Warnings() {
+			fmt.Printf("Recommendation: %s - %s\n", w.Rule.Code, w.Text)
+		}
+	}
+}
+```
+
+The warning infrastructure is available for future "should" (German: "soll") rules from various CIUS specifications.
 
 There is a [dedicated example](https://pkg.go.dev/github.com/speedata/einvoice#example-Invoice.Write) in [the documentation](https://pkg.go.dev/github.com/speedata/einvoice).
 
