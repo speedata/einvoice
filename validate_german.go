@@ -15,13 +15,10 @@ import (
 // XRechnung is the German implementation of EN 16931, required for invoices to
 // German public authorities and increasingly used in B2B scenarios.
 //
-// This validation applies when:
-// - The specification identifier (BT-24) matches an XRechnung URN, OR
-// - The seller is located in Germany (DE) and the invoice is EN 16931 compliant
+// This validation applies when the specification identifier (BT-24) matches
+// an XRechnung URN (detected via IsXRechnung()).
 //
-// BR-DE Rules Implemented:
-//
-// Presence Tests (mandatory fields):
+// BR-DE Rules Implemented (Errors - "muss"/"must"):
 //   - BR-DE-1:  Payment instructions (BG-16) must be provided
 //   - BR-DE-2:  Seller contact (BG-6) must be provided
 //   - BR-DE-3:  Seller city (BT-37) must be provided
@@ -35,21 +32,21 @@ import (
 //   - BR-DE-11: Deliver to post code (BT-78) must be provided if delivery address exists
 //   - BR-DE-15: Buyer reference (BT-10) must be provided (Leitweg-ID)
 //   - BR-DE-16: Seller identification required when using certain tax codes
-//   - BR-DE-30: Bank assigned creditor identifier (BT-90) for direct debit
-//   - BR-DE-31: Debited account identifier (BT-91) for direct debit
-//
-// Validation Tests (format and logic):
-//   - BR-DE-17: Invoice type code validation (UNTDID 1001)
-//   - BR-DE-18: Payment terms structured format (Skonto)
-//   - BR-DE-19: IBAN validation for SEPA credit transfer (code 58)
-//   - BR-DE-20: IBAN validation for SEPA direct debit (code 59)
-//   - BR-DE-21: Specification identifier must match XRechnung standard
 //   - BR-DE-23: Payment means requirements (codes 30, 58, 59)
 //   - BR-DE-24: Payment card information requirements (codes 48, 54)
 //   - BR-DE-25: Direct debit mandate requirements (code 59)
-//   - BR-DE-26: Corrected invoice must reference preceding invoice
-//   - BR-DE-27: Seller contact telephone must contain at least 3 digits
+//   - BR-DE-30: Bank assigned creditor identifier (BT-90) for direct debit
+//   - BR-DE-31: Debited account identifier (BT-91) for direct debit
+//
+// BR-DE Rules Implemented (Warnings - "soll"/"should"):
+//   - BR-DE-19: IBAN validation for SEPA credit transfer (code 58)
+//   - BR-DE-20: IBAN validation for SEPA direct debit (code 59)
+//   - BR-DE-26: Corrected invoice should reference preceding invoice
+//   - BR-DE-27: Seller contact telephone should contain at least 3 digits
 //   - BR-DE-28: Email address format validation
+//
+// Note: BR-DE-21 (specification identifier) is implicitly satisfied since this
+// method only runs for invoices identified as XRechnung via IsXRechnung().
 //
 // Reference: https://github.com/itplr-kosit/xrechnung-schematron
 func (inv *Invoice) validateGerman() {
@@ -86,10 +83,10 @@ func (inv *Invoice) validateGerman() {
 		if contact.PhoneNumber == "" {
 			inv.addViolation(rules.BRDE6, "The element 'Seller contact telephone number' (BT-42) must be transmitted")
 		} else {
-			// BR-DE-27: Telephone must contain at least 3 digits
+			// BR-DE-27: Telephone should contain at least 3 digits (warning per XRechnung schematron)
 			digitCount := countDigits(contact.PhoneNumber)
 			if digitCount < 3 {
-				inv.addViolation(rules.BRDE27, "Seller contact telephone number (BT-42) must contain at least three digits")
+				inv.addWarning(rules.BRDE27, "Seller contact telephone number (BT-42) should contain at least three digits")
 			}
 		}
 
@@ -97,9 +94,9 @@ func (inv *Invoice) validateGerman() {
 		if contact.EMail == "" {
 			inv.addViolation(rules.BRDE7, "The element 'Seller contact email address' (BT-43) must be transmitted")
 		} else {
-			// BR-DE-28: Email format validation
+			// BR-DE-28: Email format validation (warning per XRechnung schematron)
 			if !isValidEmail(contact.EMail) {
-				inv.addViolation(rules.BRDE28, "Email address must have valid format (one @, no leading/trailing dots, etc.)")
+				inv.addWarning(rules.BRDE28, "Email address should have valid format (one @, no leading/trailing dots, etc.)")
 			}
 		}
 	}
@@ -230,17 +227,17 @@ func (inv *Invoice) validateGerman() {
 			}
 		}
 
-		// BR-DE-19: IBAN validation for SEPA credit transfer
+		// BR-DE-19: IBAN validation for SEPA credit transfer (warning per XRechnung schematron)
 		if pm.TypeCode == 58 {
 			if pm.PayeePartyCreditorFinancialAccountIBAN != "" && !isValidIBAN(pm.PayeePartyCreditorFinancialAccountIBAN) {
-				inv.addViolation(rules.BRDE19, "Payment account identifier (BT-84) must be a valid IBAN when using SEPA credit transfer (code 58)")
+				inv.addWarning(rules.BRDE19, "Payment account identifier (BT-84) should be a valid IBAN when using SEPA credit transfer (code 58)")
 			}
 		}
 
-		// BR-DE-20: IBAN validation for SEPA direct debit
+		// BR-DE-20: IBAN validation for SEPA direct debit (warning per XRechnung schematron)
 		if pm.TypeCode == 59 {
 			if pm.PayerPartyDebtorFinancialAccountIBAN != "" && !isValidIBAN(pm.PayerPartyDebtorFinancialAccountIBAN) {
-				inv.addViolation(rules.BRDE20, "Debited account identifier (BT-91) must be a valid IBAN when using SEPA direct debit (code 59)")
+				inv.addWarning(rules.BRDE20, "Debited account identifier (BT-91) should be a valid IBAN when using SEPA direct debit (code 59)")
 			}
 		}
 
@@ -258,10 +255,10 @@ func (inv *Invoice) validateGerman() {
 		}
 	}
 
-	// BR-DE-26: Corrected invoice must reference preceding invoice
+	// BR-DE-26: Corrected invoice should reference preceding invoice (warning per XRechnung schematron)
 	if int(inv.InvoiceTypeCode) == 384 {
 		if len(inv.InvoiceReferencedDocument) == 0 {
-			inv.addViolation(rules.BRDE26, "If invoice type code (BT-3) is 384 (Corrected invoice), PRECEDING INVOICE REFERENCE (BG-3) must be provided")
+			inv.addWarning(rules.BRDE26, "If invoice type code (BT-3) is 384 (Corrected invoice), PRECEDING INVOICE REFERENCE (BG-3) should be provided")
 		}
 	}
 }

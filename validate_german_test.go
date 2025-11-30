@@ -561,41 +561,42 @@ func TestGermanValidation_BRDE21_SpecificationIdentifier(t *testing.T) {
 
 // TestGermanValidation_BRDE19_20_IBANValidation tests BR-DE-19 and BR-DE-20:
 // IBAN validation for SEPA credit transfer and direct debit.
+// These are warning-level rules per XRechnung schematron.
 func TestGermanValidation_BRDE19_20_IBANValidation(t *testing.T) {
 	tests := []struct {
-		name          string
-		typeCode      int
-		iban          string
-		wantViolation bool
-		ruleCode      rules.Rule
+		name        string
+		typeCode    int
+		iban        string
+		wantWarning bool
+		ruleCode    rules.Rule
 	}{
 		{
-			name:          "valid: SEPA credit transfer with valid IBAN",
-			typeCode:      58,
-			iban:          "DE89370400440532013000",
-			wantViolation: false,
-			ruleCode:      rules.BRDE19,
+			name:        "valid: SEPA credit transfer with valid IBAN",
+			typeCode:    58,
+			iban:        "DE89370400440532013000",
+			wantWarning: false,
+			ruleCode:    rules.BRDE19,
 		},
 		{
-			name:          "invalid: SEPA credit transfer with invalid IBAN",
-			typeCode:      58,
-			iban:          "INVALID",
-			wantViolation: true,
-			ruleCode:      rules.BRDE19,
+			name:        "warning: SEPA credit transfer with invalid IBAN",
+			typeCode:    58,
+			iban:        "INVALID",
+			wantWarning: true,
+			ruleCode:    rules.BRDE19,
 		},
 		{
-			name:          "valid: SEPA direct debit with valid IBAN",
-			typeCode:      59,
-			iban:          "DE89370400440532013000",
-			wantViolation: false,
-			ruleCode:      rules.BRDE20,
+			name:        "valid: SEPA direct debit with valid IBAN",
+			typeCode:    59,
+			iban:        "DE89370400440532013000",
+			wantWarning: false,
+			ruleCode:    rules.BRDE20,
 		},
 		{
-			name:          "invalid: SEPA direct debit with invalid IBAN",
-			typeCode:      59,
-			iban:          "123",
-			wantViolation: true,
-			ruleCode:      rules.BRDE20,
+			name:        "warning: SEPA direct debit with invalid IBAN",
+			typeCode:    59,
+			iban:        "123",
+			wantWarning: true,
+			ruleCode:    rules.BRDE20,
 		},
 	}
 
@@ -609,48 +610,49 @@ func TestGermanValidation_BRDE19_20_IBANValidation(t *testing.T) {
 				}}
 			} else {
 				inv.PaymentMeans = []PaymentMeans{{
-					TypeCode:                          tt.typeCode,
+					TypeCode:                             tt.typeCode,
 					PayerPartyDebtorFinancialAccountIBAN: tt.iban,
 				}}
 				inv.CreditorReferenceID = "DE98ZZZ09999999999"
 			}
 
-			err := inv.Validate()
-			hasViolation := hasRuleViolation(err, tt.ruleCode)
+			_ = inv.Validate()
+			hasWarning := hasRuleWarning(inv, tt.ruleCode)
 
-			if hasViolation != tt.wantViolation {
-				t.Errorf("%s violation = %v, want %v", tt.ruleCode.Code, hasViolation, tt.wantViolation)
+			if hasWarning != tt.wantWarning {
+				t.Errorf("%s warning = %v, want %v", tt.ruleCode.Code, hasWarning, tt.wantWarning)
 			}
 		})
 	}
 }
 
 // TestGermanValidation_BRDE26_CorrectedInvoice tests BR-DE-26:
-// Corrected invoice must reference preceding invoice.
+// Corrected invoice should reference preceding invoice.
+// This is a warning-level rule per XRechnung schematron.
 func TestGermanValidation_BRDE26_CorrectedInvoice(t *testing.T) {
 	tests := []struct {
-		name          string
-		typeCode      CodeDocument
-		hasReference  bool
-		wantViolation bool
+		name        string
+		typeCode    CodeDocument
+		hasReference bool
+		wantWarning bool
 	}{
 		{
-			name:          "valid: corrected invoice with reference",
-			typeCode:      384,
-			hasReference:  true,
-			wantViolation: false,
+			name:        "valid: corrected invoice with reference",
+			typeCode:    384,
+			hasReference: true,
+			wantWarning: false,
 		},
 		{
-			name:          "invalid: corrected invoice without reference",
-			typeCode:      384,
-			hasReference:  false,
-			wantViolation: true,
+			name:        "warning: corrected invoice without reference",
+			typeCode:    384,
+			hasReference: false,
+			wantWarning: true,
 		},
 		{
-			name:          "valid: regular invoice without reference",
-			typeCode:      380,
-			hasReference:  false,
-			wantViolation: false,
+			name:        "valid: regular invoice without reference",
+			typeCode:    380,
+			hasReference: false,
+			wantWarning: false,
 		},
 	}
 
@@ -664,43 +666,44 @@ func TestGermanValidation_BRDE26_CorrectedInvoice(t *testing.T) {
 				inv.InvoiceReferencedDocument = []ReferencedDocument{}
 			}
 
-			err := inv.Validate()
-			hasViolation := hasRuleViolation(err, rules.BRDE26)
+			_ = inv.Validate()
+			hasWarning := hasRuleWarning(inv, rules.BRDE26)
 
-			if hasViolation != tt.wantViolation {
-				t.Errorf("BR-DE-26 violation = %v, want %v", hasViolation, tt.wantViolation)
+			if hasWarning != tt.wantWarning {
+				t.Errorf("BR-DE-26 warning = %v, want %v", hasWarning, tt.wantWarning)
 			}
 		})
 	}
 }
 
 // TestGermanValidation_BRDE27_PhoneDigits tests BR-DE-27:
-// Seller contact telephone must contain at least 3 digits.
+// Seller contact telephone should contain at least 3 digits.
+// This is a warning-level rule per XRechnung schematron.
 func TestGermanValidation_BRDE27_PhoneDigits(t *testing.T) {
 	tests := []struct {
-		name          string
-		phone         string
-		wantViolation bool
+		name        string
+		phone       string
+		wantWarning bool
 	}{
 		{
-			name:          "valid: phone with many digits",
-			phone:         "+49 30 1234567",
-			wantViolation: false,
+			name:        "valid: phone with many digits",
+			phone:       "+49 30 1234567",
+			wantWarning: false,
 		},
 		{
-			name:          "valid: phone with exactly 3 digits",
-			phone:         "123",
-			wantViolation: false,
+			name:        "valid: phone with exactly 3 digits",
+			phone:       "123",
+			wantWarning: false,
 		},
 		{
-			name:          "invalid: phone with 2 digits",
-			phone:         "12",
-			wantViolation: true,
+			name:        "warning: phone with 2 digits",
+			phone:       "12",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: no digits",
-			phone:         "are known",
-			wantViolation: true,
+			name:        "warning: no digits",
+			phone:       "are known",
+			wantWarning: true,
 		},
 	}
 
@@ -711,68 +714,69 @@ func TestGermanValidation_BRDE27_PhoneDigits(t *testing.T) {
 				inv.Seller.DefinedTradeContact[0].PhoneNumber = tt.phone
 			}
 
-			err := inv.Validate()
-			hasViolation := hasRuleViolation(err, rules.BRDE27)
+			_ = inv.Validate()
+			hasWarning := hasRuleWarning(inv, rules.BRDE27)
 
-			if hasViolation != tt.wantViolation {
-				t.Errorf("BR-DE-27 violation = %v, want %v", hasViolation, tt.wantViolation)
+			if hasWarning != tt.wantWarning {
+				t.Errorf("BR-DE-27 warning = %v, want %v", hasWarning, tt.wantWarning)
 			}
 		})
 	}
 }
 
 // TestGermanValidation_BRDE28_EmailFormat tests BR-DE-28:
-// Email address must have valid format.
+// Email address should have valid format.
+// This is a warning-level rule per XRechnung schematron.
 func TestGermanValidation_BRDE28_EmailFormat(t *testing.T) {
 	tests := []struct {
-		name          string
-		email         string
-		wantViolation bool
+		name        string
+		email       string
+		wantWarning bool
 	}{
 		{
-			name:          "valid: normal email",
-			email:         "test@example.com",
-			wantViolation: false,
+			name:        "valid: normal email",
+			email:       "test@example.com",
+			wantWarning: false,
 		},
 		{
-			name:          "invalid: no @",
-			email:         "testexample.com",
-			wantViolation: true,
+			name:        "warning: no @",
+			email:       "testexample.com",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: multiple @",
-			email:         "test@@example.com",
-			wantViolation: true,
+			name:        "warning: multiple @",
+			email:       "test@@example.com",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: starts with dot",
-			email:         ".test@example.com",
-			wantViolation: true,
+			name:        "warning: starts with dot",
+			email:       ".test@example.com",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: ends with dot",
-			email:         "test@example.com.",
-			wantViolation: true,
+			name:        "warning: ends with dot",
+			email:       "test@example.com.",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: dot before @",
-			email:         "test.@example.com",
-			wantViolation: true,
+			name:        "warning: dot before @",
+			email:       "test.@example.com",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: dot after @",
-			email:         "test@.example.com",
-			wantViolation: true,
+			name:        "warning: dot after @",
+			email:       "test@.example.com",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: local part too short",
-			email:         "t@example.com",
-			wantViolation: true,
+			name:        "warning: local part too short",
+			email:       "t@example.com",
+			wantWarning: true,
 		},
 		{
-			name:          "invalid: domain part too short",
-			email:         "test@e",
-			wantViolation: true,
+			name:        "warning: domain part too short",
+			email:       "test@e",
+			wantWarning: true,
 		},
 	}
 
@@ -783,11 +787,11 @@ func TestGermanValidation_BRDE28_EmailFormat(t *testing.T) {
 				inv.Seller.DefinedTradeContact[0].EMail = tt.email
 			}
 
-			err := inv.Validate()
-			hasViolation := hasRuleViolation(err, rules.BRDE28)
+			_ = inv.Validate()
+			hasWarning := hasRuleWarning(inv, rules.BRDE28)
 
-			if hasViolation != tt.wantViolation {
-				t.Errorf("BR-DE-28 violation = %v, want %v for email %q", hasViolation, tt.wantViolation, tt.email)
+			if hasWarning != tt.wantWarning {
+				t.Errorf("BR-DE-28 warning = %v, want %v for email %q", hasWarning, tt.wantWarning, tt.email)
 			}
 		})
 	}
@@ -1084,4 +1088,14 @@ func hasRuleViolation(err error, rule rules.Rule) bool {
 	}
 
 	return valErr.HasRule(rule)
+}
+
+// hasRuleWarning checks if an invoice has a specific rule warning.
+func hasRuleWarning(inv *Invoice, rule rules.Rule) bool {
+	for _, w := range inv.Warnings() {
+		if w.Rule.Code == rule.Code {
+			return true
+		}
+	}
+	return false
 }

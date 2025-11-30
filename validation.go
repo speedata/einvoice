@@ -151,9 +151,7 @@ func (inv *Invoice) addViolation(rule rules.Rule, text string) {
 //
 // Example:
 //
-//	inv.addWarning(rules.BRDE17, "Invoice type code should be within expected range")
-//
-//nolint:unused // Reserved for future warning-level validation rules
+//	inv.addWarning(rules.BRDE27, "Seller contact telephone should contain at least three digits")
 func (inv *Invoice) addWarning(rule rules.Rule, text string) {
 	inv.warnings = append(inv.warnings, SemanticError{
 		Rule: rule,
