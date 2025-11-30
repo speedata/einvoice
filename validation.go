@@ -151,7 +151,9 @@ func (inv *Invoice) addViolation(rule rules.Rule, text string) {
 //
 // Example:
 //
-//	inv.addWarning(rules.BRDE21, "German sellers should use XRechnung specification identifier")
+//	inv.addWarning(rules.BRDE17, "Invoice type code should be within expected range")
+//
+//nolint:unused // Reserved for future warning-level validation rules
 func (inv *Invoice) addWarning(rule rules.Rule, text string) {
 	inv.warnings = append(inv.warnings, SemanticError{
 		Rule: rule,
