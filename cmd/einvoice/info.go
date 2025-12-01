@@ -36,6 +36,8 @@ type NoteInfo struct {
 type InvoiceDetails struct {
 	Number                       string                `json:"number"`
 	Date                         string                `json:"date"`
+	BillingPeriodStart           string                `json:"billing_period_start,omitempty"`
+	BillingPeriodEnd             string                `json:"billing_period_end,omitempty"`
 	Type                         string                `json:"type"`
 	Profile                      string                `json:"profile"`
 	ProfileURN                   string                `json:"profile_urn,omitempty"`
@@ -329,6 +331,13 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	// Format date
 	if !invoice.InvoiceDate.IsZero() {
 		details.Date = invoice.InvoiceDate.Format("2006-01-02")
+	}
+
+	if !invoice.BillingSpecifiedPeriodStart.IsZero() {
+		details.BillingPeriodStart = invoice.BillingSpecifiedPeriodStart.Format("2006-01-02")
+	}
+	if !invoice.BillingSpecifiedPeriodEnd.IsZero() {
+		details.BillingPeriodEnd = invoice.BillingSpecifiedPeriodEnd.Format("2006-01-02")
 	}
 
 	// Extract seller information

@@ -25,6 +25,9 @@
 {{ underline "Invoice Information" }}
 Invoice Number:  {{ .Number }}
 Date:            {{ .Date }}
+{{- if or (nonempty .BillingPeriodStart) (nonempty .BillingPeriodEnd) }}
+Billing Period:  {{ .BillingPeriodStart }}{{ if and (nonempty .BillingPeriodStart) (nonempty .BillingPeriodEnd) }}–{{ end }}{{ .BillingPeriodEnd }}
+{{- end }}
 Type:            {{ .Type }}
 Profile:         {{ .Profile }}
 {{- with .BusinessProcess }}
