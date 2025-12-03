@@ -538,20 +538,20 @@ func (inv *Invoice) validateCore() {
 			if ac.Reason == "" && ac.ReasonCode == "" {
 				inv.addViolation(rules.BR38, "Charge reason empty or code unset")
 			}
-			// BR-39 Zuschläge auf Dokumentenebene
-			// Der Betrag einer Abgabe auf Dokumentenebene "Document level charge amount" (BT-99) darf nicht negativ sein.
-			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-			if !allowsNegativeAmounts() && ac.ActualAmount.LessThan(decimal.Zero) {
-				inv.addViolation(rules.BR39, "Document level charge amount must not be negative")
-			}
-			// BR-40 Zuschläge auf Dokumentenebene
-			// Der Basisbetrag einer Abgabe auf Dokumentenebene "Document level charge base amount" (BT-100) darf nicht negativ sein.
-			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-			if !allowsNegativeAmounts() && ac.BasisAmount.LessThan(decimal.Zero) {
-				inv.addViolation(rules.BR40, "Document level charge base amount must not be negative")
-			}
-		} else {
-			// BR-31 Abschläge auf Dokumentenebene
+				// BR-USER-03 Zuschläge auf Dokumentenebene
+				// Der Betrag einer Abgabe auf Dokumentenebene "Document level charge amount" (BT-99) darf nicht negativ sein.
+				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+				if !allowsNegativeAmounts() && ac.ActualAmount.LessThan(decimal.Zero) {
+					inv.addViolation(rules.BRUSER03, "Document level charge amount must not be negative")
+				}
+				// BR-USER-04 Zuschläge auf Dokumentenebene
+				// Der Basisbetrag einer Abgabe auf Dokumentenebene "Document level charge base amount" (BT-100) darf nicht negativ sein.
+				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+				if !allowsNegativeAmounts() && ac.BasisAmount.LessThan(decimal.Zero) {
+					inv.addViolation(rules.BRUSER04, "Document level charge base amount must not be negative")
+				}
+			} else {
+				// BR-31 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag "Document level allowance amount"
 			// (BT-92) aufweisen.
 			if ac.ActualAmount.IsZero() {
@@ -569,20 +569,20 @@ func (inv *Invoice) validateCore() {
 			if ac.Reason == "" && ac.ReasonCode == "" {
 				inv.addViolation(rules.BR33, "Allowance reason empty or code unset")
 			}
-			// BR-34 Abschläge auf Dokumentenebene
-			// Der Betrag eines Nachlasses auf Dokumentenebene "Document level allowance amount" (BT-92) darf nicht negativ sein.
-			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-			if !allowsNegativeAmounts() && ac.ActualAmount.LessThan(decimal.Zero) {
-				inv.addViolation(rules.BR34, "Document level allowance amount must not be negative")
-			}
-			// BR-35 Abschläge auf Dokumentenebene
-			// Der Basisbetrag eines Nachlasses auf Dokumentenebene "Document level allowance base amount" (BT-93) darf nicht negativ sein.
-			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-			if !allowsNegativeAmounts() && ac.BasisAmount.LessThan(decimal.Zero) {
-				inv.addViolation(rules.BR35, "Document level allowance base amount must not be negative")
+				// BR-USER-01 Abschläge auf Dokumentenebene
+				// Der Betrag eines Nachlasses auf Dokumentenebene "Document level allowance amount" (BT-92) darf nicht negativ sein.
+				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+				if !allowsNegativeAmounts() && ac.ActualAmount.LessThan(decimal.Zero) {
+					inv.addViolation(rules.BRUSER01, "Document level allowance amount must not be negative")
+				}
+				// BR-USER-02 Abschläge auf Dokumentenebene
+				// Der Basisbetrag eines Nachlasses auf Dokumentenebene "Document level allowance base amount" (BT-93) darf nicht negativ sein.
+				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+				if !allowsNegativeAmounts() && ac.BasisAmount.LessThan(decimal.Zero) {
+					inv.addViolation(rules.BRUSER02, "Document level allowance base amount must not be negative")
+				}
 			}
 		}
-	}
 
 	for _, line := range inv.InvoiceLines {
 		// BR-41 Abschläge auf Ebene der Rechnungsposition
