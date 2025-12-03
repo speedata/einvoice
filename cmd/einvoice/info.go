@@ -34,26 +34,45 @@ type NoteInfo struct {
 
 // InvoiceDetails contains detailed invoice information
 type InvoiceDetails struct {
-	Number                       string                `json:"number"`
-	Date                         string                `json:"date"`
-	BillingPeriodStart           string                `json:"billing_period_start,omitempty"`
-	BillingPeriodEnd             string                `json:"billing_period_end,omitempty"`
-	Type                         string                `json:"type"`
-	Profile                      string                `json:"profile"`
-	ProfileURN                   string                `json:"profile_urn,omitempty"`
-	BusinessProcess              string                `json:"business_process,omitempty"`
-	Currency                     string                `json:"currency"`
-	BuyerOrderReferencedDocument string                `json:"buyer_order_referenced_document,omitempty"`
-	Seller                       *PartyInfo            `json:"seller"`
-	Buyer                        *PartyInfo            `json:"buyer"`
-	Lines                        []LineInfo            `json:"lines,omitempty"`
-	LineCount                    int                   `json:"line_count"`
-	Totals                       *TotalsInfo           `json:"totals"`
-	PaymentTerms                 []string              `json:"payment_terms,omitempty"`
-	TradeTax                     []TaxInfo             `json:"trade_tax,omitempty"`
-	ChargeAllowances             []ChargeAllowanceInfo `json:"charge_allowances,omitempty"`
-	Notes                        []NoteInfo            `json:"notes,omitempty"`
-	TermWidth                    int                   `json:"-"`
+	Number                            string                `json:"number"`
+	Date                              string                `json:"date"`
+	BillingPeriodStart                string                `json:"billing_period_start,omitempty"`
+	BillingPeriodEnd                  string                `json:"billing_period_end,omitempty"`
+	OccurrenceDate                    string                `json:"occurrence_date,omitempty"`
+	Type                              string                `json:"type"`
+	Profile                           string                `json:"profile"`
+	ProfileURN                        string                `json:"profile_urn,omitempty"`
+	BusinessProcess                   string                `json:"business_process,omitempty"`
+	Currency                          string                `json:"currency"`
+	TaxCurrency                       string                `json:"tax_currency,omitempty"`
+	TaxTotalCurrency                  string                `json:"tax_total_currency,omitempty"`
+	TaxTotalAccountingCurrency        string                `json:"tax_total_accounting_currency,omitempty"`
+	BuyerReference                    string                `json:"buyer_reference,omitempty"`
+	BuyerOrderReferencedDocument      string                `json:"buyer_order_referenced_document,omitempty"`
+	SellerOrderReferencedDocument     string                `json:"seller_order_referenced_document,omitempty"`
+	ContractReferencedDocument        string                `json:"contract_referenced_document,omitempty"`
+	DespatchAdviceReferencedDocument  string                `json:"despatch_advice_referenced_document,omitempty"`
+	ReceivingAdviceReferencedDocument string                `json:"receiving_advice_referenced_document,omitempty"`
+	ProcuringProjectID                string                `json:"procuring_project_id,omitempty"`
+	ProcuringProjectName              string                `json:"procuring_project_name,omitempty"`
+	ReceivableAccountingAccount       string                `json:"receivable_accounting_account,omitempty"`
+	InvoiceReferences                 []ReferenceInfo       `json:"invoice_references,omitempty"`
+	AdditionalReferences              []DocumentInfo        `json:"additional_references,omitempty"`
+	Seller                            *PartyInfo            `json:"seller"`
+	Buyer                             *PartyInfo            `json:"buyer"`
+	Payee                             *PartyInfo            `json:"payee,omitempty"`
+	SellerTaxRepresentative           *PartyInfo            `json:"seller_tax_representative,omitempty"`
+	ShipTo                            *PartyInfo            `json:"ship_to,omitempty"`
+	PaymentMeans                      []PaymentMeansInfo    `json:"payment_means,omitempty"`
+	Lines                             []LineInfo            `json:"lines,omitempty"`
+	LineCount                         int                   `json:"line_count"`
+	Totals                            *TotalsInfo           `json:"totals"`
+	PaymentTerms                      []string              `json:"payment_terms,omitempty"`
+	PaymentTermsDetailed              []PaymentTermInfo     `json:"payment_terms_detailed,omitempty"`
+	TradeTax                          []TaxInfo             `json:"trade_tax,omitempty"`
+	ChargeAllowances                  []ChargeAllowanceInfo `json:"charge_allowances,omitempty"`
+	Notes                             []NoteInfo            `json:"notes,omitempty"`
+	TermWidth                         int                   `json:"-"`
 }
 
 // PartyInfo contains party details
@@ -99,6 +118,42 @@ type TotalsInfo struct {
 	TotalPrepaid     string `json:"total_prepaid,omitempty"`
 	RoundingAmount   string `json:"rounding_amount,omitempty"`
 	DuePayableAmount string `json:"due_payable_amount"`
+}
+
+// ReferenceInfo contains invoice reference details (BG-3).
+type ReferenceInfo struct {
+	ID   string `json:"id"`
+	Date string `json:"date,omitempty"`
+}
+
+// DocumentInfo contains additional reference details (BG-24).
+type DocumentInfo struct {
+	ID                string `json:"id,omitempty"`
+	URI               string `json:"uri,omitempty"`
+	TypeCode          string `json:"type_code,omitempty"`
+	ReferenceTypeCode string `json:"reference_type_code,omitempty"`
+	Name              string `json:"name,omitempty"`
+	Filename          string `json:"filename,omitempty"`
+}
+
+// PaymentMeansInfo contains payment means details.
+type PaymentMeansInfo struct {
+	TypeCode           int    `json:"type_code,omitempty"`
+	Information        string `json:"information,omitempty"`
+	PayeeIBAN          string `json:"payee_iban,omitempty"`
+	PayeeAccountName   string `json:"payee_account_name,omitempty"`
+	PayeeProprietaryID string `json:"payee_proprietary_id,omitempty"`
+	PayeeBIC           string `json:"payee_bic,omitempty"`
+	PayerIBAN          string `json:"payer_iban,omitempty"`
+	CardID             string `json:"card_id,omitempty"`
+	CardholderName     string `json:"cardholder_name,omitempty"`
+}
+
+// PaymentTermInfo contains detailed payment term data.
+type PaymentTermInfo struct {
+	Description          string `json:"description,omitempty"`
+	DueDate              string `json:"due_date,omitempty"`
+	DirectDebitMandateID string `json:"direct_debit_mandate_id,omitempty"`
 }
 
 // TaxInfo contains tax breakdown details
@@ -304,6 +359,47 @@ func formatTextSubjectQualifier(code string, showCodes bool, verbose bool) strin
 	return description
 }
 
+func partyInfoFromParty(p *einvoice.Party, showCodes bool, verbose bool) *PartyInfo {
+	if p == nil {
+		return nil
+	}
+
+	info := &PartyInfo{
+		Name:      p.Name,
+		VATNumber: p.VATaxRegistration,
+		TaxNumber: p.FCTaxRegistration,
+		ID:        strings.Join(p.ID, ", "),
+	}
+
+	if len(p.GlobalID) > 0 {
+		var gids []string
+		for _, gid := range p.GlobalID {
+			if gid.ID == "" {
+				continue
+			}
+			if gid.Scheme != "" {
+				gids = append(gids, fmt.Sprintf("%s:%s", gid.Scheme, gid.ID))
+			} else {
+				gids = append(gids, gid.ID)
+			}
+		}
+		info.GlobalID = strings.Join(gids, ", ")
+	}
+
+	if p.PostalAddress != nil {
+		info.Address = &AddressInfo{
+			Line1:      p.PostalAddress.Line1,
+			Line2:      p.PostalAddress.Line2,
+			Line3:      p.PostalAddress.Line3,
+			City:       p.PostalAddress.City,
+			PostalCode: p.PostalAddress.PostcodeCode,
+			Country:    p.PostalAddress.CountryID,
+		}
+	}
+
+	return info
+}
+
 func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	info := InvoiceInfo{
 		File: filename,
@@ -319,13 +415,17 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	// Extract invoice details
 	typeCode := invoice.InvoiceTypeCode.String()
 	details := &InvoiceDetails{
-		Number:          invoice.InvoiceNumber,
-		Type:            formatDocumentType(typeCode, showCodes, verbose),
-		Profile:         einvoice.GetProfileName(invoice.GuidelineSpecifiedDocumentContextParameter),
-		ProfileURN:      invoice.GuidelineSpecifiedDocumentContextParameter,
-		BusinessProcess: invoice.BPSpecifiedDocumentContextParameter,
-		Currency:        invoice.InvoiceCurrencyCode,
-		LineCount:       len(invoice.InvoiceLines),
+		Number:                     invoice.InvoiceNumber,
+		Type:                       formatDocumentType(typeCode, showCodes, verbose),
+		Profile:                    einvoice.GetProfileName(invoice.GuidelineSpecifiedDocumentContextParameter),
+		ProfileURN:                 invoice.GuidelineSpecifiedDocumentContextParameter,
+		BusinessProcess:            invoice.BPSpecifiedDocumentContextParameter,
+		Currency:                   invoice.InvoiceCurrencyCode,
+		TaxCurrency:                invoice.TaxCurrencyCode,
+		TaxTotalCurrency:           invoice.TaxTotalCurrency,
+		TaxTotalAccountingCurrency: invoice.TaxTotalAccountingCurrency,
+		BuyerReference:             invoice.BuyerReference,
+		LineCount:                  len(invoice.InvoiceLines),
 	}
 
 	// Format date
@@ -339,67 +439,28 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	if !invoice.BillingSpecifiedPeriodEnd.IsZero() {
 		details.BillingPeriodEnd = invoice.BillingSpecifiedPeriodEnd.Format("2006-01-02")
 	}
+	if !invoice.OccurrenceDateTime.IsZero() {
+		details.OccurrenceDate = invoice.OccurrenceDateTime.Format("2006-01-02")
+	}
+
+	details.DespatchAdviceReferencedDocument = invoice.DespatchAdviceReferencedDocument
+	details.ReceivingAdviceReferencedDocument = invoice.ReceivingAdviceReferencedDocument
+	details.BuyerOrderReferencedDocument = invoice.BuyerOrderReferencedDocument
+	details.SellerOrderReferencedDocument = invoice.SellerOrderReferencedDocument
+	details.ContractReferencedDocument = invoice.ContractReferencedDocument
+	details.BuyerReference = invoice.BuyerReference
+	details.ProcuringProjectID = invoice.SpecifiedProcuringProjectID
+	details.ProcuringProjectName = invoice.SpecifiedProcuringProjectName
+	details.ReceivableAccountingAccount = invoice.ReceivableSpecifiedTradeAccountingAccount
 
 	// Extract seller information
-	details.Seller = &PartyInfo{
-		ID:        strings.Join(invoice.Seller.ID, ", "),
-		Name:      invoice.Seller.Name,
-		VATNumber: invoice.Seller.VATaxRegistration,
-		TaxNumber: invoice.Seller.FCTaxRegistration,
-	}
-	// Add each global id in the form "scheme:id" to GlobalID
-	if len(invoice.Seller.GlobalID) > 0 {
-		var gids []string
-		for _, gid := range invoice.Seller.GlobalID {
-			if gid.ID != "" && gid.Scheme != "" {
-				gids = append(gids, fmt.Sprintf("%s:%s", gid.Scheme, gid.ID))
-			} else if gid.ID != "" {
-				gids = append(gids, gid.ID)
-			}
-		}
-		details.Seller.GlobalID = strings.Join(gids, ", ")
-	}
-
-	if invoice.Seller.PostalAddress != nil {
-		details.Seller.Address = &AddressInfo{
-			Line1:      invoice.Seller.PostalAddress.Line1,
-			Line2:      invoice.Seller.PostalAddress.Line2,
-			Line3:      invoice.Seller.PostalAddress.Line3,
-			City:       invoice.Seller.PostalAddress.City,
-			PostalCode: invoice.Seller.PostalAddress.PostcodeCode,
-			Country:    invoice.Seller.PostalAddress.CountryID,
-		}
-	}
+	details.Seller = partyInfoFromParty(&invoice.Seller, showCodes, verbose)
 
 	// Extract buyer information
-	details.Buyer = &PartyInfo{
-		ID:        strings.Join(invoice.Buyer.ID, ", "),
-		Name:      invoice.Buyer.Name,
-		VATNumber: invoice.Buyer.VATaxRegistration,
-	}
-	// Add each global id in the form "scheme:id" to GlobalID
-	if len(invoice.Buyer.GlobalID) > 0 {
-		var gids []string
-		for _, gid := range invoice.Buyer.GlobalID {
-			if gid.ID != "" && gid.Scheme != "" {
-				gids = append(gids, fmt.Sprintf("%s:%s", gid.Scheme, gid.ID))
-			} else if gid.ID != "" {
-				gids = append(gids, gid.ID)
-			}
-		}
-		details.Buyer.GlobalID = strings.Join(gids, ", ")
-	}
-
-	if invoice.Buyer.PostalAddress != nil {
-		details.Buyer.Address = &AddressInfo{
-			Line1:      invoice.Buyer.PostalAddress.Line1,
-			Line2:      invoice.Buyer.PostalAddress.Line2,
-			Line3:      invoice.Buyer.PostalAddress.Line3,
-			City:       invoice.Buyer.PostalAddress.City,
-			PostalCode: invoice.Buyer.PostalAddress.PostcodeCode,
-			Country:    invoice.Buyer.PostalAddress.CountryID,
-		}
-	}
+	details.Buyer = partyInfoFromParty(&invoice.Buyer, showCodes, verbose)
+	details.Payee = partyInfoFromParty(invoice.PayeeTradeParty, showCodes, verbose)
+	details.SellerTaxRepresentative = partyInfoFromParty(invoice.SellerTaxRepresentativeTradeParty, showCodes, verbose)
+	details.ShipTo = partyInfoFromParty(invoice.ShipTo, showCodes, verbose)
 
 	// Extract invoice lines
 	details.Lines = make([]LineInfo, 0, len(invoice.InvoiceLines))
@@ -451,9 +512,22 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 
 	// Extract payment terms
 	details.PaymentTerms = make([]string, 0, len(invoice.SpecifiedTradePaymentTerms))
+	details.PaymentTermsDetailed = make([]PaymentTermInfo, 0, len(invoice.SpecifiedTradePaymentTerms))
 	for _, term := range invoice.SpecifiedTradePaymentTerms {
 		if term.Description != "" {
 			details.PaymentTerms = append(details.PaymentTerms, term.Description)
+		}
+		pt := PaymentTermInfo{
+			Description: term.Description,
+		}
+		if !term.DueDate.IsZero() {
+			pt.DueDate = term.DueDate.Format("2006-01-02")
+		}
+		if term.DirectDebitMandateID != "" {
+			pt.DirectDebitMandateID = term.DirectDebitMandateID
+		}
+		if pt.Description != "" || pt.DueDate != "" || pt.DirectDebitMandateID != "" {
+			details.PaymentTermsDetailed = append(details.PaymentTermsDetailed, pt)
 		}
 	}
 
@@ -497,6 +571,51 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 		}
 		details.ChargeAllowances = append(details.ChargeAllowances, caInfo)
 	}
+
+	// Extract payment means
+	for _, pm := range invoice.PaymentMeans {
+		pmInfo := PaymentMeansInfo{
+			TypeCode:           pm.TypeCode,
+			Information:        pm.Information,
+			PayeeIBAN:          pm.PayeePartyCreditorFinancialAccountIBAN,
+			PayeeAccountName:   pm.PayeePartyCreditorFinancialAccountName,
+			PayeeProprietaryID: pm.PayeePartyCreditorFinancialAccountProprietaryID,
+			PayeeBIC:           pm.PayeeSpecifiedCreditorFinancialInstitutionBIC,
+			PayerIBAN:          pm.PayerPartyDebtorFinancialAccountIBAN,
+			CardID:             pm.ApplicableTradeSettlementFinancialCardID,
+			CardholderName:     pm.ApplicableTradeSettlementFinancialCardCardholderName,
+		}
+		details.PaymentMeans = append(details.PaymentMeans, pmInfo)
+	}
+
+	// Extract invoice references (BG-3)
+	for _, ref := range invoice.InvoiceReferencedDocument {
+		refInfo := ReferenceInfo{
+			ID: ref.ID,
+		}
+		if !ref.Date.IsZero() {
+			refInfo.Date = ref.Date.Format("2006-01-02")
+		}
+		if refInfo.ID != "" || refInfo.Date != "" {
+			details.InvoiceReferences = append(details.InvoiceReferences, refInfo)
+		}
+	}
+
+	// Extract additional referenced documents (BG-24)
+	for _, doc := range invoice.AdditionalReferencedDocument {
+		docInfo := DocumentInfo{
+			ID:                doc.IssuerAssignedID,
+			URI:               doc.URIID,
+			TypeCode:          doc.TypeCode,
+			ReferenceTypeCode: doc.ReferenceTypeCode,
+			Name:              doc.Name,
+			Filename:          doc.AttachmentFilename,
+		}
+		if docInfo.ID != "" || docInfo.URI != "" || docInfo.Name != "" || docInfo.Filename != "" {
+			details.AdditionalReferences = append(details.AdditionalReferences, docInfo)
+		}
+	}
+
 	details.TermWidth = detectTerminalWidth()
 	info.Invoice = details
 

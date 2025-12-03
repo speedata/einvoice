@@ -25,18 +25,73 @@
 {{ underline "Invoice Information" }}
 Invoice Number:  {{ .Number }}
 Date:            {{ .Date }}
+{{- if (nonempty .OccurrenceDate) }}
+Supply Date:     {{ .OccurrenceDate }}
+{{- end }}
 {{- if or (nonempty .BillingPeriodStart) (nonempty .BillingPeriodEnd) }}
 Billing Period:  {{ .BillingPeriodStart }}{{ if and (nonempty .BillingPeriodStart) (nonempty .BillingPeriodEnd) }}–{{ end }}{{ .BillingPeriodEnd }}
 {{- end }}
 Type:            {{ .Type }}
 Profile:         {{ .Profile }}
+{{- if (nonempty .ProfileURN) }}
+Profile URN:     {{ .ProfileURN }}
+{{- end }}
 {{- with .BusinessProcess }}
 Business Process: {{ . }}
+{{- end }}
+{{- with .BuyerReference }}
+Buyer Reference: {{ . }}
 {{- end }}
 {{- with .BuyerOrderReferencedDocument }}
 Buyer Order Ref: {{ . }}
 {{- end }}
+{{- with .SellerOrderReferencedDocument }}
+Seller Order Ref: {{ . }}
+{{- end }}
+{{- with .ContractReferencedDocument }}
+Contract Ref:    {{ . }}
+{{- end }}
+{{- with .DespatchAdviceReferencedDocument }}
+Despatch Ref:    {{ . }}
+{{- end }}
+{{- with .ReceivingAdviceReferencedDocument }}
+Receiving Ref:   {{ . }}
+{{- end }}
+{{- if or (nonempty .ProcuringProjectID) (nonempty .ProcuringProjectName) }}
+Project:         {{ .ProcuringProjectID }} {{ .ProcuringProjectName }}
+{{- end }}
 Currency:        {{ .Currency }}
+{{- if (nonempty .TaxCurrency) }}
+Tax Currency:    {{ .TaxCurrency }}
+{{- end }}
+{{- if (nonempty .TaxTotalCurrency) }}
+Tax Total Curr:  {{ .TaxTotalCurrency }}
+{{- end }}
+{{- if (nonempty .TaxTotalAccountingCurrency) }}
+Tax Total (Acct): {{ .TaxTotalAccountingCurrency }}
+{{- end }}
+{{- with .ReceivableAccountingAccount }}
+Receivable Account: {{ . }}
+{{- end }}
+
+{{- /* ===========================
+       REFERENCES
+     =========================== */ -}}
+{{- if or .InvoiceReferences .AdditionalReferences }}
+{{ underline "References" }}
+{{- if .InvoiceReferences }}
+Referenced Invoices:
+{{- range .InvoiceReferences }}
+  - {{ .ID }}{{ if (nonempty .Date) }} ({{ .Date }}){{ end }}
+{{- end }}
+{{- end }}
+{{- if .AdditionalReferences }}
+Additional Documents:
+{{- range .AdditionalReferences }}
+  - {{ if (nonempty .Name) }}{{ .Name }}{{ else }}{{ .ID }}{{ end }}{{ if (nonempty .URI) }} [{{ .URI }}]{{ end }}{{ if (nonempty .TypeCode) }} ({{ .TypeCode }}{{ if (nonempty .ReferenceTypeCode) }}/{{ .ReferenceTypeCode }}{{ end }}){{ end }}{{ if (nonempty .Filename) }} file: {{ .Filename }}{{ end }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{- /* ==========================================
        PARTIES: SELLER / BUYER (WIDE >= 60 cols)
@@ -75,6 +130,9 @@ Currency:        {{ .Currency }}
 {{- if or (nonempty .Seller.VATNumber) (nonempty .Buyer.VATNumber) }}
 VAT: {{ padright .Seller.VATNumber 35 -}} {{ .Buyer.VATNumber }}
 {{- end -}}
+{{- if or (nonempty .Seller.TaxNumber) (nonempty .Buyer.TaxNumber) }}
+Tax ID: {{ padright .Seller.TaxNumber 33 -}} {{ .Buyer.TaxNumber }}
+{{- end -}}
 
 {{- /* IDs (local & global), aligned) */ -}}
 {{- if or (nonempty .Seller.ID) (nonempty .Buyer.ID) }}
@@ -106,6 +164,9 @@ Seller:
   {{- if (nonempty $.Seller.VATNumber) }}
   VAT: {{ $.Seller.VATNumber }}
   {{- end }}
+  {{- if (nonempty $.Seller.TaxNumber) }}
+  Tax ID: {{ $.Seller.TaxNumber }}
+  {{- end }}
 {{- if (nonempty .Seller.ID) }}
   ID: {{ .Seller.ID }}
 {{- end }}
@@ -128,6 +189,9 @@ Buyer:
   {{- end }}
   {{- if (nonempty $.Buyer.VATNumber) }}
   VAT: {{ $.Buyer.VATNumber }}
+  {{- end }}
+  {{- if (nonempty $.Buyer.TaxNumber) }}
+  Tax ID: {{ $.Buyer.TaxNumber }}
   {{- end }}
 {{- if (nonempty .Buyer.ID) }}
   ID: {{ .Buyer.ID }}
@@ -191,9 +255,12 @@ Line {{ .ID }}:
 
 {{ underline "Tax Breakdown" }}
 {{- if .TradeTax }}
-{{ padright "Type" 10 }}{{ padright "Category" 12 }}{{ padright "Rate" 8 }}{{ padright "Basis" 18 }}{{ padright "Amount" 18 }}Exemption
+{{ padright "Type" 10 }}{{ padright "Category" 12 }}{{ padright "Rate" 8 }}{{ padright "Basis" 14 }}{{ padright "Amount" 18 }}Exemption (Code)
 {{- range .TradeTax }}
-{{ padright .Type 10 }}{{ padright .Category 12 }}{{ padright (printf "%s%%" .Percent) 8 }}{{ padright (printf "%s %s" .BasisAmount $.Currency) 18 }}{{ padright (printf "%s %s" .CalculatedAmount $.Currency) 18 }}{{ if (nonempty .ExemptionReason) }}{{ .ExemptionReason }}{{ end }}
+{{ padright .Type 10 }}{{ padright .Category 12 }}{{ padright (printf "%s%%" .Percent) 8 }}{{ padright (printf "%s %s" .BasisAmount $.Currency) 14 }}{{ padright (printf "%s %s" .CalculatedAmount $.Currency) 18 }}{{ if (nonempty .ExemptionCode) }}{{ .ExemptionCode }}{{ end }}
+{{- if (nonempty .ExemptionReason) }}
+{{ wrap (printf "Exemption reason: %s" .ExemptionReason) $w 0 }}
+{{- end }}
 {{- end }}
 {{- else }}
 No tax information available.
@@ -234,11 +301,76 @@ No tax information available.
 {{- /* =======================
        SECTION: PAYMENT TERMS
      ======================= */ -}}
-{{- if .PaymentTerms }}
+{{- if or .PaymentTermsDetailed .PaymentTerms }}
 
 {{ underline "Payment Terms" }}
+{{- if .PaymentTermsDetailed }}
+{{- range .PaymentTermsDetailed }}
+{{ if (nonempty .Description) }}{{ wrap .Description $w 0 }}{{ end -}}
+{{- if (nonempty .DueDate) }}Due Date: {{ .DueDate }}{{ end -}}
+{{- if (nonempty .DirectDebitMandateID) }}Direct Debit Mandate: {{ .DirectDebitMandateID }}{{ end -}}
+{{- if or (nonempty .DueDate) (nonempty .DirectDebitMandateID) }}
+{{ hr 5 }}
+{{- end }}
+{{- end }}
+{{- else }}
 {{- range .PaymentTerms }}
 {{ wrap . $w 0 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /* =======================
+       SECTION: PAYMENT MEANS
+     ======================= */ -}}
+{{- if .PaymentMeans }}
+
+{{ underline "Payment Means" }}
+{{- range .PaymentMeans }}
+Type: {{ .TypeCode }}{{ if (nonempty .Information) }} — {{ .Information }}{{ end }}
+{{- if (nonempty .PayeeIBAN) }}  Payee IBAN: {{ .PayeeIBAN }}{{ end }}
+{{- if (nonempty .PayeeAccountName) }}  Account Name: {{ .PayeeAccountName }}{{ end }}
+{{- if (nonempty .PayeeProprietaryID) }}  Payee Account (Proprietary): {{ .PayeeProprietaryID }}{{ end }}
+{{- if (nonempty .PayeeBIC) }}  Payee BIC: {{ .PayeeBIC }}{{ end }}
+{{- if (nonempty .PayerIBAN) }}  Payer IBAN: {{ .PayerIBAN }}{{ end }}
+{{- if (nonempty .CardID) }}  Card ID: {{ .CardID }}{{ end }}
+{{- if (nonempty .CardholderName) }}  Cardholder: {{ .CardholderName }}{{ end }}
+{{ hr 5 }}
+{{- end }}
+{{- end }}
+
+{{- /* ================================
+       SECTION: ADDITIONAL PARTIES
+     ================================ */ -}}
+{{- if or .Payee .SellerTaxRepresentative .ShipTo }}
+
+{{ underline "Additional Parties" }}
+{{- if .Payee }}
+Payee: {{ .Payee.Name }}
+{{- with .Payee.Address }}
+  {{ if (nonempty .Line1) }}{{ .Line1 }}{{ end }}
+  {{ if (nonempty .Line2) }}{{ .Line2 }}{{ end }}
+  {{ if (nonempty .Line3) }}{{ .Line3 }}{{ end }}
+  {{ if or (nonempty .PostalCode) (nonempty .City) }}{{ .PostalCode }} {{ .City }}{{ end }}
+  {{ if (nonempty .Country) }}{{ .Country }}{{ end }}
+{{- end }}
+{{- if (nonempty .Payee.VATNumber) }}  VAT: {{ .Payee.VATNumber }}{{ end }}
+{{- if (nonempty .Payee.TaxNumber) }}  Tax ID: {{ .Payee.TaxNumber }}{{ end }}
+{{- end }}
+{{- if .SellerTaxRepresentative }}
+Tax Representative: {{ .SellerTaxRepresentative.Name }}
+{{- if (nonempty .SellerTaxRepresentative.VATNumber) }}  VAT: {{ .SellerTaxRepresentative.VATNumber }}{{ end }}
+{{- if (nonempty .SellerTaxRepresentative.TaxNumber) }}  Tax ID: {{ .SellerTaxRepresentative.TaxNumber }}{{ end }}
+{{- end }}
+{{- if .ShipTo }}
+Ship-To: {{ .ShipTo.Name }}
+{{- with .ShipTo.Address }}
+  {{ if (nonempty .Line1) }}{{ .Line1 }}{{ end }}
+  {{ if (nonempty .Line2) }}{{ .Line2 }}{{ end }}
+  {{ if (nonempty .Line3) }}{{ .Line3 }}{{ end }}
+  {{ if or (nonempty .PostalCode) (nonempty .City) }}{{ .PostalCode }} {{ .City }}{{ end }}
+  {{ if (nonempty .Country) }}{{ .Country }}{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
