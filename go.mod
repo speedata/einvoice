@@ -9,7 +9,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/pdfcpu/pdfcpu v0.11.1
 	github.com/shopspring/decimal v1.4.0
-	github.com/speedata/cxpath v0.0.4
+	github.com/speedata/cxpath v0.0.5
 	golang.org/x/term v0.38.0
 )
 
@@ -178,8 +178,8 @@ require (
 	github.com/sivchari/containedctx v1.0.3 // indirect
 	github.com/sonatard/noctx v0.4.0 // indirect
 	github.com/sourcegraph/go-diff v0.7.0 // indirect
-	github.com/speedata/goxml v1.0.3 // indirect
-	github.com/speedata/goxpath v1.0.3 // indirect
+	github.com/speedata/goxml v1.0.5 // indirect
+	github.com/speedata/goxpath v1.0.4 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
@@ -213,15 +213,15 @@ require (
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/image v0.32.0 // indirect
-	golang.org/x/mod v0.29.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
