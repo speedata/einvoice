@@ -129,7 +129,7 @@ The generator converts schematron rule codes to Go identifiers:
 The generated `rules/en16931.go` file includes a custom rules section that must be manually preserved:
 
 - **Check**: Line total calculation validation
-- **BR34-40**: Non-negative amount validations (not in official spec)
+- **BR-USER-01..04**: Non-negative amount validations (custom, not in official spec)
 - **BRIG1-10**: IGIC aliases (BR-AF-* in spec)
 - **BRIP1-10**: IPSI aliases (BR-AG-* in spec)
 
