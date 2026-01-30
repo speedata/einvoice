@@ -248,6 +248,9 @@ func (inv *Invoice) Validate() error {
 		// Auto-detect and run PEPPOL validation based on specification identifier
 		if inv.isPEPPOL() {
 			inv.validatePEPPOL()
+		} else {
+			// For non-PEPPOL invoices, still validate line calculations under BR-USER-05
+			inv.validateUserLineCalculations()
 		}
 
 		// Auto-detect country-specific rules

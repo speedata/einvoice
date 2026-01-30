@@ -79,18 +79,41 @@ func (inv *Invoice) validatePEPPOL() {
 	inv.validatePEPPOLLineCalculations()
 }
 
-// validatePEPPOLLineCalculations validates line-level calculation rules.
-//
-// This implements the following PEPPOL BIS Billing 3.0 rules:
-//   - PEPPOL-EN16931-R120: Invoice line net amount MUST equal
-//     (Invoiced quantity × (Item net price / item price base quantity)
-//     + Sum of invoice line charge amount - sum of invoice line allowance amount
-//   - PEPPOL-EN16931-R121: Base quantity MUST be a positive number above zero
-//   - PEPPOL-EN16931-R130: Unit code of price base quantity MUST be same as invoiced quantity
-//
-// These rules ensure that line-level calculations are mathematically correct,
-// catching errors before they cascade to document-level totals.
+// validatePEPPOLLineCalculations validates line-level calculation rules using PEPPOL rule codes.
 func (inv *Invoice) validatePEPPOLLineCalculations() {
+	inv.validateLineCalculations(
+		rules.PEPPOLEN16931R120,
+		rules.PEPPOLEN16931R121,
+		rules.PEPPOLEN16931R130,
+		inv.addViolation,
+	)
+}
+
+// validateUserLineCalculations applies the same line calculation checks for non-PEPPOL invoices
+// but reports violations under the custom rule BR-USER-05.
+func (inv *Invoice) validateUserLineCalculations() {
+	inv.validateLineCalculations(
+		rules.BRUSER05,
+		rules.BRUSER05,
+		rules.BRUSER05,
+		inv.addWarning,
+	)
+}
+
+// validateLineCalculations validates line-level calculation rules.
+//
+// These checks ensure that line-level calculations are mathematically correct,
+// catching errors before they cascade to document-level totals.
+// The provided rule codes control how violations are reported for:
+//   - calcRule: invoice line net amount calculation
+//   - baseQtyRule: base quantity positivity
+//   - unitRule: unit of measure alignment
+func (inv *Invoice) validateLineCalculations(
+	calcRule rules.Rule,
+	baseQtyRule rules.Rule,
+	unitRule rules.Rule,
+	report func(rule rules.Rule, text string),
+) {
 	for i, line := range inv.InvoiceLines {
 		// Create line reference for error messages
 		lineRef := line.LineID
@@ -102,7 +125,7 @@ func (inv *Invoice) validatePEPPOLLineCalculations() {
 		// Only validate if BasisQuantity was explicitly set (non-zero in parsed XML)
 		// When element is missing, parser returns zero and we default to 1 for calculation
 		if !line.BasisQuantity.IsZero() && !line.BasisQuantity.GreaterThan(decimal.Zero) {
-			inv.addViolation(rules.PEPPOLEN16931R121,
+			report(baseQtyRule,
 				fmt.Sprintf("Line %s: Base quantity MUST be a positive number above zero (got %s)",
 					lineRef, line.BasisQuantity))
 		}
@@ -110,7 +133,7 @@ func (inv *Invoice) validatePEPPOLLineCalculations() {
 		// PEPPOL-EN16931-R130: Unit code of price base quantity MUST be same as invoiced quantity
 		// Only validate if BasisQuantityUnit is specified (element present in XML)
 		if line.BasisQuantityUnit != "" && line.BasisQuantityUnit != line.BilledQuantityUnit {
-			inv.addViolation(rules.PEPPOLEN16931R130,
+			report(unitRule,
 				fmt.Sprintf("Line %s: Unit code of price base quantity (%s) MUST be same as invoiced quantity (%s)",
 					lineRef, line.BasisQuantityUnit, line.BilledQuantityUnit))
 		}
@@ -144,7 +167,7 @@ func (inv *Invoice) validatePEPPOLLineCalculations() {
 		expected := roundHalfUp(calculated, 2)
 
 		if !line.Total.Equal(expected) {
-			inv.addViolation(rules.PEPPOLEN16931R120,
+			report(calcRule,
 				fmt.Sprintf("Line %s: Invoice line net amount %s does not match calculated %s "+
 					"(qty %s × price %s / baseQty %s + charges %s - allowances %s)",
 					lineRef, line.Total, expected,
