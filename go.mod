@@ -9,7 +9,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/pdfcpu/pdfcpu v0.11.1
 	github.com/shopspring/decimal v1.4.0
-	github.com/speedata/cxpath v0.0.5
+	github.com/speedata/cxpath v0.0.6
 	golang.org/x/term v0.40.0
 )
 
@@ -178,8 +178,8 @@ require (
 	github.com/sivchari/containedctx v1.0.3 // indirect
 	github.com/sonatard/noctx v0.4.0 // indirect
 	github.com/sourcegraph/go-diff v0.7.0 // indirect
-	github.com/speedata/goxml v1.0.5 // indirect
-	github.com/speedata/goxpath v1.0.4 // indirect
+	github.com/speedata/goxml v1.0.7 // indirect
+	github.com/speedata/goxpath v1.0.6 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
