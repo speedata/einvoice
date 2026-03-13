@@ -24,8 +24,26 @@ func extractXMLFromPDF(filename string) ([]byte, error) {
 	}
 	defer func() { _ = f.Close() }()
 
-	// Extract all attachments in-memory
-	attachments, err := api.ExtractAttachmentsRaw(f, "", nil, nil)
+	// Read PDF structure first, then validate with version adjustment.
+	// Some older ZUGFeRD PDFs (e.g. v2.01) declare PDF 1.3 but use
+	// PDF/A-3 features like AFRelationship (which requires at least 1.4
+	// in pdfcpu's relaxed validation mode). We bump the header version
+	// to 1.4 before validation to handle these files.
+	conf := model.NewDefaultConfiguration()
+	conf.Cmd = model.EXTRACTATTACHMENTS
+	ctx, err := api.ReadContext(f, conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read PDF: %w", err)
+	}
+	if ctx.HeaderVersion != nil && *ctx.HeaderVersion < model.V14 {
+		v := model.V14
+		ctx.HeaderVersion = &v
+	}
+	if err := api.ValidateContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to validate PDF: %w", err)
+	}
+
+	attachments, err := ctx.ExtractAttachments(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract attachments from PDF: %w", err)
 	}
