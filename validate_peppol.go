@@ -2,6 +2,7 @@ package einvoice
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/shopspring/decimal"
 	"github.com/speedata/einvoice/rules"
@@ -118,7 +119,7 @@ func (inv *Invoice) validateLineCalculations(
 		// Create line reference for error messages
 		lineRef := inv.InvoiceLines[i].LineID
 		if lineRef == "" {
-			lineRef = fmt.Sprintf("%d", i+1)
+			lineRef = strconv.Itoa(i + 1)
 		}
 
 		// PEPPOL-EN16931-R121: Base quantity MUST be a positive number above zero
