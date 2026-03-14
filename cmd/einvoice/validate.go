@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/speedata/einvoice"
 )
@@ -160,14 +161,7 @@ func outputText(result Result, verbose bool) {
 
 // formatFields joins field identifiers with commas
 func formatFields(fields []string) string {
-	if len(fields) == 0 {
-		return ""
-	}
-	result := fields[0]
-	for i := 1; i < len(fields); i++ {
-		result += ", " + fields[i]
-	}
-	return result
+	return strings.Join(fields, ", ")
 }
 
 func outputJSON(result Result) {

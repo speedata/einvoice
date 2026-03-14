@@ -29,18 +29,18 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 	var applicableTradeTaxes = make([]*TradeTax, 0, len(inv.TradeTaxes))
 
 	// Process invoice lines
-	for _, lineitem := range inv.InvoiceLines {
+	for i := range inv.InvoiceLines {
 		tradeTax := TradeTax{
-			CategoryCode: lineitem.TaxCategoryCode,
-			Percent:      lineitem.TaxRateApplicablePercent,
-			BasisAmount:  lineitem.Total,
+			CategoryCode: inv.InvoiceLines[i].TaxCategoryCode,
+			Percent:      inv.InvoiceLines[i].TaxRateApplicablePercent,
+			BasisAmount:  inv.InvoiceLines[i].Total,
 			TypeCode:     "VAT",
 		}
 		found := false
 
 		for _, att := range applicableTradeTaxes {
 			if att.CategoryCode == tradeTax.CategoryCode && att.Percent.Equal(tradeTax.Percent) {
-				att.BasisAmount = att.BasisAmount.Add(lineitem.Total)
+				att.BasisAmount = att.BasisAmount.Add(inv.InvoiceLines[i].Total)
 				found = true
 
 				break
@@ -53,15 +53,15 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 	}
 
 	// Process document-level allowances and charges
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
 		found := false
 		for _, att := range applicableTradeTaxes {
-			if att.CategoryCode == ac.CategoryTradeTaxCategoryCode && att.Percent.Equal(ac.CategoryTradeTaxRateApplicablePercent) {
+			if att.CategoryCode == inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode && att.Percent.Equal(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent) {
 				// Charges add to the basis, allowances subtract
-				if ac.ChargeIndicator {
-					att.BasisAmount = att.BasisAmount.Add(ac.ActualAmount)
+				if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
+					att.BasisAmount = att.BasisAmount.Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 				} else {
-					att.BasisAmount = att.BasisAmount.Sub(ac.ActualAmount)
+					att.BasisAmount = att.BasisAmount.Sub(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 				}
 				found = true
 				break
@@ -70,13 +70,13 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 
 		// If not found, create a new tax entry for this category
 		if !found {
-			basisAmount := ac.ActualAmount
-			if !ac.ChargeIndicator {
+			basisAmount := inv.SpecifiedTradeAllowanceCharge[i].ActualAmount
+			if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
 				basisAmount = basisAmount.Neg()
 			}
 			tradeTax := &TradeTax{
-				CategoryCode: ac.CategoryTradeTaxCategoryCode,
-				Percent:      ac.CategoryTradeTaxRateApplicablePercent,
+				CategoryCode: inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode,
+				Percent:      inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent,
 				BasisAmount:  basisAmount,
 				TypeCode:     "VAT",
 			}
@@ -110,11 +110,11 @@ func (inv *Invoice) updateAllowancesAndCharges() {
 	inv.ChargeTotal = decimal.Zero
 
 	// BR-CO-11 and BR-CO-12: Calculate allowance and charge totals
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator {
-			inv.ChargeTotal = inv.ChargeTotal.Add(ac.ActualAmount)
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
+			inv.ChargeTotal = inv.ChargeTotal.Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 		} else {
-			inv.AllowanceTotal = inv.AllowanceTotal.Add(ac.ActualAmount)
+			inv.AllowanceTotal = inv.AllowanceTotal.Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 		}
 	}
 
@@ -148,8 +148,8 @@ func (inv *Invoice) UpdateTotals() {
 
 	// BR-CO-10: Calculate line total from invoice lines (BT-106)
 	inv.LineTotal = decimal.Zero
-	for _, line := range inv.InvoiceLines {
-		inv.LineTotal = inv.LineTotal.Add(line.Total)
+	for i := range inv.InvoiceLines {
+		inv.LineTotal = inv.LineTotal.Add(inv.InvoiceLines[i].Total)
 	}
 	// BR-DEC-09: LineTotal (BT-106) must have max 2 decimal places
 	inv.LineTotal = roundHalfUp(inv.LineTotal, 2)
@@ -159,8 +159,8 @@ func (inv *Invoice) UpdateTotals() {
 
 	// Calculate tax total from trade taxes (BT-110)
 	inv.TaxTotal = decimal.Zero
-	for _, v := range inv.TradeTaxes {
-		inv.TaxTotal = inv.TaxTotal.Add(v.CalculatedAmount)
+	for i := range inv.TradeTaxes {
+		inv.TaxTotal = inv.TaxTotal.Add(inv.TradeTaxes[i].CalculatedAmount)
 	}
 	// BR-DEC-13: TaxTotal (BT-110) must have max 2 decimal places
 	inv.TaxTotal = roundHalfUp(inv.TaxTotal, 2)

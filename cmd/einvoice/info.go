@@ -373,14 +373,14 @@ func partyInfoFromParty(p *einvoice.Party, showCodes bool, verbose bool) *PartyI
 
 	if len(p.GlobalID) > 0 {
 		var gids []string
-		for _, gid := range p.GlobalID {
-			if gid.ID == "" {
+		for i := range p.GlobalID {
+			if p.GlobalID[i].ID == "" {
 				continue
 			}
-			if gid.Scheme != "" {
-				gids = append(gids, fmt.Sprintf("%s:%s", gid.Scheme, gid.ID))
+			if p.GlobalID[i].Scheme != "" {
+				gids = append(gids, fmt.Sprintf("%s:%s", p.GlobalID[i].Scheme, p.GlobalID[i].ID))
 			} else {
-				gids = append(gids, gid.ID)
+				gids = append(gids, p.GlobalID[i].ID)
 			}
 		}
 		info.GlobalID = strings.Join(gids, ", ")
@@ -464,25 +464,25 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 
 	// Extract invoice lines
 	details.Lines = make([]LineInfo, 0, len(invoice.InvoiceLines))
-	for _, line := range invoice.InvoiceLines {
+	for i := range invoice.InvoiceLines {
 		lineInfo := LineInfo{
-			ID:          line.LineID,
-			NetAmount:   line.Total.String(),
-			Description: line.Description,
-			Name:        line.ItemName,
+			ID:          invoice.InvoiceLines[i].LineID,
+			NetAmount:   invoice.InvoiceLines[i].Total.String(),
+			Description: invoice.InvoiceLines[i].Description,
+			Name:        invoice.InvoiceLines[i].ItemName,
 		}
 
-		if !line.BilledQuantity.IsZero() {
-			lineInfo.Quantity = line.BilledQuantity.String()
-			if line.BilledQuantityUnit != "" {
-				unitName := formatUnitCode(line.BilledQuantityUnit, showCodes, verbose)
+		if !invoice.InvoiceLines[i].BilledQuantity.IsZero() {
+			lineInfo.Quantity = invoice.InvoiceLines[i].BilledQuantity.String()
+			if invoice.InvoiceLines[i].BilledQuantityUnit != "" {
+				unitName := formatUnitCode(invoice.InvoiceLines[i].BilledQuantityUnit, showCodes, verbose)
 				lineInfo.Quantity += " " + unitName
 			}
 		}
 
-		lineInfo.NetPrice = line.NetPrice.String()
-		lineInfo.GrossPrice = line.GrossPrice.String()
-		lineInfo.Note = line.Note
+		lineInfo.NetPrice = invoice.InvoiceLines[i].NetPrice.String()
+		lineInfo.GrossPrice = invoice.InvoiceLines[i].GrossPrice.String()
+		lineInfo.Note = invoice.InvoiceLines[i].Note
 		details.Lines = append(details.Lines, lineInfo)
 	}
 
@@ -513,18 +513,18 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	// Extract payment terms
 	details.PaymentTerms = make([]string, 0, len(invoice.SpecifiedTradePaymentTerms))
 	details.PaymentTermsDetailed = make([]PaymentTermInfo, 0, len(invoice.SpecifiedTradePaymentTerms))
-	for _, term := range invoice.SpecifiedTradePaymentTerms {
-		if term.Description != "" {
-			details.PaymentTerms = append(details.PaymentTerms, term.Description)
+	for i := range invoice.SpecifiedTradePaymentTerms {
+		if invoice.SpecifiedTradePaymentTerms[i].Description != "" {
+			details.PaymentTerms = append(details.PaymentTerms, invoice.SpecifiedTradePaymentTerms[i].Description)
 		}
 		pt := PaymentTermInfo{
-			Description: term.Description,
+			Description: invoice.SpecifiedTradePaymentTerms[i].Description,
 		}
-		if !term.DueDate.IsZero() {
-			pt.DueDate = term.DueDate.Format("2006-01-02")
+		if !invoice.SpecifiedTradePaymentTerms[i].DueDate.IsZero() {
+			pt.DueDate = invoice.SpecifiedTradePaymentTerms[i].DueDate.Format("2006-01-02")
 		}
-		if term.DirectDebitMandateID != "" {
-			pt.DirectDebitMandateID = term.DirectDebitMandateID
+		if invoice.SpecifiedTradePaymentTerms[i].DirectDebitMandateID != "" {
+			pt.DirectDebitMandateID = invoice.SpecifiedTradePaymentTerms[i].DirectDebitMandateID
 		}
 		if pt.Description != "" || pt.DueDate != "" || pt.DirectDebitMandateID != "" {
 			details.PaymentTermsDetailed = append(details.PaymentTermsDetailed, pt)
@@ -532,69 +532,69 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	}
 
 	// Extract notes
-	for _, n := range invoice.Notes {
+	for i := range invoice.Notes {
 		// Skip empty notes
-		if n.Text == "" {
+		if invoice.Notes[i].Text == "" {
 			continue
 		}
 
 		details.Notes = append(details.Notes, NoteInfo{
-			Text:             n.Text,
-			SubjectQualifier: formatTextSubjectQualifier(n.SubjectCode, showCodes, verbose),
+			Text:             invoice.Notes[i].Text,
+			SubjectQualifier: formatTextSubjectQualifier(invoice.Notes[i].SubjectCode, showCodes, verbose),
 		})
 	}
 
 	// Extract trade tax breakdown
-	for _, tax := range invoice.TradeTaxes {
+	for i := range invoice.TradeTaxes {
 		taxInfo := TaxInfo{
-			CalculatedAmount: tax.CalculatedAmount.StringFixed(2),
-			Percent:          tax.Percent.String(),
-			Type:             tax.TypeCode,
-			Category:         tax.CategoryCode,
-			ExemptionCode:    tax.ExemptionReasonCode,
-			ExemptionReason:  tax.ExemptionReason,
-			BasisAmount:      tax.BasisAmount.StringFixed(2),
+			CalculatedAmount: invoice.TradeTaxes[i].CalculatedAmount.StringFixed(2),
+			Percent:          invoice.TradeTaxes[i].Percent.String(),
+			Type:             invoice.TradeTaxes[i].TypeCode,
+			Category:         invoice.TradeTaxes[i].CategoryCode,
+			ExemptionCode:    invoice.TradeTaxes[i].ExemptionReasonCode,
+			ExemptionReason:  invoice.TradeTaxes[i].ExemptionReason,
+			BasisAmount:      invoice.TradeTaxes[i].BasisAmount.StringFixed(2),
 		}
 		details.TradeTax = append(details.TradeTax, taxInfo)
 	}
 
 	// Extract charge/allowance information
-	for _, ca := range invoice.SpecifiedTradeAllowanceCharge {
+	for i := range invoice.SpecifiedTradeAllowanceCharge {
 		caInfo := ChargeAllowanceInfo{
-			ChargeIndicator: ca.ChargeIndicator,
-			Amount:          ca.ActualAmount.StringFixed(2),
-			Reason:          ca.Reason,
-			Type:            ca.CategoryTradeTaxType,
-			Category:        ca.CategoryTradeTaxCategoryCode,
-			BasisAmount:     ca.BasisAmount.StringFixed(2),
-			Percent:         ca.CalculationPercent.String(),
+			ChargeIndicator: invoice.SpecifiedTradeAllowanceCharge[i].ChargeIndicator,
+			Amount:          invoice.SpecifiedTradeAllowanceCharge[i].ActualAmount.StringFixed(2),
+			Reason:          invoice.SpecifiedTradeAllowanceCharge[i].Reason,
+			Type:            invoice.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxType,
+			Category:        invoice.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode,
+			BasisAmount:     invoice.SpecifiedTradeAllowanceCharge[i].BasisAmount.StringFixed(2),
+			Percent:         invoice.SpecifiedTradeAllowanceCharge[i].CalculationPercent.String(),
 		}
 		details.ChargeAllowances = append(details.ChargeAllowances, caInfo)
 	}
 
 	// Extract payment means
-	for _, pm := range invoice.PaymentMeans {
+	for i := range invoice.PaymentMeans {
 		pmInfo := PaymentMeansInfo{
-			TypeCode:           pm.TypeCode,
-			Information:        pm.Information,
-			PayeeIBAN:          pm.PayeePartyCreditorFinancialAccountIBAN,
-			PayeeAccountName:   pm.PayeePartyCreditorFinancialAccountName,
-			PayeeProprietaryID: pm.PayeePartyCreditorFinancialAccountProprietaryID,
-			PayeeBIC:           pm.PayeeSpecifiedCreditorFinancialInstitutionBIC,
-			PayerIBAN:          pm.PayerPartyDebtorFinancialAccountIBAN,
-			CardID:             pm.ApplicableTradeSettlementFinancialCardID,
-			CardholderName:     pm.ApplicableTradeSettlementFinancialCardCardholderName,
+			TypeCode:           invoice.PaymentMeans[i].TypeCode,
+			Information:        invoice.PaymentMeans[i].Information,
+			PayeeIBAN:          invoice.PaymentMeans[i].PayeePartyCreditorFinancialAccountIBAN,
+			PayeeAccountName:   invoice.PaymentMeans[i].PayeePartyCreditorFinancialAccountName,
+			PayeeProprietaryID: invoice.PaymentMeans[i].PayeePartyCreditorFinancialAccountProprietaryID,
+			PayeeBIC:           invoice.PaymentMeans[i].PayeeSpecifiedCreditorFinancialInstitutionBIC,
+			PayerIBAN:          invoice.PaymentMeans[i].PayerPartyDebtorFinancialAccountIBAN,
+			CardID:             invoice.PaymentMeans[i].ApplicableTradeSettlementFinancialCardID,
+			CardholderName:     invoice.PaymentMeans[i].ApplicableTradeSettlementFinancialCardCardholderName,
 		}
 		details.PaymentMeans = append(details.PaymentMeans, pmInfo)
 	}
 
 	// Extract invoice references (BG-3)
-	for _, ref := range invoice.InvoiceReferencedDocument {
+	for i := range invoice.InvoiceReferencedDocument {
 		refInfo := ReferenceInfo{
-			ID: ref.ID,
+			ID: invoice.InvoiceReferencedDocument[i].ID,
 		}
-		if !ref.Date.IsZero() {
-			refInfo.Date = ref.Date.Format("2006-01-02")
+		if !invoice.InvoiceReferencedDocument[i].Date.IsZero() {
+			refInfo.Date = invoice.InvoiceReferencedDocument[i].Date.Format("2006-01-02")
 		}
 		if refInfo.ID != "" || refInfo.Date != "" {
 			details.InvoiceReferences = append(details.InvoiceReferences, refInfo)
@@ -602,14 +602,14 @@ func getInvoiceInfo(filename string, showCodes bool, verbose bool) InvoiceInfo {
 	}
 
 	// Extract additional referenced documents (BG-24)
-	for _, doc := range invoice.AdditionalReferencedDocument {
+	for i := range invoice.AdditionalReferencedDocument {
 		docInfo := DocumentInfo{
-			ID:                doc.IssuerAssignedID,
-			URI:               doc.URIID,
-			TypeCode:          doc.TypeCode,
-			ReferenceTypeCode: doc.ReferenceTypeCode,
-			Name:              doc.Name,
-			Filename:          doc.AttachmentFilename,
+			ID:                invoice.AdditionalReferencedDocument[i].IssuerAssignedID,
+			URI:               invoice.AdditionalReferencedDocument[i].URIID,
+			TypeCode:          invoice.AdditionalReferencedDocument[i].TypeCode,
+			ReferenceTypeCode: invoice.AdditionalReferencedDocument[i].ReferenceTypeCode,
+			Name:              invoice.AdditionalReferencedDocument[i].Name,
+			Filename:          invoice.AdditionalReferencedDocument[i].AttachmentFilename,
 		}
 		if docInfo.ID != "" || docInfo.URI != "" || docInfo.Name != "" || docInfo.Filename != "" {
 			details.AdditionalReferences = append(details.AdditionalReferences, docInfo)

@@ -36,14 +36,15 @@ func wrapTextIndent(text string, n int, indent int) string {
 	}
 
 	// Preserve the initial whitespace prefix (spaces/tabs only) from the input.
-	prefix := ""
+	prefixLen := 0
 	for _, r := range text {
 		if r == ' ' || r == '\t' {
-			prefix += string(r)
+			prefixLen += utf8.RuneLen(r)
 		} else {
 			break
 		}
 	}
+	prefix := text[:prefixLen]
 
 	// Split into words using Fields (collapses runs of whitespace).
 	words := strings.Fields(text)

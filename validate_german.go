@@ -138,15 +138,15 @@ func (inv *Invoice) validateGerman() {
 	}
 
 	hasRelevantTaxCode := false
-	for _, line := range inv.InvoiceLines {
-		if relevantTaxCodes[line.TaxCategoryCode] {
+	for i := range inv.InvoiceLines {
+		if relevantTaxCodes[inv.InvoiceLines[i].TaxCategoryCode] {
 			hasRelevantTaxCode = true
 			break
 		}
 	}
 	if !hasRelevantTaxCode {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if relevantTaxCodes[ac.CategoryTradeTaxCategoryCode] {
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if relevantTaxCodes[inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode] {
 				hasRelevantTaxCode = true
 				break
 			}
@@ -172,15 +172,15 @@ func (inv *Invoice) validateGerman() {
 
 	// BR-DE-23, BR-DE-24, BR-DE-25: Payment means requirements
 	// These rules ensure mutual exclusivity of payment means groups (BG-17, BG-18, BG-19)
-	for _, pm := range inv.PaymentMeans {
+	for i := range inv.PaymentMeans {
 		// Determine which payment information groups are present
-		hasBG17CreditTransfer := pm.PayeePartyCreditorFinancialAccountIBAN != "" ||
-			pm.PayeePartyCreditorFinancialAccountProprietaryID != ""
-		hasBG18PaymentCard := pm.ApplicableTradeSettlementFinancialCardID != ""
-		hasBG19DirectDebit := pm.PayerPartyDebtorFinancialAccountIBAN != ""
+		hasBG17CreditTransfer := inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountIBAN != "" ||
+			inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountProprietaryID != ""
+		hasBG18PaymentCard := inv.PaymentMeans[i].ApplicableTradeSettlementFinancialCardID != ""
+		hasBG19DirectDebit := inv.PaymentMeans[i].PayerPartyDebtorFinancialAccountIBAN != ""
 
 		// BR-DE-23: Credit transfer (codes 30, 58)
-		if pm.TypeCode == 30 || pm.TypeCode == 58 {
+		if inv.PaymentMeans[i].TypeCode == 30 || inv.PaymentMeans[i].TypeCode == 58 {
 			// BR-DE-23-a: Must have BG-17 (CREDIT TRANSFER)
 			if !hasBG17CreditTransfer {
 				inv.addViolation(rules.BRDE23A, "Payment means code 30 or 58 (credit transfer) requires BG-17 CREDIT TRANSFER information")
@@ -196,7 +196,7 @@ func (inv *Invoice) validateGerman() {
 		}
 
 		// BR-DE-24: Payment card (codes 48, 54, 55)
-		if pm.TypeCode == 48 || pm.TypeCode == 54 || pm.TypeCode == 55 {
+		if inv.PaymentMeans[i].TypeCode == 48 || inv.PaymentMeans[i].TypeCode == 54 || inv.PaymentMeans[i].TypeCode == 55 {
 			// BR-DE-24-a: Must have BG-18 (PAYMENT CARD INFORMATION)
 			if !hasBG18PaymentCard {
 				inv.addViolation(rules.BRDE24A, "Payment means code 48, 54, or 55 (payment card) requires BG-18 PAYMENT CARD INFORMATION")
@@ -212,7 +212,7 @@ func (inv *Invoice) validateGerman() {
 		}
 
 		// BR-DE-25: Direct debit (code 59)
-		if pm.TypeCode == 59 {
+		if inv.PaymentMeans[i].TypeCode == 59 {
 			// BR-DE-25-a: Must have BG-19 (DIRECT DEBIT)
 			if !hasBG19DirectDebit {
 				inv.addViolation(rules.BRDE25A, "Payment means code 59 (direct debit) requires BG-19 DIRECT DEBIT information")
@@ -228,28 +228,28 @@ func (inv *Invoice) validateGerman() {
 		}
 
 		// BR-DE-19: IBAN validation for SEPA credit transfer (warning per XRechnung schematron)
-		if pm.TypeCode == 58 {
-			if pm.PayeePartyCreditorFinancialAccountIBAN != "" && !isValidIBAN(pm.PayeePartyCreditorFinancialAccountIBAN) {
+		if inv.PaymentMeans[i].TypeCode == 58 {
+			if inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountIBAN != "" && !isValidIBAN(inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountIBAN) {
 				inv.addWarning(rules.BRDE19, "Payment account identifier (BT-84) should be a valid IBAN when using SEPA credit transfer (code 58)")
 			}
 		}
 
 		// BR-DE-20: IBAN validation for SEPA direct debit (warning per XRechnung schematron)
-		if pm.TypeCode == 59 {
-			if pm.PayerPartyDebtorFinancialAccountIBAN != "" && !isValidIBAN(pm.PayerPartyDebtorFinancialAccountIBAN) {
+		if inv.PaymentMeans[i].TypeCode == 59 {
+			if inv.PaymentMeans[i].PayerPartyDebtorFinancialAccountIBAN != "" && !isValidIBAN(inv.PaymentMeans[i].PayerPartyDebtorFinancialAccountIBAN) {
 				inv.addWarning(rules.BRDE20, "Debited account identifier (BT-91) should be a valid IBAN when using SEPA direct debit (code 59)")
 			}
 		}
 
 		// BR-DE-30, BR-DE-31: Direct debit mandatory fields
-		if pm.TypeCode == 59 {
+		if inv.PaymentMeans[i].TypeCode == 59 {
 			// BR-DE-30: Bank assigned creditor identifier (BT-90)
 			if inv.CreditorReferenceID == "" {
 				inv.addViolation(rules.BRDE30, "Bank assigned creditor identifier (BT-90) must be provided for direct debit")
 			}
 
 			// BR-DE-31: Debited account identifier (BT-91)
-			if pm.PayerPartyDebtorFinancialAccountIBAN == "" {
+			if inv.PaymentMeans[i].PayerPartyDebtorFinancialAccountIBAN == "" {
 				inv.addViolation(rules.BRDE31, "Debited account identifier (BT-91) must be provided for direct debit")
 			}
 		}

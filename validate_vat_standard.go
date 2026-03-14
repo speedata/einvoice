@@ -1,10 +1,10 @@
 package einvoice
 
 import (
-	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
+	"github.com/speedata/einvoice/rules"
 )
 
 // validateVATStandard validates BR-S-1 through BR-S-10.
@@ -22,15 +22,15 @@ func (inv *Invoice) validateVATStandard() {
 	// BR-S-1 Umsatzsteuer mit Normalsatz
 	// If invoice has line/allowance/charge with "Standard rated" (S), must have at least one "S" in VAT breakdown
 	hasStandardRated := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "S" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "S" {
 			hasStandardRated = true
 			break
 		}
 	}
 	if !hasStandardRated {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "S" {
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "S" {
 				hasStandardRated = true
 				break
 			}
@@ -38,8 +38,8 @@ func (inv *Invoice) validateVATStandard() {
 	}
 	if hasStandardRated {
 		hasStandardInBreakdown := false
-		for _, tt := range inv.TradeTaxes {
-			if tt.CategoryCode == "S" {
+		for i := range inv.TradeTaxes {
+			if inv.TradeTaxes[i].CategoryCode == "S" {
 				hasStandardInBreakdown = true
 				break
 			}
@@ -52,8 +52,8 @@ func (inv *Invoice) validateVATStandard() {
 	// BR-S-2 Umsatzsteuer mit Normalsatz
 	// If invoice line has "Standard rated", must have seller VAT ID, tax reg, or rep VAT ID
 	hasStandardLine := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "S" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "S" {
 			hasStandardLine = true
 			break
 		}
@@ -70,8 +70,8 @@ func (inv *Invoice) validateVATStandard() {
 	// BR-S-3 Umsatzsteuer mit Normalsatz
 	// If document level allowance has "Standard rated", must have seller tax ID
 	hasStandardAllowance := false
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "S" {
 			hasStandardAllowance = true
 			break
 		}
@@ -88,8 +88,8 @@ func (inv *Invoice) validateVATStandard() {
 	// BR-S-4 Umsatzsteuer mit Normalsatz
 	// If document level charge has "Standard rated", must have seller tax ID
 	hasStandardCharge := false
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "S" {
 			hasStandardCharge = true
 			break
 		}
@@ -105,24 +105,24 @@ func (inv *Invoice) validateVATStandard() {
 
 	// BR-S-5 Umsatzsteuer mit Normalsatz
 	// In invoice line with "Standard rated", VAT rate must be > 0
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "S" && !line.TaxRateApplicablePercent.IsPositive() {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "S" && !inv.InvoiceLines[i].TaxRateApplicablePercent.IsPositive() {
 			inv.addViolation(rules.BRS5, "Standard rated invoice line must have VAT rate greater than 0")
 		}
 	}
 
 	// BR-S-6 Umsatzsteuer mit Normalsatz
 	// In document level allowance with "Standard rated", VAT rate must be > 0
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" && !ac.CategoryTradeTaxRateApplicablePercent.IsPositive() {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "S" && !inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.IsPositive() {
 			inv.addViolation(rules.BRS6, "Standard rated allowance must have VAT rate greater than 0")
 		}
 	}
 
 	// BR-S-7 Umsatzsteuer mit Normalsatz
 	// In document level charge with "Standard rated", VAT rate must be > 0
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "S" && !ac.CategoryTradeTaxRateApplicablePercent.IsPositive() {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "S" && !inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.IsPositive() {
 			inv.addViolation(rules.BRS7, "Standard rated charge must have VAT rate greater than 0")
 		}
 	}
@@ -132,28 +132,28 @@ func (inv *Invoice) validateVATStandard() {
 	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
-		for _, tt := range inv.TradeTaxes {
-			if tt.CategoryCode == "S" {
+		for i := range inv.TradeTaxes {
+			if inv.TradeTaxes[i].CategoryCode == "S" {
 				// Calculate sum: lines - allowances + charges for this rate
 				calculatedBasis := decimal.Zero
-				for _, line := range inv.InvoiceLines {
-					if line.TaxCategoryCode == "S" && line.TaxRateApplicablePercent.Equal(tt.Percent) {
-						calculatedBasis = calculatedBasis.Add(line.Total)
+				for j := range inv.InvoiceLines {
+					if inv.InvoiceLines[j].TaxCategoryCode == "S" && inv.InvoiceLines[j].TaxRateApplicablePercent.Equal(inv.TradeTaxes[i].Percent) {
+						calculatedBasis = calculatedBasis.Add(inv.InvoiceLines[j].Total)
 					}
 				}
-				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-					if ac.CategoryTradeTaxCategoryCode == "S" && ac.CategoryTradeTaxRateApplicablePercent.Equal(tt.Percent) {
-						if ac.ChargeIndicator {
-							calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
+				for j := range inv.SpecifiedTradeAllowanceCharge {
+					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "S" && inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxRateApplicablePercent.Equal(inv.TradeTaxes[i].Percent) {
+						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
+							calculatedBasis = calculatedBasis.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
 						} else {
-							calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+							calculatedBasis = calculatedBasis.Sub(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
 						}
 					}
 				}
 				// Round to 2 decimals for comparison using commercial rounding (round half up)
 				calculatedBasis = roundHalfUp(calculatedBasis, 2)
-				if !tt.BasisAmount.Equal(calculatedBasis) {
-					inv.addViolation(rules.BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", tt.Percent.String(), calculatedBasis.String(), tt.BasisAmount.String()))
+				if !inv.TradeTaxes[i].BasisAmount.Equal(calculatedBasis) {
+					inv.addViolation(rules.BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", inv.TradeTaxes[i].Percent.String(), calculatedBasis.String(), inv.TradeTaxes[i].BasisAmount.String()))
 				}
 			}
 		}
@@ -161,19 +161,19 @@ func (inv *Invoice) validateVATStandard() {
 
 	// BR-S-9 Umsatzsteuer mit Normalsatz
 	// VAT amount must equal taxable amount * rate
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "S" {
-			expectedVAT := roundHalfUp(tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)), 2)
-			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(rules.BRS9, fmt.Sprintf("Standard rated VAT amount must equal basis * rate (expected %s, got %s)", expectedVAT.String(), tt.CalculatedAmount.String()))
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "S" {
+			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal.NewFromInt(100)), 2)
+			if !inv.TradeTaxes[i].CalculatedAmount.Equal(expectedVAT) {
+				inv.addViolation(rules.BRS9, fmt.Sprintf("Standard rated VAT amount must equal basis * rate (expected %s, got %s)", expectedVAT.String(), inv.TradeTaxes[i].CalculatedAmount.String()))
 			}
 		}
 	}
 
 	// BR-S-10 Umsatzsteuer mit Normalsatz
 	// Standard rated breakdown must not have exemption reason or code
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "S" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "S" && (inv.TradeTaxes[i].ExemptionReason != "" || inv.TradeTaxes[i].ExemptionReasonCode != "") {
 			inv.addViolation(rules.BRS10, "Standard rated VAT breakdown must not have exemption reason")
 		}
 	}
