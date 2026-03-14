@@ -54,7 +54,7 @@ func BenchmarkSuiteValidate(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
-				inv.Validate()
+				_ = inv.Validate()
 			}
 		})
 	}
