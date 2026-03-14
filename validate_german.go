@@ -93,11 +93,9 @@ func (inv *Invoice) validateGerman() {
 		// BR-DE-7: Seller contact email address (BT-43)
 		if contact.EMail == "" {
 			inv.addViolation(rules.BRDE7, "The element 'Seller contact email address' (BT-43) must be transmitted")
-		} else {
+		} else if !isValidEmail(contact.EMail) {
 			// BR-DE-28: Email format validation (warning per XRechnung schematron)
-			if !isValidEmail(contact.EMail) {
-				inv.addWarning(rules.BRDE28, "Email address should have valid format (one @, no leading/trailing dots, etc.)")
-			}
+			inv.addWarning(rules.BRDE28, "Email address should have valid format (one @, no leading/trailing dots, etc.)")
 		}
 	}
 
