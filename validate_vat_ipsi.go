@@ -94,7 +94,7 @@ func (inv *Invoice) validateVATIPSI() {
 	// VAT amount must equal basis * rate
 	for i := range inv.TradeTaxes {
 		if inv.TradeTaxes[i].CategoryCode == "M" {
-			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal.NewFromInt(100)), 2)
+			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal100), 2)
 			if !inv.TradeTaxes[i].CalculatedAmount.Equal(expectedVAT) {
 				inv.addViolation(rules.BRAG6, fmt.Sprintf("IPSI VAT amount must equal basis * rate: got %s, expected %s", inv.TradeTaxes[i].CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
@@ -138,7 +138,7 @@ func (inv *Invoice) validateVATIPSI() {
 	// For each different VAT rate, verify VAT amount calculation
 	for i := range inv.TradeTaxes {
 		if inv.TradeTaxes[i].CategoryCode == "M" {
-			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal.NewFromInt(100)), 2)
+			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal100), 2)
 			if !inv.TradeTaxes[i].CalculatedAmount.Equal(expectedVAT) {
 				inv.addViolation(rules.BRAG8, fmt.Sprintf("IPSI VAT amount for rate %s must equal basis * rate: got %s, expected %s", inv.TradeTaxes[i].Percent.StringFixed(2), inv.TradeTaxes[i].CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}

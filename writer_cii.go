@@ -105,7 +105,7 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine *InvoiceLine, inv *
 		for i := range invoiceLine.AppliedTradeAllowanceCharge {
 			acElt := gpptp.CreateElement("ram:AppliedTradeAllowanceCharge")
 			// BG-27, BG-28
-			acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", invoiceLine.AppliedTradeAllowanceCharge[i].ChargeIndicator))
+			acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(strconv.FormatBool(invoiceLine.AppliedTradeAllowanceCharge[i].ChargeIndicator))
 
 			if cp := invoiceLine.AppliedTradeAllowanceCharge[i].CalculationPercent; !cp.IsZero() {
 				acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(cp))
@@ -570,7 +570,7 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	}
 	for i := range inv.SpecifiedTradeAllowanceCharge {
 		stacElt := elt.CreateElement("ram:SpecifiedTradeAllowanceCharge")
-		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator))
+		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(strconv.FormatBool(inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator))
 		// BT-93, BT-100: BasisAmount is optional - only create if non-zero (PEPPOL-EN16931-R008)
 		if !inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.IsZero() {
 			stacElt.CreateElement("ram:BasisAmount").SetText(inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.StringFixed(2))
