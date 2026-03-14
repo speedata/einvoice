@@ -33,8 +33,8 @@ var (
 
 // SchematronSchema represents a schematron schema root element
 type SchematronSchema struct {
-	XMLName  xml.Name             `xml:"schema"`
-	Patterns []SchematronPattern  `xml:"pattern"`
+	XMLName  xml.Name            `xml:"schema"`
+	Patterns []SchematronPattern `xml:"pattern"`
 }
 
 // SchematronPattern represents a schematron pattern element
@@ -64,8 +64,8 @@ type SchematronAssert struct {
 type Rule struct {
 	ID          string   // Go identifier (e.g., "BR1", "BRS8", "BRCO14")
 	Code        string   // Rule code (e.g., "BR-01", "BR-S-08", "BR-CO-14")
-	Fields      []string // BT-/BG- identifiers
 	Description string   // Cleaned description text
+	Fields      []string // BT-/BG- identifiers
 }
 
 // ByCode implements sort.Interface for []Rule based on Code field

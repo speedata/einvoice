@@ -12,19 +12,19 @@ import (
 
 // Result represents the validation result for JSON output
 type Result struct {
-	File       string       `json:"file"`
-	Valid      bool         `json:"valid"`
-	Invoice    *InvoiceRef  `json:"invoice,omitempty"`
-	Violations []Violation  `json:"violations,omitempty"`
-	Error      string       `json:"error,omitempty"`
+	Invoice    *InvoiceRef `json:"invoice,omitempty"`
+	File       string      `json:"file"`
+	Error      string      `json:"error,omitempty"`
+	Violations []Violation `json:"violations,omitempty"`
+	Valid      bool        `json:"valid"`
 }
 
 // Violation represents a business rule violation
 type Violation struct {
 	Rule        string   `json:"rule"`
-	Fields      []string `json:"fields,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Text        string   `json:"text"`
+	Fields      []string `json:"fields,omitempty"`
 }
 
 // InvoiceRef contains basic invoice metadata

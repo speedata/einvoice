@@ -34,6 +34,12 @@ type NoteInfo struct {
 
 // InvoiceDetails contains detailed invoice information
 type InvoiceDetails struct {
+	Seller                            *PartyInfo            `json:"seller"`
+	Buyer                             *PartyInfo            `json:"buyer"`
+	Payee                             *PartyInfo            `json:"payee,omitempty"`
+	SellerTaxRepresentative           *PartyInfo            `json:"seller_tax_representative,omitempty"`
+	ShipTo                            *PartyInfo            `json:"ship_to,omitempty"`
+	Totals                            *TotalsInfo           `json:"totals"`
 	Number                            string                `json:"number"`
 	Date                              string                `json:"date"`
 	BillingPeriodStart                string                `json:"billing_period_start,omitempty"`
@@ -58,31 +64,25 @@ type InvoiceDetails struct {
 	ReceivableAccountingAccount       string                `json:"receivable_accounting_account,omitempty"`
 	InvoiceReferences                 []ReferenceInfo       `json:"invoice_references,omitempty"`
 	AdditionalReferences              []DocumentInfo        `json:"additional_references,omitempty"`
-	Seller                            *PartyInfo            `json:"seller"`
-	Buyer                             *PartyInfo            `json:"buyer"`
-	Payee                             *PartyInfo            `json:"payee,omitempty"`
-	SellerTaxRepresentative           *PartyInfo            `json:"seller_tax_representative,omitempty"`
-	ShipTo                            *PartyInfo            `json:"ship_to,omitempty"`
 	PaymentMeans                      []PaymentMeansInfo    `json:"payment_means,omitempty"`
 	Lines                             []LineInfo            `json:"lines,omitempty"`
-	LineCount                         int                   `json:"line_count"`
-	Totals                            *TotalsInfo           `json:"totals"`
 	PaymentTerms                      []string              `json:"payment_terms,omitempty"`
 	PaymentTermsDetailed              []PaymentTermInfo     `json:"payment_terms_detailed,omitempty"`
 	TradeTax                          []TaxInfo             `json:"trade_tax,omitempty"`
 	ChargeAllowances                  []ChargeAllowanceInfo `json:"charge_allowances,omitempty"`
 	Notes                             []NoteInfo            `json:"notes,omitempty"`
+	LineCount                         int                   `json:"line_count"`
 	TermWidth                         int                   `json:"-"`
 }
 
 // PartyInfo contains party details
 type PartyInfo struct {
+	Address   *AddressInfo `json:"address,omitempty"`
 	Name      string       `json:"name"`
 	ID        string       `json:"id,omitempty"`
 	GlobalID  string       `json:"global_id,omitempty"`
 	VATNumber string       `json:"vat_number,omitempty"`
 	TaxNumber string       `json:"tax_number,omitempty"`
-	Address   *AddressInfo `json:"address,omitempty"`
 }
 
 // AddressInfo contains address details
@@ -138,7 +138,6 @@ type DocumentInfo struct {
 
 // PaymentMeansInfo contains payment means details.
 type PaymentMeansInfo struct {
-	TypeCode           int    `json:"type_code,omitempty"`
 	Information        string `json:"information,omitempty"`
 	PayeeIBAN          string `json:"payee_iban,omitempty"`
 	PayeeAccountName   string `json:"payee_account_name,omitempty"`
@@ -147,6 +146,7 @@ type PaymentMeansInfo struct {
 	PayerIBAN          string `json:"payer_iban,omitempty"`
 	CardID             string `json:"card_id,omitempty"`
 	CardholderName     string `json:"cardholder_name,omitempty"`
+	TypeCode           int    `json:"type_code,omitempty"`
 }
 
 // PaymentTermInfo contains detailed payment term data.
@@ -169,13 +169,13 @@ type TaxInfo struct {
 
 // ChargeAllowanceInfo contains charge/allowance details
 type ChargeAllowanceInfo struct {
-	ChargeIndicator bool   `json:"charge_indicator"`
 	Amount          string `json:"amount"`
 	Reason          string `json:"reason,omitempty"`
 	Type            string `json:"type,omitempty"`
 	Category        string `json:"category,omitempty"`
 	Percent         string `json:"percent,omitempty"`
 	BasisAmount     string `json:"basis_amount,omitempty"`
+	ChargeIndicator bool   `json:"charge_indicator"`
 }
 
 func detectTerminalWidth() int {
