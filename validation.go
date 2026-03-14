@@ -2,6 +2,7 @@ package einvoice
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/speedata/einvoice/rules"
 )
@@ -298,19 +299,7 @@ func (inv *Invoice) isEN16931Compliant() bool {
 
 	urn := inv.GuidelineSpecifiedDocumentContextParameter
 	// Check for EN 16931 compliance indicators
-	return contains(urn, "en16931") || contains(urn, "factur-x") || contains(urn, "zugferd")
-}
-
-// contains checks if a string contains a substring (case-sensitive).
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || func() bool {
-		for i := 0; i <= len(s)-len(substr); i++ {
-			if s[i:i+len(substr)] == substr {
-				return true
-			}
-		}
-		return false
-	}())
+	return strings.Contains(urn, "en16931") || strings.Contains(urn, "factur-x") || strings.Contains(urn, "zugferd")
 }
 
 // isPEPPOL checks if the invoice is a PEPPOL BIS Billing 3.0 invoice

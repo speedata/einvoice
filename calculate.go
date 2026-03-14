@@ -4,6 +4,9 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// decimal100 is a pre-computed constant for 100 used in VAT percentage calculations.
+var decimal100 = decimal.NewFromInt(100)
+
 // roundHalfUp performs commercial rounding (round half up) to the specified number of decimal places.
 // This is required by EN 16931 for VAT calculations, as opposed to banker's rounding.
 // For example, 34700.0458 rounded to 2 places becomes 34700.05 (not 34700.04).
@@ -85,12 +88,10 @@ func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 	}
 
 	inv.TradeTaxes = []TradeTax{}
-	onehundred := decimal.NewFromInt(100)
-
 	for _, att := range applicableTradeTaxes {
 		// BR-DEC-19: VAT category taxable amount (BT-116) must have max 2 decimal places
 		att.BasisAmount = roundHalfUp(att.BasisAmount, 2)
-		att.CalculatedAmount = roundHalfUp(att.BasisAmount.Mul(att.Percent.Div(onehundred)), 2)
+		att.CalculatedAmount = roundHalfUp(att.BasisAmount.Mul(att.Percent.Div(decimal100)), 2)
 		if att.Percent.IsZero() {
 			att.ExemptionReason = exemptReason[att.CategoryCode]
 		}

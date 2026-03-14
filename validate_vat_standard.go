@@ -163,7 +163,7 @@ func (inv *Invoice) validateVATStandard() {
 	// VAT amount must equal taxable amount * rate
 	for i := range inv.TradeTaxes {
 		if inv.TradeTaxes[i].CategoryCode == "S" {
-			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal.NewFromInt(100)), 2)
+			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal100), 2)
 			if !inv.TradeTaxes[i].CalculatedAmount.Equal(expectedVAT) {
 				inv.addViolation(rules.BRS9, fmt.Sprintf("Standard rated VAT amount must equal basis * rate (expected %s, got %s)", expectedVAT.String(), inv.TradeTaxes[i].CalculatedAmount.String()))
 			}
