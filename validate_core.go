@@ -326,25 +326,21 @@ func (inv *Invoice) validateCore() {
 	// Eine Rechnung (INVOICE) muss die postalische Anschrift des Verkäufers "SELLER POSTAL ADDRESS" (BG-5) enthalten.
 	if inv.Seller.PostalAddress == nil {
 		inv.addViolation(rules.BR8, "Seller has no postal address")
-	} else {
+	} else if inv.Seller.PostalAddress.CountryID == "" {
 		// BR-9 Verkäufer
 		// Eine postalische Anschrift des Verkäufers "SELLER POSTAL ADDRESS" (BG-5) muss einen Verkäufer-Ländercode "Seller country code" (BT-40) enthalten.
-		if inv.Seller.PostalAddress.CountryID == "" {
-			inv.addViolation(rules.BR9, "Seller country code empty")
-		}
+		inv.addViolation(rules.BR9, "Seller country code empty")
 	}
 	if inv.ProfileLevel() > levelMinimum {
 		// BR-10 Käufer
 		// Eine Rechnung (INVOICE) muss die postalische Anschrift des Erwerbers "BUYER POSTAL ADDRESS" (BG-8) enthalten.
 		if inv.Buyer.PostalAddress == nil {
 			inv.addViolation(rules.BR10, "Buyer has no postal address")
-		} else {
+		} else if inv.Buyer.PostalAddress.CountryID == "" {
 			// BR-11 Käufer
 			// Eine postalische Anschrift des Erwerbers "BUYER POSTAL ADDRESS" (BG-8) muss einen Erwerber-Ländercode "Buyer country code" (BT-55)
 			// enthalten.
-			if inv.Buyer.PostalAddress.CountryID == "" {
-				inv.addViolation(rules.BR11, "Buyer country code empty")
-			}
+			inv.addViolation(rules.BR11, "Buyer country code empty")
 		}
 	}
 	// BR-12 Gesamtsummen auf Dokumentenebene
@@ -410,13 +406,11 @@ func (inv *Invoice) validateCore() {
 		// wenn der Verkäufer "SELLER" (BG-4) einen Steuervertreter hat.
 		if trp.PostalAddress == nil {
 			inv.addViolation(rules.BR19, "Tax representative has no postal address")
-		} else {
+		} else if trp.PostalAddress.CountryID == "" {
 			// BR-20 Steuerbevollmächtigter des Verkäufers
 			// Die postalische Anschrift des Steuervertreters des Verkäufers "SELLER TAX REPRESENTATIVE POSTAL ADDRESS" (BG-12) muss einen
 			// Steuervertreter-Ländercode enthalten, wenn der Verkäufer "SELLER" (BG-4) einen Steuervertreter hat.
-			if trp.PostalAddress.CountryID == "" {
-				inv.addViolation(rules.BR20, "Tax representative postal address missing country code")
-			}
+			inv.addViolation(rules.BR20, "Tax representative postal address missing country code")
 		}
 	}
 	for i := range inv.InvoiceLines {

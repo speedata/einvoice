@@ -78,7 +78,9 @@ const (
 	EAS0135 = "0135"
 
 	// EAS0183 is the older code for Swiss Business Identification Number (UIDB).
-	// Deprecated in favor of EAS0135, but still in use for compatibility.
+	// Still in use for compatibility.
+	//
+	// Deprecated: use EAS0135 instead.
 	EAS0183 = "0183"
 
 	// EAS0184 is Dutch Chamber of Commerce number (KvK).
