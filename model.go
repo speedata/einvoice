@@ -302,9 +302,9 @@ type Document struct {
 	TypeCode               string // BT-17: 50, BT-18: 130  BT-122: 916
 	ReferenceTypeCode      string // BT-18
 	Name                   string // BT-123
-	AttachmentBinaryObject []byte // BT-125
 	AttachmentMimeCode     string // BT-125
 	AttachmentFilename     string // BT-125
+	AttachmentBinaryObject []byte // BT-125
 }
 
 // SpecifiedTradePaymentTerms is unbounded in extended.
@@ -317,9 +317,8 @@ type SpecifiedTradePaymentTerms struct {
 
 // ReferencedDocument links to a previous invoice BG-3.
 type ReferencedDocument struct {
-	ID   string    // BT-25
 	Date time.Time // BT-26
-
+	ID   string    // BT-25
 }
 
 // Invoice is the main element of the e-invoice.
