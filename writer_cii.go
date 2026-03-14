@@ -23,7 +23,7 @@ func addTimeCIIUDT(parent *etree.Element, date time.Time) {
 	udtdts.CreateText(date.Format("20060102"))
 }
 
-func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *Invoice, parent *etree.Element) {
+func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine *InvoiceLine, inv *Invoice, parent *etree.Element) {
 	lineItem := parent.CreateElement("ram:IncludedSupplyChainTradeLineItem")
 	adld := lineItem.CreateElement("ram:AssociatedDocumentLineDocument")
 	lineID := adld.CreateElement("ram:LineID")
@@ -61,24 +61,24 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	}
 
 	// Write product characteristics
-	for _, ch := range invoiceLine.Characteristics {
+	for i := range invoiceLine.Characteristics {
 		chElt := stp.CreateElement("ram:ApplicableProductCharacteristic")
-		chElt.CreateElement("ram:Description").SetText(ch.Description)
-		chElt.CreateElement("ram:Value").SetText(ch.Value)
+		chElt.CreateElement("ram:Description").SetText(invoiceLine.Characteristics[i].Description)
+		chElt.CreateElement("ram:Value").SetText(invoiceLine.Characteristics[i].Value)
 	}
 
 	// Write product classifications
-	for _, cl := range invoiceLine.ProductClassification {
+	for i := range invoiceLine.ProductClassification {
 		clElt := stp.CreateElement("ram:DesignatedProductClassification")
-		if cl.ClassCode != "" {
+		if invoiceLine.ProductClassification[i].ClassCode != "" {
 			ccElt := clElt.CreateElement("ram:ClassCode")
-			if cl.ListID != "" {
-				ccElt.CreateAttr("listID", cl.ListID)
+			if invoiceLine.ProductClassification[i].ListID != "" {
+				ccElt.CreateAttr("listID", invoiceLine.ProductClassification[i].ListID)
 			}
-			if cl.ListVersionID != "" {
-				ccElt.CreateAttr("listVersionID", cl.ListVersionID)
+			if invoiceLine.ProductClassification[i].ListVersionID != "" {
+				ccElt.CreateAttr("listVersionID", invoiceLine.ProductClassification[i].ListVersionID)
 			}
-			ccElt.SetText(cl.ClassCode)
+			ccElt.SetText(invoiceLine.ProductClassification[i].ClassCode)
 		}
 	}
 
@@ -101,22 +101,22 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 		gpptp := slta.CreateElement("ram:GrossPriceProductTradePrice")
 		gpptp.CreateElement("ram:ChargeAmount").SetText(invoiceLine.GrossPrice.String())
 
-		for _, allowanceCharge := range invoiceLine.AppliedTradeAllowanceCharge {
+		for i := range invoiceLine.AppliedTradeAllowanceCharge {
 			acElt := gpptp.CreateElement("ram:AppliedTradeAllowanceCharge")
 			// BG-27, BG-28
-			acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", allowanceCharge.ChargeIndicator))
+			acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", invoiceLine.AppliedTradeAllowanceCharge[i].ChargeIndicator))
 
-			if cp := allowanceCharge.CalculationPercent; !cp.IsZero() {
+			if cp := invoiceLine.AppliedTradeAllowanceCharge[i].CalculationPercent; !cp.IsZero() {
 				acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(cp))
 			}
 
-			if ba := allowanceCharge.BasisAmount; !ba.IsZero() {
+			if ba := invoiceLine.AppliedTradeAllowanceCharge[i].BasisAmount; !ba.IsZero() {
 				acElt.CreateElement("ram:BasisAmount").SetText(ba.StringFixed(2))
 			}
 
 			// BT-147: Item price discount (no decimal restriction per EN 16931)
-			acElt.CreateElement("ram:ActualAmount").SetText(allowanceCharge.ActualAmount.String())
-			if r := allowanceCharge.Reason; r != "" {
+			acElt.CreateElement("ram:ActualAmount").SetText(invoiceLine.AppliedTradeAllowanceCharge[i].ActualAmount.String())
+			if r := invoiceLine.AppliedTradeAllowanceCharge[i].Reason; r != "" {
 				acElt.CreateElement("ram:Reason").SetText(r)
 			}
 		}
@@ -164,70 +164,70 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	}
 
 	// BG-27: Invoice line allowances
-	for _, allowance := range invoiceLine.InvoiceLineAllowances {
+	for i := range invoiceLine.InvoiceLineAllowances {
 		acElt := slts.CreateElement("ram:SpecifiedTradeAllowanceCharge")
 		acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText("false")
 
-		if !allowance.CalculationPercent.IsZero() {
-			acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(allowance.CalculationPercent))
+		if !invoiceLine.InvoiceLineAllowances[i].CalculationPercent.IsZero() {
+			acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(invoiceLine.InvoiceLineAllowances[i].CalculationPercent))
 		}
 
-		if !allowance.BasisAmount.IsZero() {
-			acElt.CreateElement("ram:BasisAmount").SetText(allowance.BasisAmount.StringFixed(2))
+		if !invoiceLine.InvoiceLineAllowances[i].BasisAmount.IsZero() {
+			acElt.CreateElement("ram:BasisAmount").SetText(invoiceLine.InvoiceLineAllowances[i].BasisAmount.StringFixed(2))
 		}
 
-		acElt.CreateElement("ram:ActualAmount").SetText(allowance.ActualAmount.StringFixed(2))
+		acElt.CreateElement("ram:ActualAmount").SetText(invoiceLine.InvoiceLineAllowances[i].ActualAmount.StringFixed(2))
 
-		if allowance.ReasonCode != "" {
-			acElt.CreateElement("ram:ReasonCode").SetText(allowance.ReasonCode)
+		if invoiceLine.InvoiceLineAllowances[i].ReasonCode != "" {
+			acElt.CreateElement("ram:ReasonCode").SetText(invoiceLine.InvoiceLineAllowances[i].ReasonCode)
 		}
 
-		if allowance.Reason != "" {
-			acElt.CreateElement("ram:Reason").SetText(allowance.Reason)
+		if invoiceLine.InvoiceLineAllowances[i].Reason != "" {
+			acElt.CreateElement("ram:Reason").SetText(invoiceLine.InvoiceLineAllowances[i].Reason)
 		}
 
 		// Category trade tax for allowance
-		if allowance.CategoryTradeTaxCategoryCode != "" {
+		if invoiceLine.InvoiceLineAllowances[i].CategoryTradeTaxCategoryCode != "" {
 			ctt := acElt.CreateElement("ram:CategoryTradeTax")
-			if allowance.CategoryTradeTaxType != "" {
-				ctt.CreateElement("ram:TypeCode").SetText(allowance.CategoryTradeTaxType)
+			if invoiceLine.InvoiceLineAllowances[i].CategoryTradeTaxType != "" {
+				ctt.CreateElement("ram:TypeCode").SetText(invoiceLine.InvoiceLineAllowances[i].CategoryTradeTaxType)
 			}
-			ctt.CreateElement("ram:CategoryCode").SetText(allowance.CategoryTradeTaxCategoryCode)
-			ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(allowance.CategoryTradeTaxRateApplicablePercent))
+			ctt.CreateElement("ram:CategoryCode").SetText(invoiceLine.InvoiceLineAllowances[i].CategoryTradeTaxCategoryCode)
+			ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(invoiceLine.InvoiceLineAllowances[i].CategoryTradeTaxRateApplicablePercent))
 		}
 	}
 
 	// BG-28: Invoice line charges
-	for _, charge := range invoiceLine.InvoiceLineCharges {
+	for i := range invoiceLine.InvoiceLineCharges {
 		acElt := slts.CreateElement("ram:SpecifiedTradeAllowanceCharge")
 		acElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText("true")
 
-		if !charge.CalculationPercent.IsZero() {
-			acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(charge.CalculationPercent))
+		if !invoiceLine.InvoiceLineCharges[i].CalculationPercent.IsZero() {
+			acElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(invoiceLine.InvoiceLineCharges[i].CalculationPercent))
 		}
 
-		if !charge.BasisAmount.IsZero() {
-			acElt.CreateElement("ram:BasisAmount").SetText(charge.BasisAmount.StringFixed(2))
+		if !invoiceLine.InvoiceLineCharges[i].BasisAmount.IsZero() {
+			acElt.CreateElement("ram:BasisAmount").SetText(invoiceLine.InvoiceLineCharges[i].BasisAmount.StringFixed(2))
 		}
 
-		acElt.CreateElement("ram:ActualAmount").SetText(charge.ActualAmount.StringFixed(2))
+		acElt.CreateElement("ram:ActualAmount").SetText(invoiceLine.InvoiceLineCharges[i].ActualAmount.StringFixed(2))
 
-		if charge.ReasonCode != "" {
-			acElt.CreateElement("ram:ReasonCode").SetText(charge.ReasonCode)
+		if invoiceLine.InvoiceLineCharges[i].ReasonCode != "" {
+			acElt.CreateElement("ram:ReasonCode").SetText(invoiceLine.InvoiceLineCharges[i].ReasonCode)
 		}
 
-		if charge.Reason != "" {
-			acElt.CreateElement("ram:Reason").SetText(charge.Reason)
+		if invoiceLine.InvoiceLineCharges[i].Reason != "" {
+			acElt.CreateElement("ram:Reason").SetText(invoiceLine.InvoiceLineCharges[i].Reason)
 		}
 
 		// Category trade tax for charge
-		if charge.CategoryTradeTaxCategoryCode != "" {
+		if invoiceLine.InvoiceLineCharges[i].CategoryTradeTaxCategoryCode != "" {
 			ctt := acElt.CreateElement("ram:CategoryTradeTax")
-			if charge.CategoryTradeTaxType != "" {
-				ctt.CreateElement("ram:TypeCode").SetText(charge.CategoryTradeTaxType)
+			if invoiceLine.InvoiceLineCharges[i].CategoryTradeTaxType != "" {
+				ctt.CreateElement("ram:TypeCode").SetText(invoiceLine.InvoiceLineCharges[i].CategoryTradeTaxType)
 			}
-			ctt.CreateElement("ram:CategoryCode").SetText(charge.CategoryTradeTaxCategoryCode)
-			ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(charge.CategoryTradeTaxRateApplicablePercent))
+			ctt.CreateElement("ram:CategoryCode").SetText(invoiceLine.InvoiceLineCharges[i].CategoryTradeTaxCategoryCode)
+			ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(invoiceLine.InvoiceLineCharges[i].CategoryTradeTaxRateApplicablePercent))
 		}
 	}
 
@@ -240,7 +240,7 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine InvoiceLine, inv *I
 	}
 }
 
-func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType CodePartyType) {
+func writeCIIParty(inv *Invoice, party *Party, parent *etree.Element, partyType CodePartyType) {
 	for _, id := range party.ID {
 		parent.CreateElement("ram:ID").SetText(id)
 	}
@@ -269,24 +269,24 @@ func writeCIIParty(inv *Invoice, party Party, parent *etree.Element, partyType C
 		}
 	}
 
-	for _, dtc := range party.DefinedTradeContact {
+	for i := range party.DefinedTradeContact {
 		dtcElt := parent.CreateElement("ram:DefinedTradeContact")
-		if dtc.PersonName != "" {
-			dtcElt.CreateElement("ram:PersonName").SetText(dtc.PersonName)
+		if party.DefinedTradeContact[i].PersonName != "" {
+			dtcElt.CreateElement("ram:PersonName").SetText(party.DefinedTradeContact[i].PersonName)
 		}
 
-		if dtc.DepartmentName != "" {
-			dtcElt.CreateElement("ram:DepartmentName").SetText(dtc.DepartmentName)
+		if party.DefinedTradeContact[i].DepartmentName != "" {
+			dtcElt.CreateElement("ram:DepartmentName").SetText(party.DefinedTradeContact[i].DepartmentName)
 		}
 
-		if dtc.PhoneNumber != "" {
-			dtcElt.CreateElement("ram:TelephoneUniversalCommunication").CreateElement("ram:CompleteNumber").SetText(dtc.PhoneNumber)
+		if party.DefinedTradeContact[i].PhoneNumber != "" {
+			dtcElt.CreateElement("ram:TelephoneUniversalCommunication").CreateElement("ram:CompleteNumber").SetText(party.DefinedTradeContact[i].PhoneNumber)
 		}
 
-		if dtc.EMail != "" {
+		if party.DefinedTradeContact[i].EMail != "" {
 			email := dtcElt.CreateElement("ram:EmailURIUniversalCommunication").CreateElement("ram:URIID")
 			// email.CreateAttr("schemeID", "SMTP")
-			email.SetText(dtc.EMail)
+			email.SetText(party.DefinedTradeContact[i].EMail)
 		}
 	}
 
@@ -351,12 +351,12 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 		elt.CreateElement("ram:BuyerReference").SetText(br)
 	}
 
-	writeCIIParty(inv, inv.Seller, elt.CreateElement("ram:SellerTradeParty"), CSellerParty)
-	writeCIIParty(inv, inv.Buyer, elt.CreateElement("ram:BuyerTradeParty"), CBuyerParty)
+	writeCIIParty(inv, &inv.Seller, elt.CreateElement("ram:SellerTradeParty"), CSellerParty)
+	writeCIIParty(inv, &inv.Buyer, elt.CreateElement("ram:BuyerTradeParty"), CBuyerParty)
 
 	// BG-11: Seller tax representative party
 	if inv.SellerTaxRepresentativeTradeParty != nil {
-		writeCIIParty(inv, *inv.SellerTaxRepresentativeTradeParty, elt.CreateElement("ram:SellerTaxRepresentativeTradeParty"), CSellerParty)
+		writeCIIParty(inv, inv.SellerTaxRepresentativeTradeParty, elt.CreateElement("ram:SellerTaxRepresentativeTradeParty"), CSellerParty)
 	}
 
 	// BT-14: Seller order reference
@@ -373,26 +373,26 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 		elt.CreateElement("ram:ContractReferencedDocument").CreateElement("ram:IssuerAssignedID").SetText(inv.ContractReferencedDocument)
 	}
 	// BG-24
-	for _, doc := range inv.AdditionalReferencedDocument {
+	for i := range inv.AdditionalReferencedDocument {
 		ard := elt.CreateElement("ram:AdditionalReferencedDocument")
-		ard.CreateElement("ram:IssuerAssignedID").SetText(doc.IssuerAssignedID)
-		ard.CreateElement("ram:TypeCode").SetText(doc.TypeCode)
-		if doc.Name != "" {
-			ard.CreateElement("ram:Name").SetText(doc.Name)
+		ard.CreateElement("ram:IssuerAssignedID").SetText(inv.AdditionalReferencedDocument[i].IssuerAssignedID)
+		ard.CreateElement("ram:TypeCode").SetText(inv.AdditionalReferencedDocument[i].TypeCode)
+		if inv.AdditionalReferencedDocument[i].Name != "" {
+			ard.CreateElement("ram:Name").SetText(inv.AdditionalReferencedDocument[i].Name)
 		}
 		// BT-125: Only write AttachmentBinaryObject if attachment data exists (PEPPOL-EN16931-R008)
-		if len(doc.AttachmentBinaryObject) > 0 {
+		if len(inv.AdditionalReferencedDocument[i].AttachmentBinaryObject) > 0 {
 			abo := ard.CreateElement("ram:AttachmentBinaryObject")
-			if doc.AttachmentMimeCode != "" {
-				abo.CreateAttr("mimeCode", doc.AttachmentMimeCode)
+			if inv.AdditionalReferencedDocument[i].AttachmentMimeCode != "" {
+				abo.CreateAttr("mimeCode", inv.AdditionalReferencedDocument[i].AttachmentMimeCode)
 			}
-			if doc.AttachmentFilename != "" {
-				abo.CreateAttr("filename", doc.AttachmentFilename)
+			if inv.AdditionalReferencedDocument[i].AttachmentFilename != "" {
+				abo.CreateAttr("filename", inv.AdditionalReferencedDocument[i].AttachmentFilename)
 			}
-			abo.SetText(base64.StdEncoding.EncodeToString(doc.AttachmentBinaryObject))
+			abo.SetText(base64.StdEncoding.EncodeToString(inv.AdditionalReferencedDocument[i].AttachmentBinaryObject))
 		}
-		if doc.TypeCode == "130" {
-			ard.CreateElement("ram:ReferenceTypeCode").SetText(doc.ReferenceTypeCode)
+		if inv.AdditionalReferencedDocument[i].TypeCode == "130" {
+			ard.CreateElement("ram:ReferenceTypeCode").SetText(inv.AdditionalReferencedDocument[i].ReferenceTypeCode)
 		}
 	}
 
@@ -412,7 +412,7 @@ func writeCIIramApplicableHeaderTradeDelivery(inv *Invoice, parent *etree.Elemen
 	elt := parent.CreateElement("ram:ApplicableHeaderTradeDelivery")
 
 	if inv.ShipTo != nil {
-		writeCIIParty(inv, *inv.ShipTo, elt.CreateElement("ram:ShipToTradeParty"), CShipToParty)
+		writeCIIParty(inv, inv.ShipTo, elt.CreateElement("ram:ShipToTradeParty"), CShipToParty)
 	}
 
 	// BT-72: Actual delivery date (BasicWL and above)
@@ -499,98 +499,98 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 
 	// PayeeTradeParty BG-10
 	if pt := inv.PayeeTradeParty; pt != nil {
-		writeCIIParty(inv, *pt, elt.CreateElement("ram:PayeeTradeParty"), CPayeeParty)
+		writeCIIParty(inv, pt, elt.CreateElement("ram:PayeeTradeParty"), CPayeeParty)
 	}
 
 	if is(levelBasicWL, inv) {
-		for _, paymentMeans := range inv.PaymentMeans {
+		for i := range inv.PaymentMeans {
 			pmElt := elt.CreateElement("ram:SpecifiedTradeSettlementPaymentMeans")
 
 			//	BT-81
-			pmElt.CreateElement("ram:TypeCode").SetText(fmt.Sprintf("%d", paymentMeans.TypeCode))
+			pmElt.CreateElement("ram:TypeCode").SetText(fmt.Sprintf("%d", inv.PaymentMeans[i].TypeCode))
 
-			if inf := paymentMeans.Information; inf != "" {
+			if inf := inv.PaymentMeans[i].Information; inf != "" {
 				// BT-82
 				pmElt.CreateElement("ram:Information").SetText(inf)
 			}
-			if paymentMeans.ApplicableTradeSettlementFinancialCardID != "" {
+			if inv.PaymentMeans[i].ApplicableTradeSettlementFinancialCardID != "" {
 				fCard := pmElt.CreateElement("ram:ApplicableTradeSettlementFinancialCard")
 				// BT-87
-				fCard.CreateElement("ram:ID").SetText(paymentMeans.ApplicableTradeSettlementFinancialCardID)
+				fCard.CreateElement("ram:ID").SetText(inv.PaymentMeans[i].ApplicableTradeSettlementFinancialCardID)
 				// BT-88: Cardholder name is optional - only create if non-empty (PEPPOL-EN16931-R008)
-				if paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName != "" {
-					fCard.CreateElement("ram:CardholderName").SetText(paymentMeans.ApplicableTradeSettlementFinancialCardCardholderName)
+				if inv.PaymentMeans[i].ApplicableTradeSettlementFinancialCardCardholderName != "" {
+					fCard.CreateElement("ram:CardholderName").SetText(inv.PaymentMeans[i].ApplicableTradeSettlementFinancialCardCardholderName)
 				}
 			}
-			if iban := paymentMeans.PayerPartyDebtorFinancialAccountIBAN; iban != "" {
+			if iban := inv.PaymentMeans[i].PayerPartyDebtorFinancialAccountIBAN; iban != "" {
 				// BT-91
 				pmElt.CreateElement("ram:PayerPartyDebtorFinancialAccount").CreateElement("ram:IBANID").SetText(iban)
 			}
-			if iban := paymentMeans.PayeePartyCreditorFinancialAccountIBAN; iban != "" {
+			if iban := inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountIBAN; iban != "" {
 				// BG-17
 				account := pmElt.CreateElement("ram:PayeePartyCreditorFinancialAccount")
 				account.CreateElement("ram:IBANID").SetText(iban)
 				// BT-85
-				if name := paymentMeans.PayeePartyCreditorFinancialAccountName; name != "" {
+				if name := inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountName; name != "" {
 					account.CreateElement("ram:AccountName").SetText(name)
 				}
 				// BT-84
-				if pid := paymentMeans.PayeePartyCreditorFinancialAccountProprietaryID; pid != "" {
+				if pid := inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountProprietaryID; pid != "" {
 					account.CreateElement("ram:ProprietaryID").SetText(pid)
 				}
 			}
 			// BT-86
-			if bic := paymentMeans.PayeeSpecifiedCreditorFinancialInstitutionBIC; bic != "" {
+			if bic := inv.PaymentMeans[i].PayeeSpecifiedCreditorFinancialInstitutionBIC; bic != "" {
 				pmElt.CreateElement("ram:PayeeSpecifiedCreditorFinancialInstitution").CreateElement("ram:BICID").SetText(bic)
 			}
 		}
 	}
 
-	for _, tradeTax := range inv.TradeTaxes {
+	for i := range inv.TradeTaxes {
 		att := elt.CreateElement("ram:ApplicableTradeTax")
-		att.CreateElement("ram:CalculatedAmount").SetText(tradeTax.CalculatedAmount.StringFixed(2))
+		att.CreateElement("ram:CalculatedAmount").SetText(inv.TradeTaxes[i].CalculatedAmount.StringFixed(2))
 
-		att.CreateElement("ram:TypeCode").SetText(tradeTax.TypeCode)
+		att.CreateElement("ram:TypeCode").SetText(inv.TradeTaxes[i].TypeCode)
 
 		// BT-120: ExemptionReason must come after TypeCode and before BasisAmount
-		if er := tradeTax.ExemptionReason; er != "" {
+		if er := inv.TradeTaxes[i].ExemptionReason; er != "" {
 			att.CreateElement("ram:ExemptionReason").SetText(er)
 		}
 
-		att.CreateElement("ram:BasisAmount").SetText(tradeTax.BasisAmount.StringFixed(2))
-		att.CreateElement("ram:CategoryCode").SetText(tradeTax.CategoryCode)
+		att.CreateElement("ram:BasisAmount").SetText(inv.TradeTaxes[i].BasisAmount.StringFixed(2))
+		att.CreateElement("ram:CategoryCode").SetText(inv.TradeTaxes[i].CategoryCode)
 
 		// BT-121: ExemptionReasonCode must come after CategoryCode
-		if erc := tradeTax.ExemptionReasonCode; erc != "" {
+		if erc := inv.TradeTaxes[i].ExemptionReasonCode; erc != "" {
 			att.CreateElement("ram:ExemptionReasonCode").SetText(erc)
 		}
 
-		att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(tradeTax.Percent))
+		att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(inv.TradeTaxes[i].Percent))
 	}
-	for _, stac := range inv.SpecifiedTradeAllowanceCharge {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
 		stacElt := elt.CreateElement("ram:SpecifiedTradeAllowanceCharge")
-		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", stac.ChargeIndicator))
+		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(fmt.Sprintf("%t", inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator))
 		// BT-93, BT-100: BasisAmount is optional - only create if non-zero (PEPPOL-EN16931-R008)
-		if !stac.BasisAmount.IsZero() {
-			stacElt.CreateElement("ram:BasisAmount").SetText(stac.BasisAmount.StringFixed(2))
+		if !inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.IsZero() {
+			stacElt.CreateElement("ram:BasisAmount").SetText(inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.StringFixed(2))
 		}
-		stacElt.CreateElement("ram:ActualAmount").SetText(stac.ActualAmount.StringFixed(2))
+		stacElt.CreateElement("ram:ActualAmount").SetText(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.StringFixed(2))
 		// BT-98, BT-105: ReasonCode is optional - only create if non-empty (PEPPOL-EN16931-R008)
-		if stac.ReasonCode != "" {
-			stacElt.CreateElement("ram:ReasonCode").SetText(stac.ReasonCode)
+		if inv.SpecifiedTradeAllowanceCharge[i].ReasonCode != "" {
+			stacElt.CreateElement("ram:ReasonCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].ReasonCode)
 		}
 		// BT-97, BT-104: Reason is optional - only create if non-empty (PEPPOL-EN16931-R008)
-		if stac.Reason != "" {
-			stacElt.CreateElement("ram:Reason").SetText(stac.Reason)
+		if inv.SpecifiedTradeAllowanceCharge[i].Reason != "" {
+			stacElt.CreateElement("ram:Reason").SetText(inv.SpecifiedTradeAllowanceCharge[i].Reason)
 		}
 		// BT-94, BT-101: CalculationPercent is optional - only create if non-zero (PEPPOL-EN16931-R008)
-		if !stac.CalculationPercent.IsZero() {
-			stacElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(stac.CalculationPercent))
+		if !inv.SpecifiedTradeAllowanceCharge[i].CalculationPercent.IsZero() {
+			stacElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CalculationPercent))
 		}
 		ctt := stacElt.CreateElement("ram:CategoryTradeTax")
-		ctt.CreateElement("ram:TypeCode").SetText(stac.CategoryTradeTaxType)
-		ctt.CreateElement("ram:CategoryCode").SetText(stac.CategoryTradeTaxCategoryCode)
-		ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(stac.CategoryTradeTaxRateApplicablePercent))
+		ctt.CreateElement("ram:TypeCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxType)
+		ctt.CreateElement("ram:CategoryCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode)
+		ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent))
 	}
 
 	// BG-14: Billing period
@@ -608,18 +608,18 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		}
 	}
 	// BT-20
-	for _, paymentTerm := range inv.SpecifiedTradePaymentTerms {
+	for i := range inv.SpecifiedTradePaymentTerms {
 		spt := elt.CreateElement("ram:SpecifiedTradePaymentTerms")
-		if desc := paymentTerm.Description; desc != "" {
-			spt.CreateElement("ram:Description").SetText(paymentTerm.Description)
+		if desc := inv.SpecifiedTradePaymentTerms[i].Description; desc != "" {
+			spt.CreateElement("ram:Description").SetText(inv.SpecifiedTradePaymentTerms[i].Description)
 		}
 		// BT-9
-		if !paymentTerm.DueDate.IsZero() {
-			addTimeCIIUDT(spt.CreateElement("ram:DueDateDateTime"), paymentTerm.DueDate)
+		if !inv.SpecifiedTradePaymentTerms[i].DueDate.IsZero() {
+			addTimeCIIUDT(spt.CreateElement("ram:DueDateDateTime"), inv.SpecifiedTradePaymentTerms[i].DueDate)
 		}
 		// BT-89: Direct debit mandate reference identifier
-		if paymentTerm.DirectDebitMandateID != "" {
-			spt.CreateElement("ram:DirectDebitMandateID").SetText(paymentTerm.DirectDebitMandateID)
+		if inv.SpecifiedTradePaymentTerms[i].DirectDebitMandateID != "" {
+			spt.CreateElement("ram:DirectDebitMandateID").SetText(inv.SpecifiedTradePaymentTerms[i].DirectDebitMandateID)
 		}
 	}
 
@@ -632,17 +632,17 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	}
 
 	// BG-3
-	for _, v := range inv.InvoiceReferencedDocument {
+	for i := range inv.InvoiceReferencedDocument {
 		refdoc := elt.CreateElement("ram:InvoiceReferencedDocument")
-		refdoc.CreateElement("ram:IssuerAssignedID").SetText(v.ID)
-		addTimeCIIQDT(refdoc.CreateElement("ram:FormattedIssueDateTime"), v.Date)
+		refdoc.CreateElement("ram:IssuerAssignedID").SetText(inv.InvoiceReferencedDocument[i].ID)
+		addTimeCIIQDT(refdoc.CreateElement("ram:FormattedIssueDateTime"), inv.InvoiceReferencedDocument[i].Date)
 	}
 }
 
 func writeCIIrsmSupplyChainTradeTransaction(inv *Invoice, parent *etree.Element) {
 	rsctt := parent.CreateElement("rsm:SupplyChainTradeTransaction")
-	for _, il := range inv.InvoiceLines {
-		writeCIIramIncludedSupplyChainTradeLineItem(il, inv, rsctt)
+	for i := range inv.InvoiceLines {
+		writeCIIramIncludedSupplyChainTradeLineItem(&inv.InvoiceLines[i], inv, rsctt)
 	}
 
 	writeCIIramApplicableHeaderTradeAgreement(inv, rsctt)

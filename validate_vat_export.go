@@ -1,10 +1,10 @@
 package einvoice
 
 import (
-	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
+	"github.com/speedata/einvoice/rules"
 )
 
 // validateVATExport validates BR-G-1 through BR-G-10.
@@ -24,15 +24,15 @@ func (inv *Invoice) validateVATExport() {
 	// BR-G-1 Export außerhalb der EU (Export outside the EU)
 	// If invoice has line/allowance/charge with "G", must have at least one "G" in VAT breakdown
 	hasExportOutsideEU := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "G" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "G" {
 			hasExportOutsideEU = true
 			break
 		}
 	}
 	if !hasExportOutsideEU {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "G" {
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "G" {
 				hasExportOutsideEU = true
 				break
 			}
@@ -40,8 +40,8 @@ func (inv *Invoice) validateVATExport() {
 	}
 	if hasExportOutsideEU {
 		hasGInBreakdown := false
-		for _, tt := range inv.TradeTaxes {
-			if tt.CategoryCode == "G" {
+		for i := range inv.TradeTaxes {
+			if inv.TradeTaxes[i].CategoryCode == "G" {
 				hasGInBreakdown = true
 				break
 			}
@@ -54,8 +54,8 @@ func (inv *Invoice) validateVATExport() {
 	// BR-G-2 Export außerhalb der EU
 	// If invoice line has "G", must have seller VAT ID or representative VAT ID
 	hasGLine := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "G" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "G" {
 			hasGLine = true
 			break
 		}
@@ -71,8 +71,8 @@ func (inv *Invoice) validateVATExport() {
 	// BR-G-3 Export außerhalb der EU
 	// If document level allowance has "G", must have seller VAT ID
 	hasGAllowance := false
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "G" {
 			hasGAllowance = true
 			break
 		}
@@ -88,8 +88,8 @@ func (inv *Invoice) validateVATExport() {
 	// BR-G-4 Export außerhalb der EU
 	// If document level charge has "G", must have seller VAT ID
 	hasGCharge := false
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "G" {
 			hasGCharge = true
 			break
 		}
@@ -104,24 +104,24 @@ func (inv *Invoice) validateVATExport() {
 
 	// BR-G-5 Export außerhalb der EU
 	// In invoice line with "G", VAT rate must be 0
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "G" && !line.TaxRateApplicablePercent.IsZero() {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "G" && !inv.InvoiceLines[i].TaxRateApplicablePercent.IsZero() {
 			inv.addViolation(rules.BRG5, "Export outside EU invoice line must have VAT rate of 0")
 		}
 	}
 
 	// BR-G-6 Export außerhalb der EU
 	// In document level allowance with "G", VAT rate must be 0
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "G" && !inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.IsZero() {
 			inv.addViolation(rules.BRG6, "Export outside EU allowance must have VAT rate of 0")
 		}
 	}
 
 	// BR-G-7 Export außerhalb der EU
 	// In document level charge with "G", VAT rate must be 0
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "G" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "G" && !inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.IsZero() {
 			inv.addViolation(rules.BRG7, "Export outside EU charge must have VAT rate of 0")
 		}
 	}
@@ -131,26 +131,26 @@ func (inv *Invoice) validateVATExport() {
 	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
-		for _, tt := range inv.TradeTaxes {
-			if tt.CategoryCode == "G" {
+		for i := range inv.TradeTaxes {
+			if inv.TradeTaxes[i].CategoryCode == "G" {
 				calculatedBasis := decimal.Zero
-				for _, line := range inv.InvoiceLines {
-					if line.TaxCategoryCode == "G" {
-						calculatedBasis = calculatedBasis.Add(line.Total)
+				for j := range inv.InvoiceLines {
+					if inv.InvoiceLines[j].TaxCategoryCode == "G" {
+						calculatedBasis = calculatedBasis.Add(inv.InvoiceLines[j].Total)
 					}
 				}
-				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-					if ac.CategoryTradeTaxCategoryCode == "G" {
-						if ac.ChargeIndicator {
-							calculatedBasis = calculatedBasis.Add(ac.ActualAmount)
+				for j := range inv.SpecifiedTradeAllowanceCharge {
+					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "G" {
+						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
+							calculatedBasis = calculatedBasis.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
 						} else {
-							calculatedBasis = calculatedBasis.Sub(ac.ActualAmount)
+							calculatedBasis = calculatedBasis.Sub(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
 						}
 					}
 				}
 				calculatedBasis = roundHalfUp(calculatedBasis, 2)
-				if !tt.BasisAmount.Equal(calculatedBasis) {
-					inv.addViolation(rules.BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), tt.BasisAmount.String()))
+				if !inv.TradeTaxes[i].BasisAmount.Equal(calculatedBasis) {
+					inv.addViolation(rules.BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), inv.TradeTaxes[i].BasisAmount.String()))
 				}
 			}
 		}
@@ -158,16 +158,16 @@ func (inv *Invoice) validateVATExport() {
 
 	// BR-G-9 Export außerhalb der EU
 	// VAT amount must be 0 for Export outside EU
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "G" && !tt.CalculatedAmount.IsZero() {
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "G" && !inv.TradeTaxes[i].CalculatedAmount.IsZero() {
 			inv.addViolation(rules.BRG9, "Export outside EU VAT amount must be 0")
 		}
 	}
 
 	// BR-G-10 Export außerhalb der EU
 	// Export outside EU breakdown must have exemption reason code or text
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "G" && tt.ExemptionReason == "" && tt.ExemptionReasonCode == "" {
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "G" && inv.TradeTaxes[i].ExemptionReason == "" && inv.TradeTaxes[i].ExemptionReasonCode == "" {
 			inv.addViolation(rules.BRG10, "Export outside EU VAT breakdown must have exemption reason")
 		}
 	}

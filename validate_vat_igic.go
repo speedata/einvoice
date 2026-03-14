@@ -1,10 +1,10 @@
 package einvoice
 
 import (
-	"github.com/speedata/einvoice/rules"
 	"fmt"
 
 	"github.com/shopspring/decimal"
+	"github.com/speedata/einvoice/rules"
 )
 
 // validateVATIGIC validates BR-AF-1 through BR-AF-10.
@@ -18,22 +18,22 @@ import (
 //   - Must have at least one VAT breakdown entry with category 'L'
 //   - Seller must have a tax identifier
 //   - IGIC rate can be 0 or greater (various rates apply)
-//   - IGIC amount is calculated as basis × rate
+//   - IGIC amount is calculated as basis x rate
 //   - Must NOT have exemption reason (not an exemption, it's a different tax)
 //   - Seller must have tax ID but buyer must NOT have VAT ID
 func (inv *Invoice) validateVATIGIC() {
 	// BR-AF-1 IGIC (Kanarische Inseln / Canary Islands)
 	// Invoice with category L must have seller VAT ID
 	hasIGIC := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "L" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "L" {
 			hasIGIC = true
 			break
 		}
 	}
 	if !hasIGIC {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "L" {
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "L" {
 				hasIGIC = true
 				break
 			}
@@ -62,28 +62,28 @@ func (inv *Invoice) validateVATIGIC() {
 	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
-		for _, tt := range inv.TradeTaxes {
-			if tt.CategoryCode == "L" {
+		for i := range inv.TradeTaxes {
+			if inv.TradeTaxes[i].CategoryCode == "L" {
 				var lineTotal decimal.Decimal
-				for _, line := range inv.InvoiceLines {
-					if line.TaxCategoryCode == "L" {
-						lineTotal = lineTotal.Add(line.Total)
+				for j := range inv.InvoiceLines {
+					if inv.InvoiceLines[j].TaxCategoryCode == "L" {
+						lineTotal = lineTotal.Add(inv.InvoiceLines[j].Total)
 					}
 				}
 				var allowanceTotal decimal.Decimal
 				var chargeTotal decimal.Decimal
-				for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-					if ac.CategoryTradeTaxCategoryCode == "L" {
-						if ac.ChargeIndicator {
-							chargeTotal = chargeTotal.Add(ac.ActualAmount)
+				for j := range inv.SpecifiedTradeAllowanceCharge {
+					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "L" {
+						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
+							chargeTotal = chargeTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
 						} else {
-							allowanceTotal = allowanceTotal.Add(ac.ActualAmount)
+							allowanceTotal = allowanceTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
 						}
 					}
 				}
 				expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
-				if !tt.BasisAmount.Equal(expectedBasis) {
-					inv.addViolation(rules.BRAF5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
+					inv.addViolation(rules.BRAF5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 				}
 			}
 		}
@@ -91,11 +91,11 @@ func (inv *Invoice) validateVATIGIC() {
 
 	// BR-AF-6 IGIC
 	// VAT amount must equal basis * rate
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "L" {
-			expectedVAT := roundHalfUp(tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)), 2)
-			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(rules.BRAF6, fmt.Sprintf("IGIC VAT amount must equal basis * rate: got %s, expected %s", tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "L" {
+			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal.NewFromInt(100)), 2)
+			if !inv.TradeTaxes[i].CalculatedAmount.Equal(expectedVAT) {
+				inv.addViolation(rules.BRAF6, fmt.Sprintf("IGIC VAT amount must equal basis * rate: got %s, expected %s", inv.TradeTaxes[i].CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
 		}
 	}
@@ -106,28 +106,28 @@ func (inv *Invoice) validateVATIGIC() {
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
 		igicRateMap := make(map[string]decimal.Decimal)
-		for _, line := range inv.InvoiceLines {
-			if line.TaxCategoryCode == "L" {
-				key := line.TaxRateApplicablePercent.String()
-				igicRateMap[key] = igicRateMap[key].Add(line.Total)
+		for i := range inv.InvoiceLines {
+			if inv.InvoiceLines[i].TaxCategoryCode == "L" {
+				key := inv.InvoiceLines[i].TaxRateApplicablePercent.String()
+				igicRateMap[key] = igicRateMap[key].Add(inv.InvoiceLines[i].Total)
 			}
 		}
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "L" {
-				key := ac.CategoryTradeTaxRateApplicablePercent.String()
-				if ac.ChargeIndicator {
-					igicRateMap[key] = igicRateMap[key].Add(ac.ActualAmount)
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "L" {
+				key := inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.String()
+				if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
+					igicRateMap[key] = igicRateMap[key].Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 				} else {
-					igicRateMap[key] = igicRateMap[key].Sub(ac.ActualAmount)
+					igicRateMap[key] = igicRateMap[key].Sub(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 				}
 			}
 		}
-		for _, tt := range inv.TradeTaxes {
-			if tt.CategoryCode == "L" {
-				key := tt.Percent.String()
+		for i := range inv.TradeTaxes {
+			if inv.TradeTaxes[i].CategoryCode == "L" {
+				key := inv.TradeTaxes[i].Percent.String()
 				expectedBasis := roundHalfUp(igicRateMap[key], 2)
-				if !tt.BasisAmount.Equal(expectedBasis) {
-					inv.addViolation(rules.BRAF7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", tt.Percent.StringFixed(2), tt.BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
+				if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
+					inv.addViolation(rules.BRAF7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", inv.TradeTaxes[i].Percent.StringFixed(2), inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 				}
 			}
 		}
@@ -135,19 +135,19 @@ func (inv *Invoice) validateVATIGIC() {
 
 	// BR-AF-8 IGIC
 	// For each different VAT rate, verify VAT amount calculation
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "L" {
-			expectedVAT := roundHalfUp(tt.BasisAmount.Mul(tt.Percent).Div(decimal.NewFromInt(100)), 2)
-			if !tt.CalculatedAmount.Equal(expectedVAT) {
-				inv.addViolation(rules.BRAF8, fmt.Sprintf("IGIC VAT amount for rate %s must equal basis * rate: got %s, expected %s", tt.Percent.StringFixed(2), tt.CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "L" {
+			expectedVAT := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal.NewFromInt(100)), 2)
+			if !inv.TradeTaxes[i].CalculatedAmount.Equal(expectedVAT) {
+				inv.addViolation(rules.BRAF8, fmt.Sprintf("IGIC VAT amount for rate %s must equal basis * rate: got %s, expected %s", inv.TradeTaxes[i].Percent.StringFixed(2), inv.TradeTaxes[i].CalculatedAmount.StringFixed(2), expectedVAT.StringFixed(2)))
 			}
 		}
 	}
 
 	// BR-AF-9 IGIC
 	// IGIC breakdown must NOT have exemption reason
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "L" && (tt.ExemptionReason != "" || tt.ExemptionReasonCode != "") {
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "L" && (inv.TradeTaxes[i].ExemptionReason != "" || inv.TradeTaxes[i].ExemptionReasonCode != "") {
 			inv.addViolation(rules.BRAF9, "IGIC VAT breakdown must not have exemption reason")
 		}
 	}
@@ -155,8 +155,8 @@ func (inv *Invoice) validateVATIGIC() {
 	// BR-AF-10 IGIC
 	// Must have seller tax ID and must NOT have buyer VAT ID
 	hasIGICInVATBreakdown := false
-	for _, tt := range inv.TradeTaxes {
-		if tt.CategoryCode == "L" {
+	for i := range inv.TradeTaxes {
+		if inv.TradeTaxes[i].CategoryCode == "L" {
 			hasIGICInVATBreakdown = true
 			break
 		}

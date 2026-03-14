@@ -38,8 +38,8 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-3 Rechnung
 	// Umsatzsteuerdatum "Value added tax point date" (BT-7) und Code für das Umsatzsteuerdatum "Value added tax point date code" (BT-8)
 	// schließen sich gegenseitig aus.
-	for _, tax := range inv.TradeTaxes {
-		if !tax.TaxPointDate.IsZero() && tax.DueDateTypeCode != "" {
+	for i := range inv.TradeTaxes {
+		if !inv.TradeTaxes[i].TaxPointDate.IsZero() && inv.TradeTaxes[i].DueDateTypeCode != "" {
 			inv.addViolation(rules.BRCO3, "TaxPointDate and DueDateTypeCode are mutually exclusive")
 			break
 		}
@@ -48,9 +48,9 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-4 Rechnungsposition
 	// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss anhand der Umsatzsteuerkategorie des in Rechnung gestellten Postens "Invoiced item VAT
 	// category code" (BT-151) kategorisiert werden.
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "" {
-			inv.addViolation(rules.BRCO4, fmt.Sprintf("Invoice line %s missing VAT category code", line.LineID))
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "" {
+			inv.addViolation(rules.BRCO4, fmt.Sprintf("Invoice line %s missing VAT category code", inv.InvoiceLines[i].LineID))
 		}
 	}
 
@@ -60,8 +60,8 @@ func (inv *Invoice) validateCalculations() {
 	// Note: Only validate when invoice lines exist (Minimum profile may not have lines)
 	if len(inv.InvoiceLines) > 0 {
 		sum = decimal.Zero
-		for _, line := range inv.InvoiceLines {
-			sum = sum.Add(line.Total)
+		for i := range inv.InvoiceLines {
+			sum = sum.Add(inv.InvoiceLines[i].Total)
 		}
 		if !inv.LineTotal.Equal(sum) {
 			inv.addViolation(rules.BRCO10, fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String()))
@@ -72,9 +72,9 @@ func (inv *Invoice) validateCalculations() {
 	// Der Inhalt des Elementes "Sum of allowances on document level" (BT-107) entspricht der Summe aller Inhalte
 	// der Elemente "Document level allowance amount" (BT-92).
 	calculatedAllowanceTotal := decimal.Zero
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator {
-			calculatedAllowanceTotal = calculatedAllowanceTotal.Add(ac.ActualAmount)
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
+			calculatedAllowanceTotal = calculatedAllowanceTotal.Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 		}
 	}
 	if !inv.AllowanceTotal.Equal(calculatedAllowanceTotal) {
@@ -85,9 +85,9 @@ func (inv *Invoice) validateCalculations() {
 	// Der Inhalt des Elementes "Sum of charges on document level" (BT-108) entspricht der Summe aller Inhalte
 	// der Elemente "Document level charge amount" (BT-99).
 	calculatedChargeTotal := decimal.Zero
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator {
-			calculatedChargeTotal = calculatedChargeTotal.Add(ac.ActualAmount)
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
+			calculatedChargeTotal = calculatedChargeTotal.Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 		}
 	}
 	if !inv.ChargeTotal.Equal(calculatedChargeTotal) {
@@ -111,8 +111,8 @@ func (inv *Invoice) validateCalculations() {
 	// Note: Minimum profile may not have VAT breakdown, so only validate when TradeTaxes exist
 	if len(inv.TradeTaxes) > 0 {
 		calculatedTaxTotal := decimal.Zero
-		for _, tax := range inv.TradeTaxes {
-			calculatedTaxTotal = calculatedTaxTotal.Add(tax.CalculatedAmount)
+		for i := range inv.TradeTaxes {
+			calculatedTaxTotal = calculatedTaxTotal.Add(inv.TradeTaxes[i].CalculatedAmount)
 		}
 		if !inv.TaxTotal.Equal(calculatedTaxTotal) {
 			inv.addViolation(rules.BRCO14, fmt.Sprintf("Invoice total VAT amount %s does not match sum of VAT category amounts %s", inv.TaxTotal.String(), calculatedTaxTotal.String()))
@@ -141,19 +141,20 @@ func (inv *Invoice) validateCalculations() {
 	hasRounding := !inv.RoundingAmount.IsZero()
 
 	var valid bool
-	if hasPrepaid && !hasRounding {
+	switch {
+	case hasPrepaid && !hasRounding:
 		// Case 1: round((GrandTotal - PrepaidAmount) * 100) / 100 = DuePayableAmount
 		expected := roundHalfUp(inv.GrandTotal.Sub(inv.TotalPrepaid), 2)
 		valid = inv.DuePayableAmount.Equal(expected)
-	} else if !hasPrepaid && !hasRounding {
+	case !hasPrepaid && !hasRounding:
 		// Case 2: DuePayableAmount = GrandTotal
 		valid = inv.DuePayableAmount.Equal(inv.GrandTotal)
-	} else if hasPrepaid && hasRounding {
+	case hasPrepaid && hasRounding:
 		// Case 3: round((DuePayableAmount - RoundingAmount) * 100) / 100 = round((GrandTotal - PrepaidAmount) * 100) / 100
 		leftSide := roundHalfUp(inv.DuePayableAmount.Sub(inv.RoundingAmount), 2)
 		rightSide := roundHalfUp(inv.GrandTotal.Sub(inv.TotalPrepaid), 2)
 		valid = leftSide.Equal(rightSide)
-	} else {
+	default:
 		// Case 4: !hasPrepaid && hasRounding: round((DuePayableAmount - RoundingAmount) * 100) / 100 = GrandTotal
 		leftSide := roundHalfUp(inv.DuePayableAmount.Sub(inv.RoundingAmount), 2)
 		valid = leftSide.Equal(inv.GrandTotal)
@@ -167,10 +168,10 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-17 Umsatzsteueraufschlüsselung
 	// Der Inhalt des Elementes "VAT category tax amount" (BT-117) entspricht dem Inhalt des Elementes "VAT category taxable amount" (BT-116),
 	// multipliziert mit dem Inhalt des Elementes "VAT category rate" (BT-119) geteilt durch 100, gerundet auf zwei Dezimalstellen.
-	for _, tax := range inv.TradeTaxes {
-		expected := roundHalfUp(tax.BasisAmount.Mul(tax.Percent).Div(decimal.NewFromInt(100)), 2)
-		if !tax.CalculatedAmount.Equal(expected) {
-			inv.addViolation(rules.BRCO17, fmt.Sprintf("VAT category tax amount %s does not match expected %s (basis %s × rate %s ÷ 100)", tax.CalculatedAmount.String(), expected.String(), tax.BasisAmount.String(), tax.Percent.String()))
+	for i := range inv.TradeTaxes {
+		expected := roundHalfUp(inv.TradeTaxes[i].BasisAmount.Mul(inv.TradeTaxes[i].Percent).Div(decimal.NewFromInt(100)), 2)
+		if !inv.TradeTaxes[i].CalculatedAmount.Equal(expected) {
+			inv.addViolation(rules.BRCO17, fmt.Sprintf("VAT category tax amount %s does not match expected %s (basis %s × rate %s ÷ 100)", inv.TradeTaxes[i].CalculatedAmount.String(), expected.String(), inv.TradeTaxes[i].BasisAmount.String(), inv.TradeTaxes[i].Percent.String()))
 		}
 	}
 
@@ -195,9 +196,9 @@ func (inv *Invoice) validateCalculations() {
 	// Wenn die Gruppe "INVOICE LINE PERIOD" (BG-26) verwendet wird, müssen entweder das Element "Invoice line period start date" (BT-134) oder
 	// das Element "Invoice line period end date" (BT-135) oder beide gefüllt sein.
 	// Note: Only validates parsed XML where BG-26 element was present (tracked via linePeriodPresent flag).
-	for i, line := range inv.InvoiceLines {
-		if line.linePeriodPresent {
-			if line.BillingSpecifiedPeriodStart.IsZero() && line.BillingSpecifiedPeriodEnd.IsZero() {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].linePeriodPresent {
+			if inv.InvoiceLines[i].BillingSpecifiedPeriodStart.IsZero() && inv.InvoiceLines[i].BillingSpecifiedPeriodEnd.IsZero() {
 				inv.addViolation(rules.BRCO20, fmt.Sprintf("Invoice line %d: if line period (BG-26) is used, either start date (BT-134) or end date (BT-135) must be filled", i+1))
 			}
 		}
@@ -247,10 +248,10 @@ func (inv *Invoice) validateCalculations() {
 	// BR-61 handles credit transfers.
 	// However, per issue #423, this rule may be too strict and is under review.
 	if inv.SchemaType == CII {
-		for _, pm := range inv.PaymentMeans {
+		for i := range inv.PaymentMeans {
 			// TypeCodes 49, 59 = direct debit per EN 16931 CII schematron
-			if pm.TypeCode == 49 || pm.TypeCode == 59 {
-				if pm.PayeePartyCreditorFinancialAccountIBAN == "" && pm.PayeePartyCreditorFinancialAccountProprietaryID == "" {
+			if inv.PaymentMeans[i].TypeCode == 49 || inv.PaymentMeans[i].TypeCode == 59 {
+				if inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountIBAN == "" && inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountProprietaryID == "" {
 					inv.addViolation(rules.BRCO27, "Payment account identifier (BT-84) must be provided as either IBAN or Proprietary ID")
 				}
 			}
@@ -292,42 +293,42 @@ func (inv *Invoice) validateCore() {
 		inv.addViolation(rules.BR1, "GuidelineSpecifiedDocumentContextParameter (BT-24) is empty")
 	}
 	// 	BR-2 Rechnung
-	// Eine Rechnung (INVOICE) muss eine Rechnungsnummer "Invoice number“ (BT-1) enthalten.
+	// Eine Rechnung (INVOICE) muss eine Rechnungsnummer "Invoice number" (BT-1) enthalten.
 	if inv.InvoiceNumber == "" {
 		inv.addViolation(rules.BR2, "No invoice number found")
 	}
 	// BR-3 Rechnung
-	// Eine Rechnung (INVOICE) muss ein Rechnungsdatum "Invoice issue date“ (BT-2) enthalten.
+	// Eine Rechnung (INVOICE) muss ein Rechnungsdatum "Invoice issue date" (BT-2) enthalten.
 	if inv.InvoiceDate.IsZero() {
 		inv.addViolation(rules.BR3, "Date is zero")
 	}
 	// BR-4 Rechnung
-	// Eine Rechnung (INVOICE) muss einen Rechnungstyp-Code "Invoice type code“ (BT-3) enthalten.
+	// Eine Rechnung (INVOICE) muss einen Rechnungstyp-Code "Invoice type code" (BT-3) enthalten.
 	if inv.InvoiceTypeCode == 0 {
 		inv.addViolation(rules.BR4, "Invoice type code is 0")
 	}
 	// BR-5 Rechnung
-	// Eine Rechnung (INVOICE) muss einen Währungs-Code "Invoice currency code“ (BT-5) enthalten.
+	// Eine Rechnung (INVOICE) muss einen Währungs-Code "Invoice currency code" (BT-5) enthalten.
 	if inv.InvoiceCurrencyCode == "" {
 		inv.addViolation(rules.BR5, "Invoice currency code is empty")
 	}
 	// BR-6 Verkäufer
-	// Eine Rechnung (INVOICE) muss den Verkäufernamen "Seller name“ (BT-27) enthalten.
+	// Eine Rechnung (INVOICE) muss den Verkäufernamen "Seller name" (BT-27) enthalten.
 	if inv.Seller.Name == "" {
 		inv.addViolation(rules.BR6, "Seller name is empty")
 	}
 	// BR-7 Käufer
-	// Eine Rechnung (INVOICE) muss den Erwerbernamen "Buyer name“ (BT-44) enthalten.
+	// Eine Rechnung (INVOICE) muss den Erwerbernamen "Buyer name" (BT-44) enthalten.
 	if inv.Buyer.Name == "" {
 		inv.addViolation(rules.BR7, "Buyer name is empty")
 	}
 	// BR-8 Verkäufer
-	// Eine Rechnung (INVOICE) muss die postalische Anschrift des Verkäufers "SELLER POSTAL ADDRESS“ (BG-5) enthalten.
+	// Eine Rechnung (INVOICE) muss die postalische Anschrift des Verkäufers "SELLER POSTAL ADDRESS" (BG-5) enthalten.
 	if inv.Seller.PostalAddress == nil {
 		inv.addViolation(rules.BR8, "Seller has no postal address")
 	} else {
 		// BR-9 Verkäufer
-		// Eine postalische Anschrift des Verkäufers "SELLER POSTAL ADDRESS“ (BG-5) muss einen Verkäufer-Ländercode "Seller country code“ (BT-40) enthalten.
+		// Eine postalische Anschrift des Verkäufers "SELLER POSTAL ADDRESS" (BG-5) muss einen Verkäufer-Ländercode "Seller country code" (BT-40) enthalten.
 		if inv.Seller.PostalAddress.CountryID == "" {
 			inv.addViolation(rules.BR9, "Seller country code empty")
 		}
@@ -390,23 +391,23 @@ func (inv *Invoice) validateCore() {
 		}
 	}
 	// BR-17 Zahlungsempfänger
-	// Eine Rechnung (INVOICE) muss den Namen des Zahlungsempfängers "Payee name“ (BT-59) enthalten, wenn sich der Zahlungsempfänger "PAYEE“
-	// (BG-10) vom Verkäufer "SELLER“ (BG-4) unterscheidet.
+	// Eine Rechnung (INVOICE) muss den Namen des Zahlungsempfängers "Payee name" (BT-59) enthalten, wenn sich der Zahlungsempfänger "PAYEE"
+	// (BG-10) vom Verkäufer "SELLER" (BG-4) unterscheidet.
 	if inv.PayeeTradeParty != nil {
 		if inv.PayeeTradeParty.Name == "" {
 			inv.addViolation(rules.BR17, "Payee has no name, although different from seller")
 		}
 	}
 	// BR-18 Steuerbevollmächtigter des Verkäufers
-	// Eine Rechnung (INVOICE) muss den Namen des Steuervertreters des Verkäufers "Seller tax representative name“ (BT-62) enthalten, wenn der
-	// Verkäufer "SELLER“ (BG-4) einen Steuervertreter (BG-11) hat.
+	// Eine Rechnung (INVOICE) muss den Namen des Steuervertreters des Verkäufers "Seller tax representative name" (BT-62) enthalten, wenn der
+	// Verkäufer "SELLER" (BG-4) einen Steuervertreter (BG-11) hat.
 	if trp := inv.SellerTaxRepresentativeTradeParty; trp != nil {
 		if trp.Name == "" {
 			inv.addViolation(rules.BR18, "Tax representative has no name, although seller has specified one")
 		}
 		// BR-19 Steuerbevollmächtigter des Verkäufers
-		// Eine Rechnung (INVOICE) muss die postalische Anschrift des Steuervertreters "SELLER TAX REPRESENTATIVE POSTAL ADDRESS“ (BG-12) enthalten,
-		// wenn der Verkäufer "SELLER“ (BG-4) einen Steuervertreter hat.
+		// Eine Rechnung (INVOICE) muss die postalische Anschrift des Steuervertreters "SELLER TAX REPRESENTATIVE POSTAL ADDRESS" (BG-12) enthalten,
+		// wenn der Verkäufer "SELLER" (BG-4) einen Steuervertreter hat.
 		if trp.PostalAddress == nil {
 			inv.addViolation(rules.BR19, "Tax representative has no postal address")
 		} else {
@@ -418,22 +419,22 @@ func (inv *Invoice) validateCore() {
 			}
 		}
 	}
-	for _, line := range inv.InvoiceLines {
+	for i := range inv.InvoiceLines {
 		// BR-21 Rechnungsposition
-		// Jede Rechnungsposition "INVOICE LINE“ (BG-25) muss eine eindeutige Bezeichnung "Invoice line identifier“ (BT-126) haben.
-		if line.LineID == "" {
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss eine eindeutige Bezeichnung "Invoice line identifier" (BT-126) haben.
+		if inv.InvoiceLines[i].LineID == "" {
 			inv.addViolation(rules.BR21, "Line has no line ID")
 		}
 		// BR-22 Rechnungsposition
-		// Jede Rechnungsposition "INVOICE LINE“ (BG-25) muss die Menge der in der betreffenden Position in Rechnung gestellten Waren oder
-		// Dienstleistungen als Einzelposten "Invoiced quantity“ (BT-129) enthalten.
-		if line.BilledQuantity.IsZero() {
+		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss die Menge der in der betreffenden Position in Rechnung gestellten Waren oder
+		// Dienstleistungen als Einzelposten "Invoiced quantity" (BT-129) enthalten.
+		if inv.InvoiceLines[i].BilledQuantity.IsZero() {
 			inv.addViolation(rules.BR22, "Line has no billed quantity")
 		}
 		// BR-23 Rechnungsposition
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss eine Einheit zur Mengenangabe "Invoiced quantity unit of measure code" (BT-130)
 		// enthalten.
-		if line.BilledQuantityUnit == "" {
+		if inv.InvoiceLines[i].BilledQuantityUnit == "" {
 			inv.addViolation(rules.BR23, "Line's billed quantity has no unit")
 		}
 
@@ -442,13 +443,13 @@ func (inv *Invoice) validateCore() {
 		// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 		// Zero is valid (e.g., free items, zero-rated services).
 		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-		if !line.hasLineTotalInXML && inv.SchemaType == CII {
-			inv.addViolation(rules.BR24, "LineTotalAmount element missing in XML for line "+line.LineID)
+		if !inv.InvoiceLines[i].hasLineTotalInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR24, "LineTotalAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
 		}
 
 		// BR-25 Artikelinformationen
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss den Namen des Postens "Item name" (BT-153) enthalten.
-		if line.ItemName == "" {
+		if inv.InvoiceLines[i].ItemName == "" {
 			inv.addViolation(rules.BR25, "Line's item name missing")
 		}
 
@@ -458,19 +459,19 @@ func (inv *Invoice) validateCore() {
 		// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 		// Zero is valid (e.g., free items, promotional products).
 		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-		if !line.hasNetPriceInXML && inv.SchemaType == CII {
-			inv.addViolation(rules.BR26, "NetPrice ChargeAmount element missing in XML for line "+line.LineID)
+		if !inv.InvoiceLines[i].hasNetPriceInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR26, "NetPrice ChargeAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
 		}
 
 		// BR-27 Nettopreis des Artikels
 		// Der Artikel-Nettobetrag "Item net price" (BT-146) darf nicht negativ sein.
-		if line.NetPrice.IsNegative() {
+		if inv.InvoiceLines[i].NetPrice.IsNegative() {
 			inv.addViolation(rules.BR27, "Net price must not be negative")
 		}
 		// BR-28 Detailinformationen zum Preis
 		// Der Einheitspreis ohne Umsatzsteuer vor Abzug des Postenpreisrabatts einer Rechnungsposition "Item gross price" (BT-148) darf nicht negativ
 		// sein.
-		if line.GrossPrice.IsNegative() {
+		if inv.InvoiceLines[i].GrossPrice.IsNegative() {
 			inv.addViolation(rules.BR28, "Gross price must not be negative")
 		}
 	}
@@ -483,13 +484,13 @@ func (inv *Invoice) validateCore() {
 			inv.addViolation(rules.BR29, "Billing period end must be after start")
 		}
 	}
-	for _, line := range inv.InvoiceLines {
+	for i := range inv.InvoiceLines {
 		// BR-30 Rechnungszeitraum auf Positionsebene
 		// Wenn Start- und Enddatum des Rechnungspositionenzeitraums gegeben sind, muss das Enddatum "Invoice line period end date" (BT-135) nach
 		// dem Startdatum "Invoice line period start date" (BT-134) liegen oder mit diesem identisch sein.
 		// Only validate when BOTH dates are present (non-zero)
-		if !line.BillingSpecifiedPeriodStart.IsZero() && !line.BillingSpecifiedPeriodEnd.IsZero() {
-			if line.BillingSpecifiedPeriodEnd.Before(line.BillingSpecifiedPeriodStart) {
+		if !inv.InvoiceLines[i].BillingSpecifiedPeriodStart.IsZero() && !inv.InvoiceLines[i].BillingSpecifiedPeriodEnd.IsZero() {
+			if inv.InvoiceLines[i].BillingSpecifiedPeriodEnd.Before(inv.InvoiceLines[i].BillingSpecifiedPeriodStart) {
 				inv.addViolation(rules.BR30, "Line item billing period end must be after or identical to start")
 			}
 		}
@@ -498,12 +499,12 @@ func (inv *Invoice) validateCore() {
 	// Initialize applicableTradeTaxes map for BR-45 validation
 	// Use composite key of CategoryCode + Percent to properly group by tax category
 	var applicableTradeTaxes = make(map[string]decimal.Decimal, len(inv.TradeTaxes))
-	for _, lineitem := range inv.InvoiceLines {
-		key := lineitem.TaxCategoryCode + "_" + lineitem.TaxRateApplicablePercent.String()
-		applicableTradeTaxes[key] = applicableTradeTaxes[key].Add(lineitem.Total)
+	for i := range inv.InvoiceLines {
+		key := inv.InvoiceLines[i].TaxCategoryCode + "_" + inv.InvoiceLines[i].TaxRateApplicablePercent.String()
+		applicableTradeTaxes[key] = applicableTradeTaxes[key].Add(inv.InvoiceLines[i].Total)
 	}
 
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
 		// BR-66 Specified Trade Allowance Charge
 		// Each Specified Trade Allowance Charge shall contain a Charge Indicator.
 		// Note: In Go, the boolean ChargeIndicator field always has a value (true or false),
@@ -511,111 +512,111 @@ func (inv *Invoice) validateCore() {
 		// and to align with the EN 16931 specification.
 
 		// Add to applicableTradeTaxes for BR-45 validation
-		key := ac.CategoryTradeTaxCategoryCode + "_" + ac.CategoryTradeTaxRateApplicablePercent.String()
-		amount := ac.ActualAmount
-		if !ac.ChargeIndicator {
+		key := inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode + "_" + inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.String()
+		amount := inv.SpecifiedTradeAllowanceCharge[i].ActualAmount
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
 			amount = amount.Neg()
 		}
 		applicableTradeTaxes[key] = applicableTradeTaxes[key].Add(amount)
 
-		if ac.ChargeIndicator {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
 			// BR-36 Zuschläge auf Dokumentenebene
 			// Jede Abgabe auf Dokumentenebene "DOCUMENT LEVEL CHARGES" (BG-21) muss einen Betrag "Document level charge amount" (BT-99)
 			// aufweisen.
-			if ac.ActualAmount.IsZero() {
+			if inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.IsZero() {
 				inv.addViolation(rules.BR36, "Charge must not be zero")
 			}
 
 			// BR-37 Zuschläge auf Dokumentenebene
 			// Jede Abgabe auf Dokumentenebene "DOCUMENT LEVEL CHARGES" (BG-21) muss einen Umsatzsteuer-Code "Document level charge VAT
 			// category code" (BT-102) aufweisen.
-			if ac.CategoryTradeTaxCategoryCode == "" {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "" {
 				inv.addViolation(rules.BR37, "Charge tax category code not set")
 			}
 			// BR-38 Zuschläge auf Dokumentenebene
 			// Jede Abgabe auf Dokumentenebene "DOCUMENT LEVEL CHARGES" (BG-21) muss einen Abgabegrund "Document level charge reason" (BT-104)
 			// oder einen entsprechenden Code "Document level charge reason code" (BT-105) aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == "" {
+			if inv.SpecifiedTradeAllowanceCharge[i].Reason == "" && inv.SpecifiedTradeAllowanceCharge[i].ReasonCode == "" {
 				inv.addViolation(rules.BR38, "Charge reason empty or code unset")
 			}
 				// BR-USER-03 Zuschläge auf Dokumentenebene
 				// Der Betrag einer Abgabe auf Dokumentenebene "Document level charge amount" (BT-99) darf nicht negativ sein.
 				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && ac.ActualAmount.LessThan(decimal.Zero) {
+				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.LessThan(decimal.Zero) {
 					inv.addViolation(rules.BRUSER03, "Document level charge amount must not be negative")
 				}
 				// BR-USER-04 Zuschläge auf Dokumentenebene
 				// Der Basisbetrag einer Abgabe auf Dokumentenebene "Document level charge base amount" (BT-100) darf nicht negativ sein.
 				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && ac.BasisAmount.LessThan(decimal.Zero) {
+				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.LessThan(decimal.Zero) {
 					inv.addViolation(rules.BRUSER04, "Document level charge base amount must not be negative")
 				}
 			} else {
 				// BR-31 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag "Document level allowance amount"
 			// (BT-92) aufweisen.
-			if ac.ActualAmount.IsZero() {
+			if inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.IsZero() {
 				inv.addViolation(rules.BR31, "Allowance must not be zero")
 			}
 			// BR-32 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Umsatzsteuer-Code "Document level
 			// allowance VAT category code" (BT-95) aufweisen.
-			if ac.CategoryTradeTaxCategoryCode == "" {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "" {
 				inv.addViolation(rules.BR32, "Allowance tax category code not set")
 			}
 			// BR-33 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Nachlassgrund "Document level allowance
 			// reason" (BT-97) oder einen entsprechenden Code "Document level allowance reason code" (BT-98") aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == "" {
+			if inv.SpecifiedTradeAllowanceCharge[i].Reason == "" && inv.SpecifiedTradeAllowanceCharge[i].ReasonCode == "" {
 				inv.addViolation(rules.BR33, "Allowance reason empty or code unset")
 			}
 				// BR-USER-01 Abschläge auf Dokumentenebene
 				// Der Betrag eines Nachlasses auf Dokumentenebene "Document level allowance amount" (BT-92) darf nicht negativ sein.
 				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && ac.ActualAmount.LessThan(decimal.Zero) {
+				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.LessThan(decimal.Zero) {
 					inv.addViolation(rules.BRUSER01, "Document level allowance amount must not be negative")
 				}
 				// BR-USER-02 Abschläge auf Dokumentenebene
 				// Der Basisbetrag eines Nachlasses auf Dokumentenebene "Document level allowance base amount" (BT-93) darf nicht negativ sein.
 				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && ac.BasisAmount.LessThan(decimal.Zero) {
+				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.LessThan(decimal.Zero) {
 					inv.addViolation(rules.BRUSER02, "Document level allowance base amount must not be negative")
 				}
 			}
 		}
 
-	for _, line := range inv.InvoiceLines {
+	for i := range inv.InvoiceLines {
 		// BR-41 Abschläge auf Ebene der Rechnungsposition
-		// Jeder Nachlass auf der Ebene der Rechnungsposition "INVOICE LINE ALLOWANCES“ (BG-27) muss einen Betrag "Invoice line allowance amount“
+		// Jeder Nachlass auf der Ebene der Rechnungsposition "INVOICE LINE ALLOWANCES" (BG-27) muss einen Betrag "Invoice line allowance amount"
 		// (BT-136) aufweisen.
-		for _, ac := range line.InvoiceLineAllowances {
-			if ac.ActualAmount.IsZero() {
+		for j := range inv.InvoiceLines[i].InvoiceLineAllowances {
+			if inv.InvoiceLines[i].InvoiceLineAllowances[j].ActualAmount.IsZero() {
 				inv.addViolation(rules.BR41, "Line allowance amount zero")
 			}
 			// BR-42 Abschläge auf Ebene der Rechnungsposition
-			// Jeder Nachlass auf der Ebene der Rechnungsposition "INVOICE LINE ALLOWANCES“ (BG-27) muss einen Nachlassgrund "Invoice line allowance
-			// reason“ (BT-139) oder einen entsprechenden Code "Invoice line allowance reason code“ (BT-140) aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == "" {
+			// Jeder Nachlass auf der Ebene der Rechnungsposition "INVOICE LINE ALLOWANCES" (BG-27) muss einen Nachlassgrund "Invoice line allowance
+			// reason" (BT-139) oder einen entsprechenden Code "Invoice line allowance reason code" (BT-140) aufweisen.
+			if inv.InvoiceLines[i].InvoiceLineAllowances[j].Reason == "" && inv.InvoiceLines[i].InvoiceLineAllowances[j].ReasonCode == "" {
 				inv.addViolation(rules.BR42, "Line allowance must have a reason")
 			}
 		}
-		for _, ac := range line.InvoiceLineCharges {
+		for j := range inv.InvoiceLines[i].InvoiceLineCharges {
 			// BR-43 Charge ou frais sur ligne de facture
-			// Jede Abgabe auf der Ebene der Rechnungsposition "INVOICE LINE CHARGES“ (BG-28) muss einen Betrag "Invoice line charge amount“ (BT-141)
+			// Jede Abgabe auf der Ebene der Rechnungsposition "INVOICE LINE CHARGES" (BG-28) muss einen Betrag "Invoice line charge amount" (BT-141)
 			// aufweisen.
-			if ac.ActualAmount.IsZero() {
+			if inv.InvoiceLines[i].InvoiceLineCharges[j].ActualAmount.IsZero() {
 				inv.addViolation(rules.BR43, "Line charge amount zero")
 			}
 			// BR-44 Charge ou frais sur ligne de facture
-			// Jede Abgabe auf der Ebene der Rechnungsposition "INVOICE LINE CHARGES“ (BG-28) muss einen Abgabegrund "Invoice line charge reason“ (BT-
-			// 144) oder einen entsprechenden Code "Invoice line charge reason code“ (BT-145) aufweisen.
-			if ac.Reason == "" && ac.ReasonCode == "" {
+			// Jede Abgabe auf der Ebene der Rechnungsposition "INVOICE LINE CHARGES" (BG-28) muss einen Abgabegrund "Invoice line charge reason" (BT-
+			// 144) oder einen entsprechenden Code "Invoice line charge reason code" (BT-145) aufweisen.
+			if inv.InvoiceLines[i].InvoiceLineCharges[j].Reason == "" && inv.InvoiceLines[i].InvoiceLineCharges[j].ReasonCode == "" {
 				inv.addViolation(rules.BR44, "Line charge must have a reason")
 			}
 		}
 	}
 
-	for _, tt := range inv.TradeTaxes {
+	for i := range inv.TradeTaxes {
 		// BR-46 Umsatzsteueraufschlüsselung
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss den für
 		// die betreffende Umsatzsteuerkategorie zu entrichtenden Gesamtbetrag
@@ -640,8 +641,8 @@ func (inv *Invoice) validateCore() {
 		// Note: This validation only applies to profiles with line items (>= Basic, level 3).
 		// BasicWL profile (level 2) provides BasisAmount directly without line items.
 		if is(levelBasic, inv) {
-			key := tt.CategoryCode + "_" + tt.Percent.String()
-			if !applicableTradeTaxes[key].Equal(tt.BasisAmount) {
+			key := inv.TradeTaxes[i].CategoryCode + "_" + inv.TradeTaxes[i].Percent.String()
+			if !applicableTradeTaxes[key].Equal(inv.TradeTaxes[i].BasisAmount) {
 				inv.addViolation(rules.BR45, "Applicable trade tax basis amount not equal to the sum of line total")
 
 			}
@@ -650,14 +651,14 @@ func (inv *Invoice) validateCore() {
 		// Jede Umsatzsteueraufschlüsselung "VAT BREAKDOWN" (BG-23) muss über
 		// eine codierte Bezeichnung einer Umsatzsteuerkategorie "VAT category
 		// code" (BT-118) definiert werden.
-		if tt.CategoryCode == "" {
+		if inv.TradeTaxes[i].CategoryCode == "" {
 			inv.addViolation(rules.BR47, "CategoryCode not set for applicable trade tax")
 		}
 	}
-	for _, pm := range inv.PaymentMeans {
+	for i := range inv.PaymentMeans {
 		// BR-49 Zahlungsanweisungen
-		// Die Zahlungsinstruktionen "PAYMENT INSTRUCTIONS“ (BG-16) müssen den Zahlungsart-Code "Payment means type code“ (BT-81) enthalten.
-		if pm.TypeCode == 0 {
+		// Die Zahlungsinstruktionen "PAYMENT INSTRUCTIONS" (BG-16) müssen den Zahlungsart-Code "Payment means type code" (BT-81) enthalten.
+		if inv.PaymentMeans[i].TypeCode == 0 {
 			inv.addViolation(rules.BR49, "Payment means type code must be set")
 		}
 	}
@@ -676,8 +677,8 @@ func (inv *Invoice) validateCore() {
 	// BR-52 Rechnungsbegründende Unterlagen
 	// Jede rechnungsbegründende Unterlage muss einen Dokumentenbezeichner
 	// "Supporting document reference" (BT-122) haben.
-	for _, doc := range inv.AdditionalReferencedDocument {
-		if doc.IssuerAssignedID == "" {
+	for i := range inv.AdditionalReferencedDocument {
+		if inv.AdditionalReferencedDocument[i].IssuerAssignedID == "" {
 			inv.addViolation(rules.BR52, "Supporting document must have a reference")
 		}
 	}
@@ -705,9 +706,9 @@ func (inv *Invoice) validateCore() {
 	// Jede Eigenschaft eines in Rechnung gestellten Postens "ITEM ATTRIBUTES"
 	// (BG-32) muss eine Bezeichnung "Item attribute name" (BT-160) und einen
 	// Wert "Item attribute value" (BT-161) haben.
-	for _, line := range inv.InvoiceLines {
-		for _, char := range line.Characteristics {
-			if char.Description == "" || char.Value == "" {
+	for i := range inv.InvoiceLines {
+		for j := range inv.InvoiceLines[i].Characteristics {
+			if inv.InvoiceLines[i].Characteristics[j].Description == "" || inv.InvoiceLines[i].Characteristics[j].Value == "" {
 				inv.addViolation(rules.BR54, "Item attribute must have both name and value")
 			}
 		}
@@ -742,9 +743,9 @@ func (inv *Invoice) validateCore() {
 	// Note: Validates element presence per EN 16931 schematron, not value. Empty elements
 	// like <ram:IBANID/> are valid. Only triggers when PayeePartyCreditorFinancialAccount
 	// exists but neither IBANID nor ProprietaryID elements are present.
-	for _, pm := range inv.PaymentMeans {
-		if (pm.TypeCode == 30 || pm.TypeCode == 58) && pm.hasPayeeAccountInXML {
-			if !pm.hasPayeeIBANInXML && !pm.hasPayeeProprietaryIDInXML {
+	for i := range inv.PaymentMeans {
+		if (inv.PaymentMeans[i].TypeCode == 30 || inv.PaymentMeans[i].TypeCode == 58) && inv.PaymentMeans[i].hasPayeeAccountInXML {
+			if !inv.PaymentMeans[i].hasPayeeIBANInXML && !inv.PaymentMeans[i].hasPayeeProprietaryIDInXML {
 				inv.addViolation(rules.BR61, "Payment account identifier required for credit transfer payment types")
 			}
 		}
@@ -767,8 +768,8 @@ func (inv *Invoice) validateCore() {
 	// BR-64 Kennung eines Artikels nach registriertem Schema
 	// Im Element "Item standard identifier" (BT-157) muss die Komponente
 	// "Scheme Identifier" vorhanden sein.
-	for _, line := range inv.InvoiceLines {
-		if line.GlobalID != "" && line.GlobalIDType == "" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].GlobalID != "" && inv.InvoiceLines[i].GlobalIDType == "" {
 			inv.addViolation(rules.BR64, "Item standard identifier must have scheme identifier")
 		}
 	}
@@ -776,9 +777,9 @@ func (inv *Invoice) validateCore() {
 	// BR-65 Kennung der Artikelklassifizierung
 	// Im Element "Item classification identifier" (BT-158) muss die Komponente
 	// "Scheme Identifier" vorhanden sein.
-	for _, line := range inv.InvoiceLines {
-		for _, classification := range line.ProductClassification {
-			if classification.ClassCode != "" && classification.ListID == "" {
+	for i := range inv.InvoiceLines {
+		for j := range inv.InvoiceLines[i].ProductClassification {
+			if inv.InvoiceLines[i].ProductClassification[j].ClassCode != "" && inv.InvoiceLines[i].ProductClassification[j].ListID == "" {
 				inv.addViolation(rules.BR65, "Item classification identifier must have scheme identifier")
 			}
 		}
@@ -788,15 +789,15 @@ func (inv *Invoice) validateCore() {
 	// An Invoice where the VAT category code is "Split payment" (B) shall be a domestic Italian invoice.
 	// This means both seller and buyer must be located in Italy (IT).
 	hasSplitPayment := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "B" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "B" {
 			hasSplitPayment = true
 			break
 		}
 	}
 	if !hasSplitPayment {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "B" {
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "B" {
 				hasSplitPayment = true
 				break
 			}
@@ -822,15 +823,15 @@ func (inv *Invoice) validateCore() {
 	// BR-B-2 Split payment and Standard rated exclusion
 	// An Invoice with Split payment (B) shall not contain Standard rated (S) VAT category.
 	hasStandardRated := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "S" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "S" {
 			hasStandardRated = true
 			break
 		}
 	}
 	if !hasStandardRated {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "S" {
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "S" {
 				hasStandardRated = true
 				break
 			}
@@ -871,15 +872,15 @@ func (inv *Invoice) validateDecimals() {
 	// BR-DEC-02: Document level allowance base amount (BT-93)
 	// BR-DEC-05: Document level charge amount (BT-99)
 	// BR-DEC-06: Document level charge base amount (BT-100)
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
 			// Allowance
-			checkDecimalPrecision(ac.ActualAmount, "Document level allowance amount", "BT-92", rules.BRDEC1)
-			checkDecimalPrecision(ac.BasisAmount, "Document level allowance base amount", "BT-93", rules.BRDEC2)
+			checkDecimalPrecision(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount, "Document level allowance amount", "BT-92", rules.BRDEC1)
+			checkDecimalPrecision(inv.SpecifiedTradeAllowanceCharge[i].BasisAmount, "Document level allowance base amount", "BT-93", rules.BRDEC2)
 		} else {
 			// Charge
-			checkDecimalPrecision(ac.ActualAmount, "Document level charge amount", "BT-99", rules.BRDEC5)
-			checkDecimalPrecision(ac.BasisAmount, "Document level charge base amount", "BT-100", rules.BRDEC6)
+			checkDecimalPrecision(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount, "Document level charge amount", "BT-99", rules.BRDEC5)
+			checkDecimalPrecision(inv.SpecifiedTradeAllowanceCharge[i].BasisAmount, "Document level charge base amount", "BT-100", rules.BRDEC6)
 		}
 	}
 
@@ -915,9 +916,9 @@ func (inv *Invoice) validateDecimals() {
 
 	// BR-DEC-19: VAT category taxable amount (BT-116)
 	// BR-DEC-20: VAT category tax amount (BT-117)
-	for _, tt := range inv.TradeTaxes {
-		checkDecimalPrecision(tt.BasisAmount, "VAT category taxable amount", "BT-116", rules.BRDEC19)
-		checkDecimalPrecision(tt.CalculatedAmount, "VAT category tax amount", "BT-117", rules.BRDEC20)
+	for i := range inv.TradeTaxes {
+		checkDecimalPrecision(inv.TradeTaxes[i].BasisAmount, "VAT category taxable amount", "BT-116", rules.BRDEC19)
+		checkDecimalPrecision(inv.TradeTaxes[i].CalculatedAmount, "VAT category tax amount", "BT-117", rules.BRDEC20)
 	}
 
 	// BR-DEC-23: Invoice line net amount (BT-131)
@@ -925,18 +926,18 @@ func (inv *Invoice) validateDecimals() {
 	// BR-DEC-25: Invoice line allowance base amount (BT-137)
 	// BR-DEC-27: Invoice line charge amount (BT-141)
 	// BR-DEC-28: Invoice line charge base amount (BT-142)
-	for i, line := range inv.InvoiceLines {
+	for i := range inv.InvoiceLines {
 		linePrefix := fmt.Sprintf("Line %d: ", i+1)
-		checkDecimalPrecision(line.Total, linePrefix+"Invoice line net amount", "BT-131", rules.BRDEC23)
+		checkDecimalPrecision(inv.InvoiceLines[i].Total, linePrefix+"Invoice line net amount", "BT-131", rules.BRDEC23)
 
-		for _, allowance := range line.InvoiceLineAllowances {
-			checkDecimalPrecision(allowance.ActualAmount, linePrefix+"Invoice line allowance amount", "BT-136", rules.BRDEC24)
-			checkDecimalPrecision(allowance.BasisAmount, linePrefix+"Invoice line allowance base amount", "BT-137", rules.BRDEC25)
+		for j := range inv.InvoiceLines[i].InvoiceLineAllowances {
+			checkDecimalPrecision(inv.InvoiceLines[i].InvoiceLineAllowances[j].ActualAmount, linePrefix+"Invoice line allowance amount", "BT-136", rules.BRDEC24)
+			checkDecimalPrecision(inv.InvoiceLines[i].InvoiceLineAllowances[j].BasisAmount, linePrefix+"Invoice line allowance base amount", "BT-137", rules.BRDEC25)
 		}
 
-		for _, charge := range line.InvoiceLineCharges {
-			checkDecimalPrecision(charge.ActualAmount, linePrefix+"Invoice line charge amount", "BT-141", rules.BRDEC27)
-			checkDecimalPrecision(charge.BasisAmount, linePrefix+"Invoice line charge base amount", "BT-142", rules.BRDEC28)
+		for j := range inv.InvoiceLines[i].InvoiceLineCharges {
+			checkDecimalPrecision(inv.InvoiceLines[i].InvoiceLineCharges[j].ActualAmount, linePrefix+"Invoice line charge amount", "BT-141", rules.BRDEC27)
+			checkDecimalPrecision(inv.InvoiceLines[i].InvoiceLineCharges[j].BasisAmount, linePrefix+"Invoice line charge base amount", "BT-142", rules.BRDEC28)
 		}
 	}
 }

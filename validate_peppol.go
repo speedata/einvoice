@@ -114,9 +114,9 @@ func (inv *Invoice) validateLineCalculations(
 	unitRule rules.Rule,
 	report func(rule rules.Rule, text string),
 ) {
-	for i, line := range inv.InvoiceLines {
+	for i := range inv.InvoiceLines {
 		// Create line reference for error messages
-		lineRef := line.LineID
+		lineRef := inv.InvoiceLines[i].LineID
 		if lineRef == "" {
 			lineRef = fmt.Sprintf("%d", i+1)
 		}
@@ -124,54 +124,54 @@ func (inv *Invoice) validateLineCalculations(
 		// PEPPOL-EN16931-R121: Base quantity MUST be a positive number above zero
 		// Only validate if BasisQuantity was explicitly set (non-zero in parsed XML)
 		// When element is missing, parser returns zero and we default to 1 for calculation
-		if !line.BasisQuantity.IsZero() && !line.BasisQuantity.GreaterThan(decimal.Zero) {
+		if !inv.InvoiceLines[i].BasisQuantity.IsZero() && !inv.InvoiceLines[i].BasisQuantity.GreaterThan(decimal.Zero) {
 			report(baseQtyRule,
 				fmt.Sprintf("Line %s: Base quantity MUST be a positive number above zero (got %s)",
-					lineRef, line.BasisQuantity))
+					lineRef, inv.InvoiceLines[i].BasisQuantity))
 		}
 
 		// PEPPOL-EN16931-R130: Unit code of price base quantity MUST be same as invoiced quantity
 		// Only validate if BasisQuantityUnit is specified (element present in XML)
-		if line.BasisQuantityUnit != "" && line.BasisQuantityUnit != line.BilledQuantityUnit {
+		if inv.InvoiceLines[i].BasisQuantityUnit != "" && inv.InvoiceLines[i].BasisQuantityUnit != inv.InvoiceLines[i].BilledQuantityUnit {
 			report(unitRule,
 				fmt.Sprintf("Line %s: Unit code of price base quantity (%s) MUST be same as invoiced quantity (%s)",
-					lineRef, line.BasisQuantityUnit, line.BilledQuantityUnit))
+					lineRef, inv.InvoiceLines[i].BasisQuantityUnit, inv.InvoiceLines[i].BilledQuantityUnit))
 		}
 
 		// PEPPOL-EN16931-R120: Invoice line net amount calculation
 		// Formula: (quantity × price / baseQty) + charges - allowances
-		baseQty := line.BasisQuantity
+		baseQty := inv.InvoiceLines[i].BasisQuantity
 		if baseQty.IsZero() {
 			// Default to 1 when not specified (per EN 16931)
 			baseQty = decimal.NewFromInt(1)
 		}
 
 		// Calculate: BilledQuantity × NetPrice / BasisQuantity
-		calculated := line.BilledQuantity.Mul(line.NetPrice).Div(baseQty)
+		calculated := inv.InvoiceLines[i].BilledQuantity.Mul(inv.InvoiceLines[i].NetPrice).Div(baseQty)
 
 		// Add line-level charges (BG-28)
 		chargeTotal := decimal.Zero
-		for _, charge := range line.InvoiceLineCharges {
-			calculated = calculated.Add(charge.ActualAmount)
-			chargeTotal = chargeTotal.Add(charge.ActualAmount)
+		for j := range inv.InvoiceLines[i].InvoiceLineCharges {
+			calculated = calculated.Add(inv.InvoiceLines[i].InvoiceLineCharges[j].ActualAmount)
+			chargeTotal = chargeTotal.Add(inv.InvoiceLines[i].InvoiceLineCharges[j].ActualAmount)
 		}
 
 		// Subtract line-level allowances (BG-27)
 		allowanceTotal := decimal.Zero
-		for _, allowance := range line.InvoiceLineAllowances {
-			calculated = calculated.Sub(allowance.ActualAmount)
-			allowanceTotal = allowanceTotal.Add(allowance.ActualAmount)
+		for j := range inv.InvoiceLines[i].InvoiceLineAllowances {
+			calculated = calculated.Sub(inv.InvoiceLines[i].InvoiceLineAllowances[j].ActualAmount)
+			allowanceTotal = allowanceTotal.Add(inv.InvoiceLines[i].InvoiceLineAllowances[j].ActualAmount)
 		}
 
 		// Round to 2 decimal places (per PEPPOL schematron)
 		expected := roundHalfUp(calculated, 2)
 
-		if !line.Total.Equal(expected) {
+		if !inv.InvoiceLines[i].Total.Equal(expected) {
 			report(calcRule,
 				fmt.Sprintf("Line %s: Invoice line net amount %s does not match calculated %s "+
 					"(qty %s × price %s / baseQty %s + charges %s - allowances %s)",
-					lineRef, line.Total, expected,
-					line.BilledQuantity, line.NetPrice, baseQty,
+					lineRef, inv.InvoiceLines[i].Total, expected,
+					inv.InvoiceLines[i].BilledQuantity, inv.InvoiceLines[i].NetPrice, baseQty,
 					chargeTotal, allowanceTotal))
 		}
 	}

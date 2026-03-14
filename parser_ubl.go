@@ -436,14 +436,15 @@ func parseUBLTaxTotal(root *cxpath.Context, inv *Invoice, prefix string) error {
 		}
 
 		// BT-110: Tax total in invoice currency (must match BT-5)
-		if currency == inv.InvoiceCurrencyCode {
+		switch {
+		case currency == inv.InvoiceCurrencyCode:
 			inv.TaxTotalCurrency = currency
 			inv.TaxTotal = amount
-		} else if inv.TaxCurrencyCode != "" && currency == inv.TaxCurrencyCode {
+		case inv.TaxCurrencyCode != "" && currency == inv.TaxCurrencyCode:
 			// BT-111: Tax total in accounting currency (must match BT-6)
 			inv.TaxTotalAccountingCurrency = currency
 			inv.TaxTotalAccounting = amount
-		} else {
+		default:
 			// Track unexpected TaxTotal currencies for validation
 			inv.unexpectedTaxCurrencies = append(inv.unexpectedTaxCurrencies, currency)
 		}

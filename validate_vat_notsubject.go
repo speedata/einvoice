@@ -24,15 +24,15 @@ import (
 func (inv *Invoice) validateVATNotSubject() {
 	// Check if invoice has any "Not subject to VAT" items
 	hasNotSubjectToVAT := false
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "O" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "O" {
 			hasNotSubjectToVAT = true
 			break
 		}
 	}
 	if !hasNotSubjectToVAT {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "O" {
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "O" {
 				hasNotSubjectToVAT = true
 				break
 			}
@@ -58,8 +58,8 @@ func (inv *Invoice) validateVATNotSubject() {
 	}
 
 	// BR-O-02: Invoice lines with category O must NOT contain VAT identifiers
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "O" {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "O" {
 			hasVATIdentifiers := inv.Seller.VATaxRegistration != "" ||
 				inv.Buyer.VATaxRegistration != "" ||
 				(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
@@ -72,8 +72,8 @@ func (inv *Invoice) validateVATNotSubject() {
 	}
 
 	// BR-O-03: Document level allowances with category O must NOT contain VAT identifiers
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "O" {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "O" {
 			hasVATIdentifiers := inv.Seller.VATaxRegistration != "" ||
 				inv.Buyer.VATaxRegistration != "" ||
 				(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
@@ -86,8 +86,8 @@ func (inv *Invoice) validateVATNotSubject() {
 	}
 
 	// BR-O-04: Document level charges with category O must NOT contain VAT identifiers
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "O" {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "O" {
 			hasVATIdentifiers := inv.Seller.VATaxRegistration != "" ||
 				inv.Buyer.VATaxRegistration != "" ||
 				(inv.SellerTaxRepresentativeTradeParty != nil && inv.SellerTaxRepresentativeTradeParty.VATaxRegistration != "")
@@ -100,22 +100,22 @@ func (inv *Invoice) validateVATNotSubject() {
 	}
 
 	// BR-O-05: Invoice lines with category O must NOT contain VAT rate
-	for _, line := range inv.InvoiceLines {
-		if line.TaxCategoryCode == "O" && !line.TaxRateApplicablePercent.IsZero() {
+	for i := range inv.InvoiceLines {
+		if inv.InvoiceLines[i].TaxCategoryCode == "O" && !inv.InvoiceLines[i].TaxRateApplicablePercent.IsZero() {
 			inv.addViolation(rules.BRO5, "Invoice line with 'Not subject to VAT' shall not contain VAT rate (BT-152)")
 		}
 	}
 
 	// BR-O-06: Allowances with category O must NOT contain VAT rate
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "O" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "O" && !inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.IsZero() {
 			inv.addViolation(rules.BRO6, "Allowance with 'Not subject to VAT' shall not contain VAT rate (BT-96)")
 		}
 	}
 
 	// BR-O-07: Charges with category O must NOT contain VAT rate
-	for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-		if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode == "O" && !ac.CategoryTradeTaxRateApplicablePercent.IsZero() {
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "O" && !inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.IsZero() {
 			inv.addViolation(rules.BRO7, "Charge with 'Not subject to VAT' shall not contain VAT rate (BT-103)")
 		}
 	}
@@ -125,19 +125,19 @@ func (inv *Invoice) validateVATNotSubject() {
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if oBreakdown != nil && (inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0)) {
 		var lineTotal decimal.Decimal
-		for _, line := range inv.InvoiceLines {
-			if line.TaxCategoryCode == "O" {
-				lineTotal = lineTotal.Add(line.Total)
+		for i := range inv.InvoiceLines {
+			if inv.InvoiceLines[i].TaxCategoryCode == "O" {
+				lineTotal = lineTotal.Add(inv.InvoiceLines[i].Total)
 			}
 		}
 		var allowanceTotal decimal.Decimal
 		var chargeTotal decimal.Decimal
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.CategoryTradeTaxCategoryCode == "O" {
-				if ac.ChargeIndicator {
-					chargeTotal = chargeTotal.Add(ac.ActualAmount)
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "O" {
+				if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
+					chargeTotal = chargeTotal.Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 				} else {
-					allowanceTotal = allowanceTotal.Add(ac.ActualAmount)
+					allowanceTotal = allowanceTotal.Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
 				}
 			}
 		}
@@ -165,9 +165,9 @@ func (inv *Invoice) validateVATNotSubject() {
 
 	// BR-O-12: All invoice lines must be category O
 	if oBreakdownCount > 0 {
-		for _, line := range inv.InvoiceLines {
-			if line.TaxCategoryCode != "O" {
-				inv.addViolation(rules.BRO12, fmt.Sprintf("Invoice with 'Not subject to VAT' breakdown shall not contain invoice lines with other categories (found %s)", line.TaxCategoryCode))
+		for i := range inv.InvoiceLines {
+			if inv.InvoiceLines[i].TaxCategoryCode != "O" {
+				inv.addViolation(rules.BRO12, fmt.Sprintf("Invoice with 'Not subject to VAT' breakdown shall not contain invoice lines with other categories (found %s)", inv.InvoiceLines[i].TaxCategoryCode))
 				break
 			}
 		}
@@ -175,9 +175,9 @@ func (inv *Invoice) validateVATNotSubject() {
 
 	// BR-O-13: All allowances must be category O
 	if oBreakdownCount > 0 {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if !ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode != "O" {
-				inv.addViolation(rules.BRO13, fmt.Sprintf("Invoice with 'Not subject to VAT' breakdown shall not contain allowances with other categories (found %s)", ac.CategoryTradeTaxCategoryCode))
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if !inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode != "O" {
+				inv.addViolation(rules.BRO13, fmt.Sprintf("Invoice with 'Not subject to VAT' breakdown shall not contain allowances with other categories (found %s)", inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode))
 				break
 			}
 		}
@@ -185,9 +185,9 @@ func (inv *Invoice) validateVATNotSubject() {
 
 	// BR-O-14: All charges must be category O
 	if oBreakdownCount > 0 {
-		for _, ac := range inv.SpecifiedTradeAllowanceCharge {
-			if ac.ChargeIndicator && ac.CategoryTradeTaxCategoryCode != "O" {
-				inv.addViolation(rules.BRO14, fmt.Sprintf("Invoice with 'Not subject to VAT' breakdown shall not contain charges with other categories (found %s)", ac.CategoryTradeTaxCategoryCode))
+		for i := range inv.SpecifiedTradeAllowanceCharge {
+			if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator && inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode != "O" {
+				inv.addViolation(rules.BRO14, fmt.Sprintf("Invoice with 'Not subject to VAT' breakdown shall not contain charges with other categories (found %s)", inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode))
 				break
 			}
 		}
