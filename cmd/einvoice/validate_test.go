@@ -63,7 +63,7 @@ func TestValidateInvoice_MalformedXML(t *testing.T) {
 	}
 	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
-	if _, err := tmpfile.Write([]byte("<invalid>xml</wrong>")); err != nil {
+	if _, err := tmpfile.WriteString("<invalid>xml</wrong>"); err != nil {
 		t.Fatal(err)
 	}
 	_ = tmpfile.Close()

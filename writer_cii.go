@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/beevik/etree"
@@ -507,7 +508,7 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 			pmElt := elt.CreateElement("ram:SpecifiedTradeSettlementPaymentMeans")
 
 			//	BT-81
-			pmElt.CreateElement("ram:TypeCode").SetText(fmt.Sprintf("%d", inv.PaymentMeans[i].TypeCode))
+			pmElt.CreateElement("ram:TypeCode").SetText(strconv.Itoa(inv.PaymentMeans[i].TypeCode))
 
 			if inf := inv.PaymentMeans[i].Information; inf != "" {
 				// BT-82

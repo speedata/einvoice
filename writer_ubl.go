@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/beevik/etree"
@@ -348,7 +349,7 @@ func writeUBLParty(parent *etree.Element, party *Party, isSeller bool) {
 func writeUBLAllowanceCharge(inv *Invoice, root *etree.Element, prefix string) {
 	for i := range inv.SpecifiedTradeAllowanceCharge {
 		acElt := root.CreateElement("cac:AllowanceCharge")
-		acElt.CreateElement("cbc:ChargeIndicator").SetText(fmt.Sprintf("%t", inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator))
+		acElt.CreateElement("cbc:ChargeIndicator").SetText(strconv.FormatBool(inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator))
 
 		if inv.SpecifiedTradeAllowanceCharge[i].ReasonCode != "" {
 			acElt.CreateElement("cbc:AllowanceChargeReasonCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].ReasonCode)
@@ -497,7 +498,7 @@ func writeUBLPaymentMeans(inv *Invoice, root *etree.Element, prefix string) {
 		pmElt := root.CreateElement("cac:PaymentMeans")
 
 		// BT-81: Payment means type code
-		pmElt.CreateElement("cbc:PaymentMeansCode").SetText(fmt.Sprintf("%d", inv.PaymentMeans[i].TypeCode))
+		pmElt.CreateElement("cbc:PaymentMeansCode").SetText(strconv.Itoa(inv.PaymentMeans[i].TypeCode))
 
 		// BT-82: Payment means text
 		if inv.PaymentMeans[i].Information != "" {
@@ -643,7 +644,7 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 // roundAmount: true for BT-136/BT-141 (line allowances/charges), false for BT-147 (item price discounts)
 func writeUBLLineAllowanceCharge(parent *etree.Element, ac *AllowanceCharge, isCharge bool, roundAmount bool, currency string) {
 	acElt := parent.CreateElement("cac:AllowanceCharge")
-	acElt.CreateElement("cbc:ChargeIndicator").SetText(fmt.Sprintf("%t", isCharge))
+	acElt.CreateElement("cbc:ChargeIndicator").SetText(strconv.FormatBool(isCharge))
 
 	if ac.ReasonCode != "" {
 		acElt.CreateElement("cbc:AllowanceChargeReasonCode").SetText(ac.ReasonCode)

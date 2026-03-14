@@ -17,7 +17,7 @@ func (inv *Invoice) validateCalculations() {
 			return // Empty VAT IDs are handled by other rules
 		}
 		if len(vatID) < 2 {
-			inv.addViolation(rules.BRCO9, fmt.Sprintf("%s must have at least 2-character country prefix", fieldName))
+			inv.addViolation(rules.BRCO9, fieldName+" must have at least 2-character country prefix")
 			return
 		}
 		// Extract first 2 characters as potential country code
