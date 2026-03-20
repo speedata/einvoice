@@ -1,6 +1,6 @@
 module github.com/speedata/einvoice
 
-go 1.24.0
+go 1.25.0
 
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
@@ -9,8 +9,8 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/pdfcpu/pdfcpu v0.11.1
 	github.com/shopspring/decimal v1.4.0
-	github.com/speedata/cxpath v0.0.6
-	golang.org/x/term v0.40.0
+	github.com/speedata/cxpath v0.0.8
+	golang.org/x/term v0.41.0
 )
 
 require (
@@ -179,7 +179,7 @@ require (
 	github.com/sonatard/noctx v0.4.0 // indirect
 	github.com/sourcegraph/go-diff v0.7.0 // indirect
 	github.com/speedata/goxml v1.0.7 // indirect
-	github.com/speedata/goxpath v1.0.6 // indirect
+	github.com/speedata/goxpath v1.0.8 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
@@ -219,7 +219,7 @@ require (
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
