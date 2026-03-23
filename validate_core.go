@@ -240,24 +240,6 @@ func (inv *Invoice) validateCalculations() {
 		inv.addViolation(rules.BRCO26, "At least one seller identifier must be present: Seller ID (BT-29), Legal registration (BT-30), or VAT ID (BT-31)")
 	}
 
-	// BR-CO-27 Zahlungsanweisungen (CII-specific rule)
-	// Either the IBAN or a Proprietary ID (BT-84) shall be used for payment account identifier.
-	// Note: This rule only exists in the CII schematron, not in UBL schematron.
-	// Per EN 16931 CII schematron, this rule applies to payment type codes 49 (Direct debit)
-	// and 59 (SEPA direct debit), NOT to credit transfer codes (30, 58).
-	// BR-61 handles credit transfers.
-	// However, per issue #423, this rule may be too strict and is under review.
-	if inv.SchemaType == CII {
-		for i := range inv.PaymentMeans {
-			// TypeCodes 49, 59 = direct debit per EN 16931 CII schematron
-			if inv.PaymentMeans[i].TypeCode == 49 || inv.PaymentMeans[i].TypeCode == 59 {
-				if inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountIBAN == "" && inv.PaymentMeans[i].PayeePartyCreditorFinancialAccountProprietaryID == "" {
-					inv.addViolation(rules.BRCO27, "Payment account identifier (BT-84) must be provided as either IBAN or Proprietary ID")
-				}
-			}
-		}
-	}
-
 	// Note: BR-CO-05, BR-CO-06, BR-CO-07, and BR-CO-08 are not validated here.
 	// These rules state that reason codes and reason text "shall indicate the same type"
 	// when both are present. However, implementing this check would require a lookup table
@@ -267,7 +249,6 @@ func (inv *Invoice) validateCalculations() {
 	// - BR-38: Charges must have reason (BT-104) OR code (BT-105)
 	// - BR-42: Line allowances must have reason (BT-139) OR code (BT-140)
 	// - BR-44: Line charges must have reason (BT-144) OR code (BT-145)
-
 }
 
 func (inv *Invoice) validateCore() {
@@ -492,7 +473,7 @@ func (inv *Invoice) validateCore() {
 
 	// Initialize applicableTradeTaxes map for BR-45 validation
 	// Use composite key of CategoryCode + Percent to properly group by tax category
-	var applicableTradeTaxes = make(map[string]decimal.Decimal, len(inv.TradeTaxes))
+	applicableTradeTaxes := make(map[string]decimal.Decimal, len(inv.TradeTaxes))
 	for i := range inv.InvoiceLines {
 		key := inv.InvoiceLines[i].TaxCategoryCode + "_" + inv.InvoiceLines[i].TaxRateApplicablePercent.String()
 		applicableTradeTaxes[key] = applicableTradeTaxes[key].Add(inv.InvoiceLines[i].Total)
@@ -533,20 +514,20 @@ func (inv *Invoice) validateCore() {
 			if inv.SpecifiedTradeAllowanceCharge[i].Reason == "" && inv.SpecifiedTradeAllowanceCharge[i].ReasonCode == "" {
 				inv.addViolation(rules.BR38, "Charge reason empty or code unset")
 			}
-				// BR-USER-03 Zuschläge auf Dokumentenebene
-				// Der Betrag einer Abgabe auf Dokumentenebene "Document level charge amount" (BT-99) darf nicht negativ sein.
-				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.LessThan(decimal.Zero) {
-					inv.addViolation(rules.BRUSER03, "Document level charge amount must not be negative")
-				}
-				// BR-USER-04 Zuschläge auf Dokumentenebene
-				// Der Basisbetrag einer Abgabe auf Dokumentenebene "Document level charge base amount" (BT-100) darf nicht negativ sein.
-				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.LessThan(decimal.Zero) {
-					inv.addViolation(rules.BRUSER04, "Document level charge base amount must not be negative")
-				}
-			} else {
-				// BR-31 Abschläge auf Dokumentenebene
+			// BR-USER-03 Zuschläge auf Dokumentenebene
+			// Der Betrag einer Abgabe auf Dokumentenebene "Document level charge amount" (BT-99) darf nicht negativ sein.
+			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+			if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.LessThan(decimal.Zero) {
+				inv.addViolation(rules.BRUSER03, "Document level charge amount must not be negative")
+			}
+			// BR-USER-04 Zuschläge auf Dokumentenebene
+			// Der Basisbetrag einer Abgabe auf Dokumentenebene "Document level charge base amount" (BT-100) darf nicht negativ sein.
+			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+			if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.LessThan(decimal.Zero) {
+				inv.addViolation(rules.BRUSER04, "Document level charge base amount must not be negative")
+			}
+		} else {
+			// BR-31 Abschläge auf Dokumentenebene
 			// Jeder Nachlass für die Rechnung als Ganzes "DOCUMENT LEVEL ALLOWANCES" (BG-20) muss einen Betrag "Document level allowance amount"
 			// (BT-92) aufweisen.
 			if inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.IsZero() {
@@ -564,20 +545,20 @@ func (inv *Invoice) validateCore() {
 			if inv.SpecifiedTradeAllowanceCharge[i].Reason == "" && inv.SpecifiedTradeAllowanceCharge[i].ReasonCode == "" {
 				inv.addViolation(rules.BR33, "Allowance reason empty or code unset")
 			}
-				// BR-USER-01 Abschläge auf Dokumentenebene
-				// Der Betrag eines Nachlasses auf Dokumentenebene "Document level allowance amount" (BT-92) darf nicht negativ sein.
-				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.LessThan(decimal.Zero) {
-					inv.addViolation(rules.BRUSER01, "Document level allowance amount must not be negative")
-				}
-				// BR-USER-02 Abschläge auf Dokumentenebene
-				// Der Basisbetrag eines Nachlasses auf Dokumentenebene "Document level allowance base amount" (BT-93) darf nicht negativ sein.
-				// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
-				if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.LessThan(decimal.Zero) {
-					inv.addViolation(rules.BRUSER02, "Document level allowance base amount must not be negative")
-				}
+			// BR-USER-01 Abschläge auf Dokumentenebene
+			// Der Betrag eines Nachlasses auf Dokumentenebene "Document level allowance amount" (BT-92) darf nicht negativ sein.
+			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+			if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.LessThan(decimal.Zero) {
+				inv.addViolation(rules.BRUSER01, "Document level allowance amount must not be negative")
+			}
+			// BR-USER-02 Abschläge auf Dokumentenebene
+			// Der Basisbetrag eines Nachlasses auf Dokumentenebene "Document level allowance base amount" (BT-93) darf nicht negativ sein.
+			// Note: Credit notes (381) and correction invoices (384) may have negative amounts as per EN 16931.
+			if !allowsNegativeAmounts() && inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.LessThan(decimal.Zero) {
+				inv.addViolation(rules.BRUSER02, "Document level allowance base amount must not be negative")
 			}
 		}
+	}
 
 	for i := range inv.InvoiceLines {
 		// BR-41 Abschläge auf Ebene der Rechnungsposition
@@ -638,7 +619,6 @@ func (inv *Invoice) validateCore() {
 			key := inv.TradeTaxes[i].CategoryCode + "_" + inv.TradeTaxes[i].Percent.String()
 			if !applicableTradeTaxes[key].Equal(inv.TradeTaxes[i].BasisAmount) {
 				inv.addViolation(rules.BR45, "Applicable trade tax basis amount not equal to the sum of line total")
-
 			}
 		}
 		// BR-47 Umsatzsteueraufschlüsselung
