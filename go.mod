@@ -7,7 +7,7 @@ tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 require (
 	github.com/beevik/etree v1.6.0
 	github.com/google/go-cmp v0.7.0
-	github.com/pdfcpu/pdfcpu v0.12.0
+	github.com/pdfcpu/pdfcpu v0.12.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/speedata/cxpath v0.0.9
 	golang.org/x/term v0.42.0
