@@ -246,8 +246,8 @@ type PaymentMeans struct {
 	// Per EN 16931 schematron, BR-61 test is "(ram:IBANID) or (ram:ProprietaryID)" which
 	// checks for element PRESENCE, not value. An empty element <ram:IBANID/> satisfies
 	// the test because the element exists.
-	hasPayeeAccountInXML      bool // Set when PayeePartyCreditorFinancialAccount element exists
-	hasPayeeIBANInXML         bool // Set when IBANID element exists (even if empty)
+	hasPayeeAccountInXML       bool // Set when PayeePartyCreditorFinancialAccount element exists
+	hasPayeeIBANInXML          bool // Set when IBANID element exists (even if empty)
 	hasPayeeProprietaryIDInXML bool // Set when ProprietaryID element exists (even if empty)
 }
 
@@ -312,7 +312,6 @@ type SpecifiedTradePaymentTerms struct {
 	Description          string    // BT-20
 	DueDate              time.Time // BT-9
 	DirectDebitMandateID string    // BT-89
-
 }
 
 // ReferencedDocument links to a previous invoice BG-3.
@@ -324,52 +323,56 @@ type ReferencedDocument struct {
 // Invoice is the main element of the e-invoice.
 type Invoice struct {
 	GuidelineSpecifiedDocumentContextParameter string                       // BT-24 (Specification identifier URN)
-	DespatchAdviceReferencedDocument          string                       // BT-16
-	ReceivingAdviceReferencedDocument         string                       // BT-15
-	BuyerReference                            string                       // BT-10
-	BPSpecifiedDocumentContextParameter       string                       // BT-23
-	PayeeTradeParty                           *Party                       // BG-10
-	PaymentMeans                              []PaymentMeans               // BG-16
-	BillingSpecifiedPeriodStart               time.Time                    // BT-73
-	BillingSpecifiedPeriodEnd                 time.Time                    // BT-74
-	InvoiceDate                               time.Time                    // BT-2
-	CreditorReferenceID                       string                       // BT-90
-	PaymentReference                          string                       // BT-83
-	TaxCurrencyCode                           string                       // BT-6
-	InvoiceCurrencyCode                       string                       // BT-5
-	LineTotal                                 decimal.Decimal              // BT-106
-	AllowanceTotal                            decimal.Decimal              // BT-107
-	ChargeTotal                               decimal.Decimal              // BT-108
-	TaxBasisTotal                             decimal.Decimal              // BT-109
-	TaxTotalCurrency                          string                       // BT-110
-	TaxTotal                                  decimal.Decimal              // BT-110
-	TaxTotalAccountingCurrency                string                       // BT-111
-	TaxTotalAccounting                        decimal.Decimal              // BT-111
-	GrandTotal                                decimal.Decimal              // BT-112
-	TotalPrepaid                              decimal.Decimal              // BT-113
-	RoundingAmount                            decimal.Decimal              // BT-114
-	DuePayableAmount                          decimal.Decimal              // BT-115
-	Buyer                                     Party                        // BG-7
-	SellerTaxRepresentativeTradeParty         *Party                       // BG-11
-	SellerOrderReferencedDocument             string                       // BT-14
-	BuyerOrderReferencedDocument              string                       // BT-13
-	ContractReferencedDocument                string                       // BT-12
-	AdditionalReferencedDocument              []Document                   // BG-24
-	SpecifiedProcuringProjectID               string                       // BT-11
-	SpecifiedProcuringProjectName             string                       // BT-11
-	Seller                                    Party                        // BG-4
-	OccurrenceDateTime                        time.Time                    // BT-72
-	Notes                                     []Note                       // BG-1
-	InvoiceLines                              []InvoiceLine                // BG-25
-	InvoiceNumber                             string                       // BT-1
-	InvoiceTypeCode                           CodeDocument                 // BT-3
-	TradeTaxes                                []TradeTax                   // BG-23
-	SpecifiedTradeAllowanceCharge             []AllowanceCharge            // BG-20, BG-21
-	ShipTo                                    *Party                       // BG-13
-	SpecifiedTradePaymentTerms                []SpecifiedTradePaymentTerms // BT-20
-	SchemaType                                CodeSchemaType               // UBL or CII
-	InvoiceReferencedDocument                 []ReferencedDocument         // BG-3
-	ReceivableSpecifiedTradeAccountingAccount string                       // BT-19
+	DespatchAdviceReferencedDocument           string                       // BT-16
+	ReceivingAdviceReferencedDocument          string                       // BT-15
+	BuyerReference                             string                       // BT-10
+	BPSpecifiedDocumentContextParameter        string                       // BT-23
+	PayeeTradeParty                            *Party                       // BG-10
+	PaymentMeans                               []PaymentMeans               // BG-16
+	BillingSpecifiedPeriodStart                time.Time                    // BT-73
+	BillingSpecifiedPeriodEnd                  time.Time                    // BT-74
+	InvoiceDate                                time.Time                    // BT-2
+	CreditorReferenceID                        string                       // BT-90
+	PaymentReference                           string                       // BT-83
+	TaxCurrencyCode                            string                       // BT-6
+	InvoiceCurrencyCode                        string                       // BT-5
+	LineTotal                                  decimal.Decimal              // BT-106
+	AllowanceTotal                             decimal.Decimal              // BT-107
+	ChargeTotal                                decimal.Decimal              // BT-108
+	TaxBasisTotal                              decimal.Decimal              // BT-109
+	TaxTotalCurrency                           string                       // BT-110
+	TaxTotal                                   decimal.Decimal              // BT-110
+	TaxTotalAccountingCurrency                 string                       // BT-111
+	TaxTotalAccounting                         decimal.Decimal              // BT-111
+	GrandTotal                                 decimal.Decimal              // BT-112
+	TotalPrepaid                               decimal.Decimal              // BT-113
+	RoundingAmount                             decimal.Decimal              // BT-114
+	DuePayableAmount                           decimal.Decimal              // BT-115
+	Buyer                                      Party                        // BG-7
+	SellerTaxRepresentativeTradeParty          *Party                       // BG-11
+	SellerOrderReferencedDocument              string                       // BT-14
+	BuyerOrderReferencedDocument               string                       // BT-13
+	ContractReferencedDocument                 string                       // BT-12
+	AdditionalReferencedDocument               []Document                   // BG-24
+	SpecifiedProcuringProjectID                string                       // BT-11
+	SpecifiedProcuringProjectName              string                       // BT-11
+	Seller                                     Party                        // BG-4
+	OccurrenceDateTime                         time.Time                    // BT-72
+	Notes                                      []Note                       // BG-1
+	InvoiceLines                               []InvoiceLine                // BG-25
+	InvoiceNumber                              string                       // BT-1
+	InvoiceTypeCode                            CodeDocument                 // BT-3
+	TradeTaxes                                 []TradeTax                   // BG-23
+	SpecifiedTradeAllowanceCharge              []AllowanceCharge            // BG-20, BG-21
+	ShipTo                                     *Party                       // BG-13
+	SpecifiedTradePaymentTerms                 []SpecifiedTradePaymentTerms // BT-20
+	SchemaType                                 CodeSchemaType               // UBL or CII
+	InvoiceReferencedDocument                  []ReferencedDocument         // BG-3
+	ReceivableSpecifiedTradeAccountingAccount  string                       // BT-19
+
+	// Private field indicating if an invoice was parsed
+	// It is set during parsing, and enables extra validations.
+	isParsed bool
 
 	// Private fields for tracking XML element presence (BR-12 through BR-15, BR-CO-19)
 	// These are set during parsing to distinguish between missing elements and zero values
@@ -377,7 +380,7 @@ type Invoice struct {
 	hasTaxBasisTotalInXML    bool
 	hasGrandTotalInXML       bool
 	hasDuePayableAmountInXML bool
-	billingPeriodPresent     bool // true if BG-14 (INVOICING PERIOD) was present in source XML
+	hasBillingPeriodInXML    bool // true if BG-14 (INVOICING PERIOD) was present in source XML
 
 	// Private field for tracking unexpected TaxTotalAmount currencies during parsing
 	unexpectedTaxCurrencies []string

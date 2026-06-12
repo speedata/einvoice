@@ -188,7 +188,7 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BG-14: Invoice period (document level)
 	// BR-CO-19: Track BG-14 (INVOICING PERIOD) presence to validate later
 	if root.Eval("count(cac:InvoicePeriod)").Int() > 0 {
-		inv.billingPeriodPresent = true
+		inv.hasBillingPeriodInXML = true
 		inv.BillingSpecifiedPeriodStart, err = parseTimeUBL(root, "cac:InvoicePeriod/cbc:StartDate")
 		if err != nil {
 			return fmt.Errorf("invalid billing period start date: %w", err)

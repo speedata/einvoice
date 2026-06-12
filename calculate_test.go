@@ -955,7 +955,7 @@ func TestUpdateApplicableTradeTax_RoundHalfUpVAT(t *testing.T) {
 			expectedVAT, _ := decimal.NewFromString(tt.expectedVAT)
 
 			inv := &Invoice{
-		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+				GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 				InvoiceLines: []InvoiceLine{
 					{
 						TaxCategoryCode:          "S",
@@ -1114,7 +1114,7 @@ func TestUpdateTotals_BRCORules(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := &Invoice{
-		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+				GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
 				InvoiceLines:                  tt.lines,
 				SpecifiedTradeAllowanceCharge: tt.allowancesCharges,
 				TradeTaxes:                    tt.tradeTaxes,

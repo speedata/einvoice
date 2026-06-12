@@ -60,6 +60,7 @@ func ParseReader(r io.Reader) (*Invoice, error) {
 		return nil, fmt.Errorf("unknown root element namespace: %s", rootns)
 	}
 
+	inv.isParsed = true
 	return inv, nil
 }
 

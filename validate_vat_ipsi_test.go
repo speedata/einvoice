@@ -3,8 +3,8 @@ package einvoice
 import (
 	"testing"
 
-	"strings"
 	"github.com/shopspring/decimal"
+	"strings"
 )
 
 func TestBRIP1_MissingSellerVAT(t *testing.T) {

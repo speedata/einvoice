@@ -335,8 +335,8 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	for paymentMeans := range applicableHeaderTradeSettlement.Each("ram:SpecifiedTradeSettlementPaymentMeans") {
 		// BG-16
 		thisPaymentMeans := PaymentMeans{
-			TypeCode:    paymentMeans.Eval("ram:TypeCode").Int(),
-			Information: paymentMeans.Eval("ram:Information").String(),
+			TypeCode:                                             paymentMeans.Eval("ram:TypeCode").Int(),
+			Information:                                          paymentMeans.Eval("ram:Information").String(),
 			PayeePartyCreditorFinancialAccountIBAN:               paymentMeans.Eval("ram:PayeePartyCreditorFinancialAccount/ram:IBANID").String(),
 			PayeePartyCreditorFinancialAccountName:               paymentMeans.Eval("ram:PayeePartyCreditorFinancialAccount/ram:AccountName").String(),
 			PayeePartyCreditorFinancialAccountProprietaryID:      paymentMeans.Eval("ram:PayeePartyCreditorFinancialAccount/ram:ProprietaryID").String(),
@@ -411,7 +411,7 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 	}
 
 	// BR-CO-19: Track BG-14 (INVOICING PERIOD) presence to validate later
-	inv.billingPeriodPresent = applicableHeaderTradeSettlement.Eval("count(ram:BillingSpecifiedPeriod)").Int() > 0
+	inv.hasBillingPeriodInXML = applicableHeaderTradeSettlement.Eval("count(ram:BillingSpecifiedPeriod)").Int() > 0
 	inv.BillingSpecifiedPeriodStart, err = parseCIITime(applicableHeaderTradeSettlement, "ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")
 	if err != nil {
 		return fmt.Errorf("invalid billing period start date: %w", err)
@@ -426,7 +426,6 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		spt := SpecifiedTradePaymentTerms{}
 		spt.Description = paymentTerm.Eval("ram:Description").String()
 		spt.DueDate, err = parseCIITime(paymentTerm, "ram:DueDateDateTime/udt:DateTimeString")
-
 		if err != nil {
 			return err
 		}

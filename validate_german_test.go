@@ -89,11 +89,11 @@ func TestGermanValidation_BRDE2_SellerContact(t *testing.T) {
 // Seller city (BT-37) and post code (BT-38) must be transmitted.
 func TestGermanValidation_BRDE3_4_SellerAddress(t *testing.T) {
 	tests := []struct {
-		name         string
-		city         string
-		postcode     string
-		wantBRDE3    bool
-		wantBRDE4    bool
+		name      string
+		city      string
+		postcode  string
+		wantBRDE3 bool
+		wantBRDE4 bool
 	}{
 		{
 			name:      "valid: has city and postcode",
@@ -149,13 +149,13 @@ func TestGermanValidation_BRDE3_4_SellerAddress(t *testing.T) {
 // Seller contact point (BT-41), telephone (BT-42), and email (BT-43) must be transmitted.
 func TestGermanValidation_BRDE5_6_7_SellerContactDetails(t *testing.T) {
 	tests := []struct {
-		name      string
+		name       string
 		personName string
-		phone     string
-		email     string
-		wantBRDE5 bool
-		wantBRDE6 bool
-		wantBRDE7 bool
+		phone      string
+		email      string
+		wantBRDE5  bool
+		wantBRDE6  bool
+		wantBRDE7  bool
 	}{
 		{
 			name:       "valid: all contact details present",
@@ -491,7 +491,7 @@ func TestGermanValidation_BRDE16_SellerIdentification(t *testing.T) {
 
 			if tt.hasTaxRep {
 				inv.SellerTaxRepresentativeTradeParty = &Party{
-					Name: "Tax Rep",
+					Name:              "Tax Rep",
 					VATaxRegistration: "FR12345678901",
 					PostalAddress: &PostalAddress{
 						CountryID: "FR",
@@ -605,7 +605,7 @@ func TestGermanValidation_BRDE19_20_IBANValidation(t *testing.T) {
 			inv := createGermanTestInvoice()
 			if tt.typeCode == 58 {
 				inv.PaymentMeans = []PaymentMeans{{
-					TypeCode: tt.typeCode,
+					TypeCode:                               tt.typeCode,
 					PayeePartyCreditorFinancialAccountIBAN: tt.iban,
 				}}
 			} else {
@@ -631,28 +631,28 @@ func TestGermanValidation_BRDE19_20_IBANValidation(t *testing.T) {
 // This is a warning-level rule per XRechnung schematron.
 func TestGermanValidation_BRDE26_CorrectedInvoice(t *testing.T) {
 	tests := []struct {
-		name        string
-		typeCode    CodeDocument
+		name         string
+		typeCode     CodeDocument
 		hasReference bool
-		wantWarning bool
+		wantWarning  bool
 	}{
 		{
-			name:        "valid: corrected invoice with reference",
-			typeCode:    384,
+			name:         "valid: corrected invoice with reference",
+			typeCode:     384,
 			hasReference: true,
-			wantWarning: false,
+			wantWarning:  false,
 		},
 		{
-			name:        "warning: corrected invoice without reference",
-			typeCode:    384,
+			name:         "warning: corrected invoice without reference",
+			typeCode:     384,
 			hasReference: false,
-			wantWarning: true,
+			wantWarning:  true,
 		},
 		{
-			name:        "valid: regular invoice without reference",
-			typeCode:    380,
+			name:         "valid: regular invoice without reference",
+			typeCode:     380,
 			hasReference: false,
-			wantWarning: false,
+			wantWarning:  false,
 		},
 	}
 
@@ -800,12 +800,12 @@ func TestGermanValidation_BRDE28_EmailFormat(t *testing.T) {
 // createGermanTestInvoice creates a minimal valid German XRechnung invoice for testing.
 func createGermanTestInvoice() *Invoice {
 	return &Invoice{
-		SchemaType:                                 SchemaTypeUnknown, // Programmatically created
+		SchemaType: SchemaTypeUnknown, // Programmatically created
 		GuidelineSpecifiedDocumentContextParameter: SpecXRechnung30,
-		InvoiceNumber:                              "INV-2025-001",
-		InvoiceTypeCode:                            380,
-		InvoiceCurrencyCode:                        "EUR",
-		BuyerReference:                             "04011000-12345-35", // Leitweg-ID
+		InvoiceNumber:       "INV-2025-001",
+		InvoiceTypeCode:     380,
+		InvoiceCurrencyCode: "EUR",
+		BuyerReference:      "04011000-12345-35", // Leitweg-ID
 		Seller: Party{
 			Name: "Test Seller GmbH",
 			PostalAddress: &PostalAddress{
@@ -835,7 +835,7 @@ func createGermanTestInvoice() *Invoice {
 		},
 		PaymentMeans: []PaymentMeans{
 			{
-				TypeCode: 58,
+				TypeCode:                               58,
 				PayeePartyCreditorFinancialAccountIBAN: "DE89370400440532013000",
 			},
 		},
@@ -846,49 +846,49 @@ func createGermanTestInvoice() *Invoice {
 // Credit transfer payment means must have BG-17 and must NOT have BG-18 or BG-19.
 func TestGermanValidation_BRDE23AB_PaymentMeansMutualExclusivity(t *testing.T) {
 	tests := []struct {
-		name              string
-		typeCode          int
-		hasIBAN           bool
-		hasCardID         bool
-		hasDebitAccount   bool
-		wantBRDE23A       bool
-		wantBRDE23B       bool
+		name            string
+		typeCode        int
+		hasIBAN         bool
+		hasCardID       bool
+		hasDebitAccount bool
+		wantBRDE23A     bool
+		wantBRDE23B     bool
 	}{
 		{
-			name:              "valid: credit transfer with BG-17 only",
-			typeCode:          58,
-			hasIBAN:           true,
-			hasCardID:         false,
-			hasDebitAccount:   false,
-			wantBRDE23A:       false,
-			wantBRDE23B:       false,
+			name:            "valid: credit transfer with BG-17 only",
+			typeCode:        58,
+			hasIBAN:         true,
+			hasCardID:       false,
+			hasDebitAccount: false,
+			wantBRDE23A:     false,
+			wantBRDE23B:     false,
 		},
 		{
-			name:              "invalid: credit transfer missing BG-17",
-			typeCode:          58,
-			hasIBAN:           false,
-			hasCardID:         false,
-			hasDebitAccount:   false,
-			wantBRDE23A:       true,
-			wantBRDE23B:       false,
+			name:            "invalid: credit transfer missing BG-17",
+			typeCode:        58,
+			hasIBAN:         false,
+			hasCardID:       false,
+			hasDebitAccount: false,
+			wantBRDE23A:     true,
+			wantBRDE23B:     false,
 		},
 		{
-			name:              "invalid: credit transfer with BG-18 (payment card)",
-			typeCode:          58,
-			hasIBAN:           true,
-			hasCardID:         true,
-			hasDebitAccount:   false,
-			wantBRDE23A:       false,
-			wantBRDE23B:       true,
+			name:            "invalid: credit transfer with BG-18 (payment card)",
+			typeCode:        58,
+			hasIBAN:         true,
+			hasCardID:       true,
+			hasDebitAccount: false,
+			wantBRDE23A:     false,
+			wantBRDE23B:     true,
 		},
 		{
-			name:              "invalid: credit transfer with BG-19 (direct debit)",
-			typeCode:          58,
-			hasIBAN:           true,
-			hasCardID:         false,
-			hasDebitAccount:   true,
-			wantBRDE23A:       false,
-			wantBRDE23B:       true,
+			name:            "invalid: credit transfer with BG-19 (direct debit)",
+			typeCode:        58,
+			hasIBAN:         true,
+			hasCardID:       false,
+			hasDebitAccount: true,
+			wantBRDE23A:     false,
+			wantBRDE23B:     true,
 		},
 	}
 
@@ -925,49 +925,49 @@ func TestGermanValidation_BRDE23AB_PaymentMeansMutualExclusivity(t *testing.T) {
 // Payment card means must have BG-18 and must NOT have BG-17 or BG-19.
 func TestGermanValidation_BRDE24AB_PaymentCardMutualExclusivity(t *testing.T) {
 	tests := []struct {
-		name              string
-		typeCode          int
-		hasIBAN           bool
-		hasCardID         bool
-		hasDebitAccount   bool
-		wantBRDE24A       bool
-		wantBRDE24B       bool
+		name            string
+		typeCode        int
+		hasIBAN         bool
+		hasCardID       bool
+		hasDebitAccount bool
+		wantBRDE24A     bool
+		wantBRDE24B     bool
 	}{
 		{
-			name:              "valid: payment card with BG-18 only",
-			typeCode:          48,
-			hasIBAN:           false,
-			hasCardID:         true,
-			hasDebitAccount:   false,
-			wantBRDE24A:       false,
-			wantBRDE24B:       false,
+			name:            "valid: payment card with BG-18 only",
+			typeCode:        48,
+			hasIBAN:         false,
+			hasCardID:       true,
+			hasDebitAccount: false,
+			wantBRDE24A:     false,
+			wantBRDE24B:     false,
 		},
 		{
-			name:              "invalid: payment card missing BG-18",
-			typeCode:          54,
-			hasIBAN:           false,
-			hasCardID:         false,
-			hasDebitAccount:   false,
-			wantBRDE24A:       true,
-			wantBRDE24B:       false,
+			name:            "invalid: payment card missing BG-18",
+			typeCode:        54,
+			hasIBAN:         false,
+			hasCardID:       false,
+			hasDebitAccount: false,
+			wantBRDE24A:     true,
+			wantBRDE24B:     false,
 		},
 		{
-			name:              "invalid: payment card with BG-17 (credit transfer)",
-			typeCode:          48,
-			hasIBAN:           true,
-			hasCardID:         true,
-			hasDebitAccount:   false,
-			wantBRDE24A:       false,
-			wantBRDE24B:       true,
+			name:            "invalid: payment card with BG-17 (credit transfer)",
+			typeCode:        48,
+			hasIBAN:         true,
+			hasCardID:       true,
+			hasDebitAccount: false,
+			wantBRDE24A:     false,
+			wantBRDE24B:     true,
 		},
 		{
-			name:              "invalid: payment card with BG-19 (direct debit)",
-			typeCode:          55,
-			hasIBAN:           false,
-			hasCardID:         true,
-			hasDebitAccount:   true,
-			wantBRDE24A:       false,
-			wantBRDE24B:       true,
+			name:            "invalid: payment card with BG-19 (direct debit)",
+			typeCode:        55,
+			hasIBAN:         false,
+			hasCardID:       true,
+			hasDebitAccount: true,
+			wantBRDE24A:     false,
+			wantBRDE24B:     true,
 		},
 	}
 
@@ -1004,44 +1004,44 @@ func TestGermanValidation_BRDE24AB_PaymentCardMutualExclusivity(t *testing.T) {
 // Direct debit means must have BG-19 and must NOT have BG-17 or BG-18.
 func TestGermanValidation_BRDE25AB_DirectDebitMutualExclusivity(t *testing.T) {
 	tests := []struct {
-		name              string
-		hasIBAN           bool
-		hasCardID         bool
-		hasDebitAccount   bool
-		wantBRDE25A       bool
-		wantBRDE25B       bool
+		name            string
+		hasIBAN         bool
+		hasCardID       bool
+		hasDebitAccount bool
+		wantBRDE25A     bool
+		wantBRDE25B     bool
 	}{
 		{
-			name:              "valid: direct debit with BG-19 only",
-			hasIBAN:           false,
-			hasCardID:         false,
-			hasDebitAccount:   true,
-			wantBRDE25A:       false,
-			wantBRDE25B:       false,
+			name:            "valid: direct debit with BG-19 only",
+			hasIBAN:         false,
+			hasCardID:       false,
+			hasDebitAccount: true,
+			wantBRDE25A:     false,
+			wantBRDE25B:     false,
 		},
 		{
-			name:              "invalid: direct debit missing BG-19",
-			hasIBAN:           false,
-			hasCardID:         false,
-			hasDebitAccount:   false,
-			wantBRDE25A:       true,
-			wantBRDE25B:       false,
+			name:            "invalid: direct debit missing BG-19",
+			hasIBAN:         false,
+			hasCardID:       false,
+			hasDebitAccount: false,
+			wantBRDE25A:     true,
+			wantBRDE25B:     false,
 		},
 		{
-			name:              "invalid: direct debit with BG-17 (credit transfer)",
-			hasIBAN:           true,
-			hasCardID:         false,
-			hasDebitAccount:   true,
-			wantBRDE25A:       false,
-			wantBRDE25B:       true,
+			name:            "invalid: direct debit with BG-17 (credit transfer)",
+			hasIBAN:         true,
+			hasCardID:       false,
+			hasDebitAccount: true,
+			wantBRDE25A:     false,
+			wantBRDE25B:     true,
 		},
 		{
-			name:              "invalid: direct debit with BG-18 (payment card)",
-			hasIBAN:           false,
-			hasCardID:         true,
-			hasDebitAccount:   true,
-			wantBRDE25A:       false,
-			wantBRDE25B:       true,
+			name:            "invalid: direct debit with BG-18 (payment card)",
+			hasIBAN:         false,
+			hasCardID:       true,
+			hasDebitAccount: true,
+			wantBRDE25A:     false,
+			wantBRDE25B:     true,
 		},
 	}
 

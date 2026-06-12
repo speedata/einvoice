@@ -14,10 +14,10 @@ func TestValidate_ManualInvoiceConstruction(t *testing.T) {
 	// Build an invalid invoice manually
 	inv := &Invoice{
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
-		InvoiceNumber:       "",     // BR-2 violation: missing invoice number
-		InvoiceTypeCode:     380,    // OK
+		InvoiceNumber:       "",          // BR-2 violation: missing invoice number
+		InvoiceTypeCode:     380,         // OK
 		InvoiceDate:         time.Time{}, // BR-3 violation: zero date
-		InvoiceCurrencyCode: "",     // BR-5 violation: empty currency
+		InvoiceCurrencyCode: "",          // BR-5 violation: empty currency
 		Seller: Party{
 			Name: "", // BR-6 violation: empty seller name
 			PostalAddress: &PostalAddress{
@@ -30,11 +30,11 @@ func TestValidate_ManualInvoiceConstruction(t *testing.T) {
 				CountryID: "DE",
 			},
 		},
-		LineTotal:        decimal.Zero,       // OK: zero is valid per EN 16931
-		TaxBasisTotal:    decimal.Zero,       // OK: zero is valid per EN 16931
-		GrandTotal:       decimal.Zero,       // OK: zero is valid per EN 16931
-		DuePayableAmount: decimal.Zero,       // OK: zero is valid per EN 16931 (prepaid invoices)
-		InvoiceLines:     []InvoiceLine{},    // BR-16 violation: no lines
+		LineTotal:        decimal.Zero,    // OK: zero is valid per EN 16931
+		TaxBasisTotal:    decimal.Zero,    // OK: zero is valid per EN 16931
+		GrandTotal:       decimal.Zero,    // OK: zero is valid per EN 16931
+		DuePayableAmount: decimal.Zero,    // OK: zero is valid per EN 16931 (prepaid invoices)
+		InvoiceLines:     []InvoiceLine{}, // BR-16 violation: no lines
 	}
 
 	// Call Validate() - should return ValidationError
@@ -157,7 +157,7 @@ func TestValidate_MostlyValidInvoice(t *testing.T) {
 		InvoiceDate:         time.Now(),
 		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
-			Name: "Test Seller",
+			Name:              "Test Seller",
 			VATaxRegistration: "DE123456789",
 			PostalAddress: &PostalAddress{
 				CountryID: "DE",
@@ -203,4 +203,3 @@ func TestValidate_MostlyValidInvoice(t *testing.T) {
 	// The test just verifies Validate() can be called successfully
 	_ = err
 }
-
