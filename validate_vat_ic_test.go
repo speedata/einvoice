@@ -3,9 +3,9 @@ package einvoice
 import (
 	"testing"
 
-	"time"
-	"strings"
 	"github.com/shopspring/decimal"
+	"strings"
+	"time"
 )
 
 func TestBRIC1_MissingSellerVAT(t *testing.T) {

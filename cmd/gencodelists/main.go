@@ -94,7 +94,7 @@ func fetchDocumentTypes() ([]codeEntry, error) {
 		Extensions []struct {
 			Key    string `json:"key"`
 			Values []struct {
-				Code string          `json:"code"`
+				Code string            `json:"code"`
 				Name map[string]string `json:"name"`
 			} `json:"values"`
 		} `json:"extensions"`

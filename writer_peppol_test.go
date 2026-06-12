@@ -14,12 +14,12 @@ import (
 func TestWriter_NoEmptyElements(t *testing.T) {
 	// Create an invoice with empty optional fields
 	inv := &Invoice{
-		SchemaType:                                 CII,
+		SchemaType: CII,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
-		InvoiceNumber:                              "INV-001",
-		InvoiceTypeCode:                            380,
-		InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-		InvoiceCurrencyCode:                        "EUR",
+		InvoiceNumber:       "INV-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
 			Name: "Seller Inc",
 			PostalAddress: &PostalAddress{
@@ -76,8 +76,8 @@ func TestWriter_NoEmptyElements(t *testing.T) {
 		},
 		PaymentMeans: []PaymentMeans{
 			{
-				TypeCode: 30,
-				ApplicableTradeSettlementFinancialCardID:              "1234",
+				TypeCode:                                 30,
+				ApplicableTradeSettlementFinancialCardID: "1234",
 				ApplicableTradeSettlementFinancialCardCardholderName: "", // Empty - should not create element
 			},
 		},
@@ -144,12 +144,12 @@ func TestWriter_PostcodeOptional(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inv := &Invoice{
-				SchemaType:                                 CII,
+				SchemaType: CII,
 				GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
-				InvoiceNumber:                              "INV-001",
-				InvoiceTypeCode:                            380,
-				InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-				InvoiceCurrencyCode:                        "EUR",
+				InvoiceNumber:       "INV-001",
+				InvoiceTypeCode:     380,
+				InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+				InvoiceCurrencyCode: "EUR",
 				Seller: Party{
 					Name: "Seller Inc",
 					PostalAddress: &PostalAddress{
@@ -216,12 +216,12 @@ func TestWriter_PostcodeOptional(t *testing.T) {
 // TestWriter_AllowanceReasonOptional tests that reason elements are only created when non-empty
 func TestWriter_AllowanceReasonOptional(t *testing.T) {
 	inv := &Invoice{
-		SchemaType:                                 CII,
+		SchemaType: CII,
 		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
-		InvoiceNumber:                              "INV-001",
-		InvoiceTypeCode:                            380,
-		InvoiceDate:                                time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-		InvoiceCurrencyCode:                        "EUR",
+		InvoiceNumber:       "INV-001",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceCurrencyCode: "EUR",
 		Seller: Party{
 			Name: "Seller Inc",
 			PostalAddress: &PostalAddress{

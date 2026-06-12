@@ -529,7 +529,7 @@ func createMinimalInvoice() *Invoice {
 		InvoiceNumber:       "INV-001",
 		InvoiceTypeCode:     380,
 		InvoiceCurrencyCode: "EUR",
-		InvoiceDate: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
 		SpecifiedTradePaymentTerms: []SpecifiedTradePaymentTerms{
 			{DueDate: time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC)},
 		},

@@ -88,10 +88,10 @@ func TestUsage(t *testing.T) {
 
 func TestSubcommandDispatch(t *testing.T) {
 	tests := []struct {
-		name        string
-		args        []string
-		wantExit    int
-		wantStderr  string
+		name       string
+		args       []string
+		wantExit   int
+		wantStderr string
 	}{
 		{
 			name:       "dispatch to validate",

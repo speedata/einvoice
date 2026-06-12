@@ -185,8 +185,8 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-19 Liefer- oder Rechnungszeitraum
 	// Wenn die Gruppe "INVOICING PERIOD" (BG-14) verwendet wird, müssen entweder das Element "Invoicing period start date" (BT-73) oder das
 	// Element "Invoicing period end date" (BT-74) oder beide gefüllt sein.
-	// Note: Only validates parsed XML where BG-14 element was present (tracked via billingPeriodPresent flag).
-	if inv.billingPeriodPresent {
+	// Note: Only validates parsed XML where BG-14 element was present (tracked via hasBillingPeriodInXML flag).
+	if inv.isParsed && inv.hasBillingPeriodInXML {
 		if inv.BillingSpecifiedPeriodStart.IsZero() && inv.BillingSpecifiedPeriodEnd.IsZero() {
 			inv.addViolation(rules.BRCO19, "If invoicing period (BG-14) is used, either start date (BT-73) or end date (BT-74) must be filled")
 		}
@@ -330,8 +330,10 @@ func (inv *Invoice) validateCore() {
 	// Zero is valid (e.g., credit notes, zero-rated items).
 	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
 	// Minimum profile doesn't require LineTotal (no invoice lines), so only check for profiles >= Basic
-	if inv.ProfileLevel() >= levelBasic && !inv.hasLineTotalInXML && inv.SchemaType == CII {
-		inv.addViolation(rules.BR12, "LineTotalAmount element missing in XML")
+	if inv.isParsed {
+		if inv.ProfileLevel() >= levelBasic && !inv.hasLineTotalInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR12, "LineTotalAmount element missing in XML")
+		}
 	}
 
 	// BR-13 Gesamtsummen auf Dokumentenebene
@@ -339,8 +341,10 @@ func (inv *Invoice) validateCore() {
 	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 	// Zero is valid (e.g., zero-rated items).
 	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-	if !inv.hasTaxBasisTotalInXML && inv.SchemaType == CII {
-		inv.addViolation(rules.BR13, "TaxBasisTotalAmount element missing in XML")
+	if inv.isParsed {
+		if !inv.hasTaxBasisTotalInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR13, "TaxBasisTotalAmount element missing in XML")
+		}
 	}
 
 	// BR-14 Gesamtsummen auf Dokumentenebene
@@ -348,8 +352,10 @@ func (inv *Invoice) validateCore() {
 	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 	// Zero is valid (e.g., zero-rated items).
 	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-	if !inv.hasGrandTotalInXML && inv.SchemaType == CII {
-		inv.addViolation(rules.BR14, "GrandTotalAmount element missing in XML")
+	if inv.isParsed {
+		if !inv.hasGrandTotalInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR14, "GrandTotalAmount element missing in XML")
+		}
 	}
 
 	// BR-15 Gesamtsummen auf Dokumentenebene
@@ -357,9 +363,12 @@ func (inv *Invoice) validateCore() {
 	// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 	// Zero is valid for prepaid invoices (TotalPrepaidAmount = GrandTotalAmount).
 	// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-	if !inv.hasDuePayableAmountInXML && inv.SchemaType == CII {
-		inv.addViolation(rules.BR15, "DuePayableAmount element missing in XML")
+	if inv.isParsed {
+		if !inv.hasDuePayableAmountInXML && inv.SchemaType == CII {
+			inv.addViolation(rules.BR15, "DuePayableAmount element missing in XML")
+		}
 	}
+
 	// BR-16 Rechnung
 	// Eine Rechnung (INVOICE) muss mindestens eine Rechnungsposition "INVOICE LINE" (BG-25) enthalten.
 	if is(levelBasic, inv) {
@@ -418,8 +427,10 @@ func (inv *Invoice) validateCore() {
 		// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 		// Zero is valid (e.g., free items, zero-rated services).
 		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-		if !inv.InvoiceLines[i].hasLineTotalInXML && inv.SchemaType == CII {
-			inv.addViolation(rules.BR24, "LineTotalAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
+		if inv.isParsed {
+			if !inv.InvoiceLines[i].hasLineTotalInXML && inv.SchemaType == CII {
+				inv.addViolation(rules.BR24, "LineTotalAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
+			}
 		}
 
 		// BR-25 Artikelinformationen
@@ -434,8 +445,10 @@ func (inv *Invoice) validateCore() {
 		// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 		// Zero is valid (e.g., free items, promotional products).
 		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-		if !inv.InvoiceLines[i].hasNetPriceInXML && inv.SchemaType == CII {
-			inv.addViolation(rules.BR26, "NetPrice ChargeAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
+		if inv.isParsed {
+			if !inv.InvoiceLines[i].hasNetPriceInXML && inv.SchemaType == CII {
+				inv.addViolation(rules.BR26, "NetPrice ChargeAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
+			}
 		}
 
 		// BR-27 Nettopreis des Artikels
@@ -717,10 +730,12 @@ func (inv *Invoice) validateCore() {
 	// Note: Validates element presence per EN 16931 schematron, not value. Empty elements
 	// like <ram:IBANID/> are valid. Only triggers when PayeePartyCreditorFinancialAccount
 	// exists but neither IBANID nor ProprietaryID elements are present.
-	for i := range inv.PaymentMeans {
-		if (inv.PaymentMeans[i].TypeCode == 30 || inv.PaymentMeans[i].TypeCode == 58) && inv.PaymentMeans[i].hasPayeeAccountInXML {
-			if !inv.PaymentMeans[i].hasPayeeIBANInXML && !inv.PaymentMeans[i].hasPayeeProprietaryIDInXML {
-				inv.addViolation(rules.BR61, "Payment account identifier required for credit transfer payment types")
+	if inv.isParsed {
+		for i := range inv.PaymentMeans {
+			if (inv.PaymentMeans[i].TypeCode == 30 || inv.PaymentMeans[i].TypeCode == 58) && inv.PaymentMeans[i].hasPayeeAccountInXML {
+				if !inv.PaymentMeans[i].hasPayeeIBANInXML && !inv.PaymentMeans[i].hasPayeeProprietaryIDInXML {
+					inv.addViolation(rules.BR61, "Payment account identifier required for credit transfer payment types")
+				}
 			}
 		}
 	}

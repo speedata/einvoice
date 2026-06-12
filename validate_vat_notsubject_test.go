@@ -11,9 +11,9 @@ func TestBRO1_ExactlyOneBreakdown(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		breakdownsO   int
-		breakdownsS   int
+		name            string
+		breakdownsO     int
+		breakdownsS     int
 		expectViolation bool
 	}{
 		{"No category O breakdown", 0, 1, true},
@@ -137,9 +137,9 @@ func TestBRO3_AllowanceNoVATIdentifiers(t *testing.T) {
 		},
 		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
 			{
-				ChargeIndicator:                       false, // Allowance
-				CategoryTradeTaxCategoryCode:          "O",
-				ActualAmount:                          decimal.NewFromInt(10),
+				ChargeIndicator:              false, // Allowance
+				CategoryTradeTaxCategoryCode: "O",
+				ActualAmount:                 decimal.NewFromInt(10),
 			},
 		},
 		TradeTaxes: []TradeTax{
@@ -178,9 +178,9 @@ func TestBRO4_ChargeNoVATIdentifiers(t *testing.T) {
 		},
 		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
 			{
-				ChargeIndicator:                       true, // Charge
-				CategoryTradeTaxCategoryCode:          "O",
-				ActualAmount:                          decimal.NewFromInt(10),
+				ChargeIndicator:              true, // Charge
+				CategoryTradeTaxCategoryCode: "O",
+				ActualAmount:                 decimal.NewFromInt(10),
 			},
 		},
 		TradeTaxes: []TradeTax{

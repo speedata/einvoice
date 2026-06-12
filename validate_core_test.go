@@ -430,9 +430,9 @@ func TestBRCO19_InvoicingPeriodRequiresDate(t *testing.T) {
 		t.Fatalf("Failed to parse XML: %v", err)
 	}
 
-	// Verify that billingPeriodPresent flag was set
-	if !inv.billingPeriodPresent {
-		t.Error("billingPeriodPresent should be true when BG-14 element exists in XML")
+	// Verify that hasBillingPeriodInXML flag was set
+	if !inv.hasBillingPeriodInXML {
+		t.Error("hasBillingPeriodInXML should be true when BG-14 element exists in XML")
 	}
 
 	// Verify both dates are zero
@@ -2291,4 +2291,3 @@ func TestBRCO9_VATIdentifierPrefix(t *testing.T) {
 		})
 	}
 }
-
