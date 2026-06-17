@@ -20,6 +20,22 @@ func roundHalfUp(d decimal.Decimal, places int32) decimal.Decimal {
 	return d.Add(adjustment).Truncate(places)
 }
 
+// isDetailLine reports whether this invoice line is a detail line that
+// contributes to the document totals (BT-106) and the VAT breakdown. In an
+// EXTENDED sub invoice line hierarchy (Factur-X 1.09, chapter 7.6.2) the
+// aggregating lines carry a "Subtype of invoice line item" (BT-X-8,
+// ram:LineStatusReasonCode) of "GROUP" (subtotal containers, whose amount is the
+// sum of their children) or "INFORMATION" (informational breakdown of a parent
+// detail line). Per BR-FXEXT-CO-10 and BR-FXEXT-*-08 only lines whose subtype is
+// "DETAIL" or unspecified are summed; the same lines are exempt from the
+// per-line detail rules BR-22, BR-23, BR-26 and BR-CO-04.
+//
+// For invoices without sub invoice lines LineStatusReasonCode is empty, so every
+// line is a detail line and all callers behave exactly as before.
+func (line InvoiceLine) isDetailLine() bool {
+	return line.LineStatusReasonCode == "" || line.LineStatusReasonCode == "DETAIL"
+}
+
 // UpdateApplicableTradeTax removes the existing trade tax lines in the invoice
 // and re-creates new ones from the line items and document-level allowances/charges.
 // er is a map that contains exemption reasons for each category code.
@@ -31,8 +47,13 @@ func roundHalfUp(d decimal.Decimal, places int32) decimal.Decimal {
 func (inv *Invoice) UpdateApplicableTradeTax(exemptReason map[string]string) {
 	var applicableTradeTaxes = make([]*TradeTax, 0, len(inv.TradeTaxes))
 
-	// Process invoice lines
+	// Process invoice lines. Sub invoice line aggregation lines (GROUP /
+	// INFORMATION) are skipped so only detail lines contribute to the VAT
+	// breakdown (avoids double counting; EXTENDED).
 	for i := range inv.InvoiceLines {
+		if !inv.InvoiceLines[i].isDetailLine() {
+			continue
+		}
 		tradeTax := TradeTax{
 			CategoryCode: inv.InvoiceLines[i].TaxCategoryCode,
 			Percent:      inv.InvoiceLines[i].TaxRateApplicablePercent,
@@ -147,9 +168,14 @@ func (inv *Invoice) UpdateTotals() {
 		return
 	}
 
-	// BR-CO-10: Calculate line total from invoice lines (BT-106)
+	// BR-CO-10: Calculate line total from invoice lines (BT-106).
+	// Sub invoice line aggregation lines (GROUP / INFORMATION) are skipped so only
+	// detail lines are summed to avoid double counting (EXTENDED).
 	inv.LineTotal = decimal.Zero
 	for i := range inv.InvoiceLines {
+		if !inv.InvoiceLines[i].isDetailLine() {
+			continue
+		}
 		inv.LineTotal = inv.LineTotal.Add(inv.InvoiceLines[i].Total)
 	}
 	// BR-DEC-09: LineTotal (BT-106) must have max 2 decimal places

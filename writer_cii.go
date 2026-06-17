@@ -30,6 +30,20 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine *InvoiceLine, inv *
 	lineID := adld.CreateElement("ram:LineID")
 	lineID.SetText(invoiceLine.LineID)
 
+	// BT-X-304, BT-X-7, BT-X-8 (EXTENDED): sub invoice line metadata, must follow
+	// LineID in the order ParentLineID, LineStatusCode, LineStatusReasonCode per CII sequence
+	if is(levelExtended, inv) {
+		if invoiceLine.ParentLineID != "" {
+			adld.CreateElement("ram:ParentLineID").SetText(invoiceLine.ParentLineID)
+		}
+		if invoiceLine.LineStatusCode != "" {
+			adld.CreateElement("ram:LineStatusCode").SetText(invoiceLine.LineStatusCode)
+		}
+		if invoiceLine.LineStatusReasonCode != "" {
+			adld.CreateElement("ram:LineStatusReasonCode").SetText(invoiceLine.LineStatusReasonCode)
+		}
+	}
+
 	if invoiceLine.Note != "" {
 		adld.CreateElement("ram:IncludedNote").CreateElement("ram:Content").SetText(invoiceLine.Note)
 	}

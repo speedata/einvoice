@@ -48,7 +48,12 @@ func (inv *Invoice) validateCalculations() {
 	// BR-CO-4 Rechnungsposition
 	// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss anhand der Umsatzsteuerkategorie des in Rechnung gestellten Postens "Invoiced item VAT
 	// category code" (BT-151) kategorisiert werden.
+	// Sub invoice line aggregation lines (GROUP / INFORMATION) may omit the VAT
+	// category (BR-FXEXT) and must be excluded from document-level sums.
 	for i := range inv.InvoiceLines {
+		if !inv.InvoiceLines[i].isDetailLine() {
+			continue
+		}
 		if inv.InvoiceLines[i].TaxCategoryCode == "" {
 			inv.addViolation(rules.BRCO4, fmt.Sprintf("Invoice line %s missing VAT category code", inv.InvoiceLines[i].LineID))
 		}
@@ -61,6 +66,9 @@ func (inv *Invoice) validateCalculations() {
 	if len(inv.InvoiceLines) > 0 {
 		sum = decimal.Zero
 		for i := range inv.InvoiceLines {
+			if !inv.InvoiceLines[i].isDetailLine() {
+				continue
+			}
 			sum = sum.Add(inv.InvoiceLines[i].Total)
 		}
 		if !inv.LineTotal.Equal(sum) {
@@ -403,7 +411,10 @@ func (inv *Invoice) validateCore() {
 			inv.addViolation(rules.BR20, "Tax representative postal address missing country code")
 		}
 	}
+	// Sub invoice line aggregation lines (GROUP / INFORMATION) may omit
+	// quantity (BT-129), unit (BT-130) and net price (BT-146) per BR-FXEXT-*.
 	for i := range inv.InvoiceLines {
+		isContainer := !inv.InvoiceLines[i].isDetailLine()
 		// BR-21 Rechnungsposition
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss eine eindeutige Bezeichnung "Invoice line identifier" (BT-126) haben.
 		if inv.InvoiceLines[i].LineID == "" {
@@ -412,13 +423,13 @@ func (inv *Invoice) validateCore() {
 		// BR-22 Rechnungsposition
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss die Menge der in der betreffenden Position in Rechnung gestellten Waren oder
 		// Dienstleistungen als Einzelposten "Invoiced quantity" (BT-129) enthalten.
-		if inv.InvoiceLines[i].BilledQuantity.IsZero() {
+		if !isContainer && inv.InvoiceLines[i].BilledQuantity.IsZero() {
 			inv.addViolation(rules.BR22, "Line has no billed quantity")
 		}
 		// BR-23 Rechnungsposition
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss eine Einheit zur Mengenangabe "Invoiced quantity unit of measure code" (BT-130)
 		// enthalten.
-		if inv.InvoiceLines[i].BilledQuantityUnit == "" {
+		if !isContainer && inv.InvoiceLines[i].BilledQuantityUnit == "" {
 			inv.addViolation(rules.BR23, "Line's billed quantity has no unit")
 		}
 
@@ -445,7 +456,7 @@ func (inv *Invoice) validateCore() {
 		// Note: EN 16931 schematron validates element presence in XML, not non-zero value.
 		// Zero is valid (e.g., free items, promotional products).
 		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
-		if inv.isParsed {
+		if inv.isParsed && !isContainer {
 			if !inv.InvoiceLines[i].hasNetPriceInXML && inv.SchemaType == CII {
 				inv.addViolation(rules.BR26, "NetPrice ChargeAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
 			}
@@ -488,6 +499,9 @@ func (inv *Invoice) validateCore() {
 	// Use composite key of CategoryCode + Percent to properly group by tax category
 	applicableTradeTaxes := make(map[string]decimal.Decimal, len(inv.TradeTaxes))
 	for i := range inv.InvoiceLines {
+		if !inv.InvoiceLines[i].isDetailLine() {
+			continue
+		}
 		key := inv.InvoiceLines[i].TaxCategoryCode + "_" + inv.InvoiceLines[i].TaxRateApplicablePercent.String()
 		applicableTradeTaxes[key] = applicableTradeTaxes[key].Add(inv.InvoiceLines[i].Total)
 	}

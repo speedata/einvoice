@@ -134,9 +134,14 @@ func (inv *Invoice) validateVATStandard() {
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "S" {
-				// Calculate sum: lines - allowances + charges for this rate
+				// Calculate sum: lines - allowances + charges for this rate.
+				// Sub invoice line aggregation lines (GROUP / INFORMATION) are
+				// skipped so only detail lines contribute to the VAT basis (EXTENDED).
 				calculatedBasis := decimal.Zero
 				for j := range inv.InvoiceLines {
+					if !inv.InvoiceLines[j].isDetailLine() {
+						continue
+					}
 					if inv.InvoiceLines[j].TaxCategoryCode == "S" && inv.InvoiceLines[j].TaxRateApplicablePercent.Equal(inv.TradeTaxes[i].Percent) {
 						calculatedBasis = calculatedBasis.Add(inv.InvoiceLines[j].Total)
 					}
