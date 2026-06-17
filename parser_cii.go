@@ -154,6 +154,9 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 	for lineItem := range supplyChainTradeTransaction.Each("ram:IncludedSupplyChainTradeLineItem") {
 		invoiceLine := InvoiceLine{}
 		invoiceLine.LineID = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:LineID").String()
+		invoiceLine.ParentLineID = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:ParentLineID").String()
+		invoiceLine.LineStatusCode = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:LineStatusCode").String()
+		invoiceLine.LineStatusReasonCode = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:LineStatusReasonCode").String()
 		invoiceLine.Note = lineItem.Eval("ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:Content").String()
 
 		parseSpecifiedTradeProduct(lineItem.Eval("ram:SpecifiedTradeProduct"), &invoiceLine)

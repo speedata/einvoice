@@ -65,24 +65,9 @@ func (inv *Invoice) validateVATIPSI() {
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "M" {
-				var lineTotal decimal.Decimal
-				for j := range inv.InvoiceLines {
-					if inv.InvoiceLines[j].TaxCategoryCode == "M" {
-						lineTotal = lineTotal.Add(inv.InvoiceLines[j].Total)
-					}
-				}
-				var allowanceTotal decimal.Decimal
-				var chargeTotal decimal.Decimal
-				for j := range inv.SpecifiedTradeAllowanceCharge {
-					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "M" {
-						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
-							chargeTotal = chargeTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						} else {
-							allowanceTotal = allowanceTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						}
-					}
-				}
-				expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
+				// Detail lines only; aggregation lines (GROUP / INFORMATION) are
+				// excluded so they are not double counted (EXTENDED).
+				expectedBasis, _ := inv.sumDetailLineBasis("M", decimal.Zero, false)
 				if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
 					inv.addViolation(rules.BRAG5, fmt.Sprintf("IPSI taxable amount mismatch: got %s, expected %s", inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 				}
@@ -106,27 +91,11 @@ func (inv *Invoice) validateVATIPSI() {
 	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
-		ipsiRateMap := make(map[string]decimal.Decimal)
-		for i := range inv.InvoiceLines {
-			if inv.InvoiceLines[i].TaxCategoryCode == "M" {
-				key := inv.InvoiceLines[i].TaxRateApplicablePercent.String()
-				ipsiRateMap[key] = ipsiRateMap[key].Add(inv.InvoiceLines[i].Total)
-			}
-		}
-		for i := range inv.SpecifiedTradeAllowanceCharge {
-			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "M" {
-				key := inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.String()
-				if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
-					ipsiRateMap[key] = ipsiRateMap[key].Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
-				} else {
-					ipsiRateMap[key] = ipsiRateMap[key].Sub(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
-				}
-			}
-		}
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "M" {
-				key := inv.TradeTaxes[i].Percent.String()
-				expectedBasis := roundHalfUp(ipsiRateMap[key], 2)
+				// Detail lines only; aggregation lines (GROUP / INFORMATION) are
+				// excluded so they are not double counted (EXTENDED).
+				expectedBasis, _ := inv.sumDetailLineBasis("M", inv.TradeTaxes[i].Percent, true)
 				if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
 					inv.addViolation(rules.BRAG7, fmt.Sprintf("IPSI taxable amount for rate %s: got %s, expected %s", inv.TradeTaxes[i].Percent.StringFixed(2), inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 				}

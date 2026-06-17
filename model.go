@@ -189,6 +189,9 @@ type Classification struct {
 // InvoiceLine represents one position of items.
 type InvoiceLine struct {
 	LineID                                    string            // BT-126
+	ParentLineID                              string            // BT-X-304 (EXTENDED): parent line ID for sub invoice lines
+	LineStatusCode                            string            // BT-X-7 (EXTENDED): invoice line status code
+	LineStatusReasonCode                      string            // BT-X-8 (EXTENDED): invoice line subtype (DETAIL, GROUP, INFORMATION)
 	ArticleNumber                             string            // BT-155 seller assigned ID
 	ArticleNumberBuyer                        string            // BT-156 buyer assigned ID
 	ItemName                                  string            // BT-153

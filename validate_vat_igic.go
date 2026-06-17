@@ -64,24 +64,9 @@ func (inv *Invoice) validateVATIGIC() {
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "L" {
-				var lineTotal decimal.Decimal
-				for j := range inv.InvoiceLines {
-					if inv.InvoiceLines[j].TaxCategoryCode == "L" {
-						lineTotal = lineTotal.Add(inv.InvoiceLines[j].Total)
-					}
-				}
-				var allowanceTotal decimal.Decimal
-				var chargeTotal decimal.Decimal
-				for j := range inv.SpecifiedTradeAllowanceCharge {
-					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "L" {
-						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
-							chargeTotal = chargeTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						} else {
-							allowanceTotal = allowanceTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						}
-					}
-				}
-				expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
+				// Detail lines only; aggregation lines (GROUP / INFORMATION) are
+				// excluded so they are not double counted (EXTENDED).
+				expectedBasis, _ := inv.sumDetailLineBasis("L", decimal.Zero, false)
 				if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
 					inv.addViolation(rules.BRAF5, fmt.Sprintf("IGIC taxable amount mismatch: got %s, expected %s", inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 				}
@@ -105,27 +90,11 @@ func (inv *Invoice) validateVATIGIC() {
 	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
-		igicRateMap := make(map[string]decimal.Decimal)
-		for i := range inv.InvoiceLines {
-			if inv.InvoiceLines[i].TaxCategoryCode == "L" {
-				key := inv.InvoiceLines[i].TaxRateApplicablePercent.String()
-				igicRateMap[key] = igicRateMap[key].Add(inv.InvoiceLines[i].Total)
-			}
-		}
-		for i := range inv.SpecifiedTradeAllowanceCharge {
-			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "L" {
-				key := inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.String()
-				if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
-					igicRateMap[key] = igicRateMap[key].Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
-				} else {
-					igicRateMap[key] = igicRateMap[key].Sub(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
-				}
-			}
-		}
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "L" {
-				key := inv.TradeTaxes[i].Percent.String()
-				expectedBasis := roundHalfUp(igicRateMap[key], 2)
+				// Detail lines only; aggregation lines (GROUP / INFORMATION) are
+				// excluded so they are not double counted (EXTENDED).
+				expectedBasis, _ := inv.sumDetailLineBasis("L", inv.TradeTaxes[i].Percent, true)
 				if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
 					inv.addViolation(rules.BRAF7, fmt.Sprintf("IGIC taxable amount for rate %s: got %s, expected %s", inv.TradeTaxes[i].Percent.StringFixed(2), inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 				}

@@ -30,6 +30,20 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine *InvoiceLine, inv *
 	lineID := adld.CreateElement("ram:LineID")
 	lineID.SetText(invoiceLine.LineID)
 
+	// BT-X-304, BT-X-7, BT-X-8 (EXTENDED): sub invoice line metadata, must follow
+	// LineID in the order ParentLineID, LineStatusCode, LineStatusReasonCode per CII sequence
+	if is(levelExtended, inv) {
+		if invoiceLine.ParentLineID != "" {
+			adld.CreateElement("ram:ParentLineID").SetText(invoiceLine.ParentLineID)
+		}
+		if invoiceLine.LineStatusCode != "" {
+			adld.CreateElement("ram:LineStatusCode").SetText(invoiceLine.LineStatusCode)
+		}
+		if invoiceLine.LineStatusReasonCode != "" {
+			adld.CreateElement("ram:LineStatusReasonCode").SetText(invoiceLine.LineStatusReasonCode)
+		}
+	}
+
 	if invoiceLine.Note != "" {
 		adld.CreateElement("ram:IncludedNote").CreateElement("ram:Content").SetText(invoiceLine.Note)
 	}
@@ -434,7 +448,10 @@ func writeCIIramApplicableHeaderTradeDelivery(inv *Invoice, parent *etree.Elemen
 
 func writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv *Invoice, parent *etree.Element) {
 	elt := parent.CreateElement("ram:SpecifiedTradeSettlementHeaderMonetarySummation")
-	elt.CreateElement("ram:LineTotalAmount").SetText(inv.LineTotal.StringFixed(2))
+	// BT-106: LineTotalAmount is not allowed in the MINIMUM profile per XSD
+	if is(levelBasicWL, inv) {
+		elt.CreateElement("ram:LineTotalAmount").SetText(inv.LineTotal.StringFixed(2))
+	}
 
 	// Only write charge/allowance totals if non-zero to avoid unnecessary elements
 	if is(levelBasicWL, inv) {
@@ -568,33 +585,8 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 
 		att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(inv.TradeTaxes[i].Percent))
 	}
-	for i := range inv.SpecifiedTradeAllowanceCharge {
-		stacElt := elt.CreateElement("ram:SpecifiedTradeAllowanceCharge")
-		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(strconv.FormatBool(inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator))
-		// BT-93, BT-100: BasisAmount is optional - only create if non-zero (PEPPOL-EN16931-R008)
-		if !inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.IsZero() {
-			stacElt.CreateElement("ram:BasisAmount").SetText(inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.StringFixed(2))
-		}
-		stacElt.CreateElement("ram:ActualAmount").SetText(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.StringFixed(2))
-		// BT-98, BT-105: ReasonCode is optional - only create if non-empty (PEPPOL-EN16931-R008)
-		if inv.SpecifiedTradeAllowanceCharge[i].ReasonCode != "" {
-			stacElt.CreateElement("ram:ReasonCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].ReasonCode)
-		}
-		// BT-97, BT-104: Reason is optional - only create if non-empty (PEPPOL-EN16931-R008)
-		if inv.SpecifiedTradeAllowanceCharge[i].Reason != "" {
-			stacElt.CreateElement("ram:Reason").SetText(inv.SpecifiedTradeAllowanceCharge[i].Reason)
-		}
-		// BT-94, BT-101: CalculationPercent is optional - only create if non-zero (PEPPOL-EN16931-R008)
-		if !inv.SpecifiedTradeAllowanceCharge[i].CalculationPercent.IsZero() {
-			stacElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CalculationPercent))
-		}
-		ctt := stacElt.CreateElement("ram:CategoryTradeTax")
-		ctt.CreateElement("ram:TypeCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxType)
-		ctt.CreateElement("ram:CategoryCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode)
-		ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent))
-	}
 
-	// BG-14: Billing period
+	// BG-14: Billing period - must come before SpecifiedTradeAllowanceCharge per CII sequence
 	// BR-CO-19: Either start date OR end date OR both must be filled
 	if !inv.BillingSpecifiedPeriodStart.IsZero() || !inv.BillingSpecifiedPeriodEnd.IsZero() {
 		bsp := elt.CreateElement("ram:BillingSpecifiedPeriod")
@@ -608,6 +600,33 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 			addTimeCIIUDT(dt, inv.BillingSpecifiedPeriodEnd)
 		}
 	}
+
+	for i := range inv.SpecifiedTradeAllowanceCharge {
+		stacElt := elt.CreateElement("ram:SpecifiedTradeAllowanceCharge")
+		stacElt.CreateElement("ram:ChargeIndicator").CreateElement("udt:Indicator").SetText(strconv.FormatBool(inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator))
+		// BT-94, BT-101: CalculationPercent is optional - must come before BasisAmount per CII sequence
+		if !inv.SpecifiedTradeAllowanceCharge[i].CalculationPercent.IsZero() {
+			stacElt.CreateElement("ram:CalculationPercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CalculationPercent))
+		}
+		// BT-93, BT-100: BasisAmount is optional - only create if non-zero (PEPPOL-EN16931-R008)
+		if !inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.IsZero() {
+			stacElt.CreateElement("ram:BasisAmount").SetText(inv.SpecifiedTradeAllowanceCharge[i].BasisAmount.StringFixed(2))
+		}
+		stacElt.CreateElement("ram:ActualAmount").SetText(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount.StringFixed(2))
+		// BT-98, BT-105: ReasonCode is optional - only create if non-empty (PEPPOL-EN16931-R008)
+		if inv.SpecifiedTradeAllowanceCharge[i].ReasonCode != "" {
+			stacElt.CreateElement("ram:ReasonCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].ReasonCode)
+		}
+		// BT-97, BT-104: Reason is optional - only create if non-empty (PEPPOL-EN16931-R008)
+		if inv.SpecifiedTradeAllowanceCharge[i].Reason != "" {
+			stacElt.CreateElement("ram:Reason").SetText(inv.SpecifiedTradeAllowanceCharge[i].Reason)
+		}
+		ctt := stacElt.CreateElement("ram:CategoryTradeTax")
+		ctt.CreateElement("ram:TypeCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxType)
+		ctt.CreateElement("ram:CategoryCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode)
+		ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent))
+	}
+
 	// BT-20
 	for i := range inv.SpecifiedTradePaymentTerms {
 		spt := elt.CreateElement("ram:SpecifiedTradePaymentTerms")
@@ -626,17 +645,17 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 
 	writeCIIramSpecifiedTradeSettlementHeaderMonetarySummation(inv, elt)
 
-	// BT-19: Buyer accounting reference
-	if inv.ReceivableSpecifiedTradeAccountingAccount != "" {
-		rstaac := elt.CreateElement("ram:ReceivableSpecifiedTradeAccountingAccount")
-		rstaac.CreateElement("ram:ID").SetText(inv.ReceivableSpecifiedTradeAccountingAccount)
-	}
-
-	// BG-3
+	// BG-3: InvoiceReferencedDocument must come before ReceivableSpecifiedTradeAccountingAccount per CII sequence
 	for i := range inv.InvoiceReferencedDocument {
 		refdoc := elt.CreateElement("ram:InvoiceReferencedDocument")
 		refdoc.CreateElement("ram:IssuerAssignedID").SetText(inv.InvoiceReferencedDocument[i].ID)
 		addTimeCIIQDT(refdoc.CreateElement("ram:FormattedIssueDateTime"), inv.InvoiceReferencedDocument[i].Date)
+	}
+
+	// BT-19: Buyer accounting reference
+	if inv.ReceivableSpecifiedTradeAccountingAccount != "" {
+		rstaac := elt.CreateElement("ram:ReceivableSpecifiedTradeAccountingAccount")
+		rstaac.CreateElement("ram:ID").SetText(inv.ReceivableSpecifiedTradeAccountingAccount)
 	}
 }
 

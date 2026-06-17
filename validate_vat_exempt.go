@@ -1,8 +1,6 @@
 package einvoice
 
 import (
-	"fmt"
-
 	"github.com/shopspring/decimal"
 	"github.com/speedata/einvoice/rules"
 )
@@ -135,25 +133,12 @@ func (inv *Invoice) validateVATExempt() {
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "E" {
-				calculatedBasis := decimal.Zero
-				for j := range inv.InvoiceLines {
-					if inv.InvoiceLines[j].TaxCategoryCode == "E" {
-						calculatedBasis = calculatedBasis.Add(inv.InvoiceLines[j].Total)
-					}
-				}
-				for j := range inv.SpecifiedTradeAllowanceCharge {
-					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "E" {
-						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
-							calculatedBasis = calculatedBasis.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						} else {
-							calculatedBasis = calculatedBasis.Sub(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						}
-					}
-				}
-				calculatedBasis = roundHalfUp(calculatedBasis, 2)
-				if !inv.TradeTaxes[i].BasisAmount.Equal(calculatedBasis) {
-					inv.addViolation(rules.BRE8, fmt.Sprintf("Exempt from VAT taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), inv.TradeTaxes[i].BasisAmount.String()))
-				}
+				// Sub invoice line aggregation lines (GROUP / INFORMATION) are
+				// excluded so they are not double counted (EXTENDED). In the
+				// EXTENDED profile BR-E-08 is replaced by BR-FXEXT-E-08, which
+				// tolerates a deviation of 0.01 per contributing amount.
+				calculatedBasis, amountCount := inv.sumDetailLineBasis("E", decimal.Zero, false)
+				inv.checkVATCategoryBasis("Exempt from VAT", "", inv.TradeTaxes[i].BasisAmount, calculatedBasis, amountCount, rules.BRE8, rules.BRFXEXTE08)
 			}
 		}
 	}
