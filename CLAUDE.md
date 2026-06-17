@@ -124,7 +124,7 @@ The `Validate()` method uses intelligent auto-detection:
 - Eliminates need for separate validation methods like the deprecated `ValidatePEPPOL()`
 
 **Business Rules (`rules/` package)**
-- 203 rules auto-generated from EN 16931 schematron (v1.3.14.1)
+- 200 rules auto-generated from EN 16931 schematron (v1.3.16)
 - Source: [ConnectingEurope/eInvoicing-EN16931](https://github.com/ConnectingEurope/eInvoicing-EN16931)
 - Regenerate: `cd rules && go generate`
 - Details: [cmd/genrules/README.md](cmd/genrules/README.md)

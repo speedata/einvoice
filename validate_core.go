@@ -65,13 +65,22 @@ func (inv *Invoice) validateCalculations() {
 	// Note: Only validate when invoice lines exist (Minimum profile may not have lines)
 	if len(inv.InvoiceLines) > 0 {
 		sum = decimal.Zero
+		detailCount := 0
 		for i := range inv.InvoiceLines {
 			if !inv.InvoiceLines[i].isDetailLine() {
 				continue
 			}
 			sum = sum.Add(inv.InvoiceLines[i].Total)
+			detailCount++
 		}
-		if !inv.LineTotal.Equal(sum) {
+		// In the EXTENDED profile BR-CO-10 is replaced by BR-FXEXT-CO-10, which
+		// allows a tolerance of 0.01 per line net amount (Factur-X 1.09).
+		if inv.IsExtended() {
+			tolerance := decimal.New(1, -2).Mul(decimal.NewFromInt(int64(detailCount)))
+			if inv.LineTotal.Sub(sum).Abs().GreaterThan(tolerance) {
+				inv.addViolation(rules.BRFXEXTCO10, fmt.Sprintf("Line total %s does not match sum of invoice lines %s (tolerance %s)", inv.LineTotal.String(), sum.String(), tolerance.String()))
+			}
+		} else if !inv.LineTotal.Equal(sum) {
 			inv.addViolation(rules.BRCO10, fmt.Sprintf("Line total %s does not match sum of invoice lines %s", inv.LineTotal.String(), sum.String()))
 		}
 	}
@@ -212,29 +221,8 @@ func (inv *Invoice) validateCalculations() {
 		}
 	}
 
-	// BR-CO-25 Rechnung
-	// Im Falle eines positiven Zahlbetrags "Amount due for payment" (BT-115) muss entweder das Element Fälligkeitsdatum "Payment due date" (BT-9)
-	// oder das Element Zahlungsbedingungen "Payment terms" (BT-20) vorhanden sein.
-	// Note: This rule only applies to profiles >= BasicWL (Minimum profile doesn't require payment details)
-	// Note: This rule does not apply to credit notes (type 381), as payment terms have different semantics
-	// (seller owes buyer rather than buyer owes seller)
-	if inv.ProfileLevel() >= levelBasicWL && inv.InvoiceTypeCode != 381 && inv.DuePayableAmount.GreaterThan(decimal.Zero) {
-		hasPaymentDueDate := false
-		hasPaymentTerms := false
-
-		for _, term := range inv.SpecifiedTradePaymentTerms {
-			if !term.DueDate.IsZero() {
-				hasPaymentDueDate = true
-			}
-			if term.Description != "" {
-				hasPaymentTerms = true
-			}
-		}
-
-		if !hasPaymentDueDate && !hasPaymentTerms {
-			inv.addViolation(rules.BRCO25, "If amount due for payment is positive, either payment due date or payment terms must be present")
-		}
-	}
+	// BR-CO-25 was removed from the EN 16931 CII schematron in v1.3.16
+	// (anticipating the EN 16931 revision); it is no longer validated.
 
 	// BR-CO-26 Verkäufer
 	// In order for the buyer to automatically identify a supplier, at least one of the following shall be present:
@@ -413,6 +401,12 @@ func (inv *Invoice) validateCore() {
 	}
 	// Sub invoice line aggregation lines (GROUP / INFORMATION) may omit
 	// quantity (BT-129), unit (BT-130) and net price (BT-146) per BR-FXEXT-*.
+	// In the EXTENDED profile these base rules are replaced by their BR-FXEXT-*
+	// counterparts (Factur-X 1.09).
+	br22, br23, br26 := rules.BR22, rules.BR23, rules.BR26
+	if inv.IsExtended() {
+		br22, br23, br26 = rules.BRFXEXT22, rules.BRFXEXT23, rules.BRFXEXT26
+	}
 	for i := range inv.InvoiceLines {
 		isContainer := !inv.InvoiceLines[i].isDetailLine()
 		// BR-21 Rechnungsposition
@@ -424,13 +418,13 @@ func (inv *Invoice) validateCore() {
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss die Menge der in der betreffenden Position in Rechnung gestellten Waren oder
 		// Dienstleistungen als Einzelposten "Invoiced quantity" (BT-129) enthalten.
 		if !isContainer && inv.InvoiceLines[i].BilledQuantity.IsZero() {
-			inv.addViolation(rules.BR22, "Line has no billed quantity")
+			inv.addViolation(br22, "Line has no billed quantity")
 		}
 		// BR-23 Rechnungsposition
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss eine Einheit zur Mengenangabe "Invoiced quantity unit of measure code" (BT-130)
 		// enthalten.
 		if !isContainer && inv.InvoiceLines[i].BilledQuantityUnit == "" {
-			inv.addViolation(rules.BR23, "Line's billed quantity has no unit")
+			inv.addViolation(br23, "Line's billed quantity has no unit")
 		}
 
 		// BR-24 Rechnungsposition
@@ -458,7 +452,7 @@ func (inv *Invoice) validateCore() {
 		// This check only applies to parsed XML invoices; programmatically built invoices skip this.
 		if inv.isParsed && !isContainer {
 			if !inv.InvoiceLines[i].hasNetPriceInXML && inv.SchemaType == CII {
-				inv.addViolation(rules.BR26, "NetPrice ChargeAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
+				inv.addViolation(br26, "NetPrice ChargeAmount element missing in XML for line "+inv.InvoiceLines[i].LineID)
 			}
 		}
 
