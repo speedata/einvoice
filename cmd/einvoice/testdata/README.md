@@ -50,6 +50,10 @@ Tests will automatically detect and use any `.pdf` files in this directory.
 
 No PDF test files are currently included in the repository.
 
-PDF parsing tests are skipped when no test files are present - this is expected behavior. The implementation has been tested manually with real ZUGFeRD PDFs.
+The PDF extraction logic itself is covered by unit tests in `pdf_test.go`,
+which build minimal synthetic PDF/A-3 documents in memory (no external,
+licensed binaries required). The glob-based `TestParseInvoiceFile_PDF` is
+additionally exercised whenever real `.pdf` files are dropped into this
+directory, and is skipped when none are present - this is expected behavior.
 
-To contribute test PDFs, ensure they are properly licensed for distribution in an open-source project.
+To contribute real-world test PDFs, ensure they are properly licensed for distribution in an open-source project.
