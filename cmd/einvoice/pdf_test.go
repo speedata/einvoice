@@ -76,7 +76,7 @@ func buildTestPDF(files []embeddedFile, nested bool) []byte {
 	if len(files) > 0 {
 		var names bytes.Buffer
 		for i, f := range files {
-			names.WriteString(fmt.Sprintf("(%s) %d 0 R ", f.name, fileSpecObj(i)))
+			fmt.Fprintf(&names, "(%s) %d 0 R ", f.name, fileSpecObj(i))
 		}
 		writeObj(leafObj, "<< /Names [ "+names.String()+"] >>")
 		if nested {
@@ -88,7 +88,7 @@ func buildTestPDF(files []embeddedFile, nested bool) []byte {
 	buf.WriteString("xref\n0 " + strconv.Itoa(numObjs+1) + "\n")
 	buf.WriteString("0000000000 65535 f \n")
 	for i := 1; i <= numObjs; i++ {
-		buf.WriteString(fmt.Sprintf("%010d 00000 n \n", offsets[i]))
+		fmt.Fprintf(&buf, "%010d 00000 n \n", offsets[i])
 	}
 	buf.WriteString("trailer\n<< /Size " + strconv.Itoa(numObjs+1) +
 		" /Root 1 0 R >>\nstartxref\n" + strconv.Itoa(xrefOff) + "\n%%EOF\n")
