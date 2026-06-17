@@ -69,6 +69,10 @@ func TestSubInvoiceLines_Validate(t *testing.T) {
 // TestSubInvoiceLines_RoundTrip verifies that the sub invoice line metadata
 // (ParentLineID BT-X-304, LineStatusReasonCode BT-X-8) survives a write/parse
 // round-trip and that the re-parsed invoice still validates.
+//
+// LineStatusCode (BT-X-7) is covered separately in
+// TestSubInvoiceLines_LineStatusCodeRoundTrip because the official fixtures do
+// not populate it, so asserting it here would compare "" against "".
 func TestSubInvoiceLines_RoundTrip(t *testing.T) {
 	for _, fx := range subInvoiceLineFixtures {
 		t.Run(fx.name, func(t *testing.T) {
@@ -101,7 +105,61 @@ func TestSubInvoiceLines_RoundTrip(t *testing.T) {
 				if got, want := rt.InvoiceLines[i].LineStatusReasonCode, inv.InvoiceLines[i].LineStatusReasonCode; got != want {
 					t.Errorf("line %s LineStatusReasonCode = %q, want %q", inv.InvoiceLines[i].LineID, got, want)
 				}
+				if got, want := rt.InvoiceLines[i].LineStatusCode, inv.InvoiceLines[i].LineStatusCode; got != want {
+					t.Errorf("line %s LineStatusCode = %q, want %q", inv.InvoiceLines[i].LineID, got, want)
+				}
 			}
 		})
+	}
+}
+
+// TestSubInvoiceLines_LineStatusCodeRoundTrip covers the third new sub invoice
+// line field, LineStatusCode (BT-X-7), end to end. The official fixtures leave it
+// empty, so it is seeded onto an aggregation line before writing to prove that
+// the writer emits ram:LineStatusCode and the parser reads it back.
+func TestSubInvoiceLines_LineStatusCodeRoundTrip(t *testing.T) {
+	const path = "testdata/cii/extended/zf25-subline-nested.xml"
+	inv, err := ParseXMLFile(path)
+	if err != nil {
+		t.Fatalf("parse %s: %v", path, err)
+	}
+
+	// Seed BT-X-7 on the first aggregation line with a UNTDID 4405 status code.
+	const wantCode = "39"
+	seeded := -1
+	for i := range inv.InvoiceLines {
+		if !inv.InvoiceLines[i].isDetailLine() {
+			inv.InvoiceLines[i].LineStatusCode = wantCode
+			seeded = i
+			break
+		}
+	}
+	if seeded == -1 {
+		t.Fatalf("fixture %s has no aggregation line to seed", path)
+	}
+	wantLineID := inv.InvoiceLines[seeded].LineID
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	rt, err := ParseReader(&buf)
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+
+	found := false
+	for i := range rt.InvoiceLines {
+		if rt.InvoiceLines[i].LineID != wantLineID {
+			continue
+		}
+		found = true
+		if got := rt.InvoiceLines[i].LineStatusCode; got != wantCode {
+			t.Errorf("line %s LineStatusCode = %q, want %q", wantLineID, got, wantCode)
+		}
+	}
+	if !found {
+		t.Fatalf("seeded line %s not found after round-trip", wantLineID)
 	}
 }

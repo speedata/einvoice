@@ -31,6 +31,11 @@ var (
 		Fields:      []string{"BT-131", "BT-129", "BT-146"},
 		Description: `Invoice line net amount must match calculated amount (qty × price ÷ base qty ± allowances/charges).`,
 	}
+	BRUSER06 = Rule{
+		Code:        "BR-USER-06",
+		Fields:      []string{"BT-X-8"},
+		Description: `Invoice line subtype (BT-X-8, ram:LineStatusReasonCode) must be one of "DETAIL", "GROUP" or "INFORMATION" when present. An unknown value would be silently treated as an aggregation line and dropped from the totals.`,
+	}
 
 	// BR-FXEXT-*: Factur-X EXTENDED profile rules (Factur-X 1.09 / ZUGFeRD 2.5)
 	// that replace the corresponding EN 16931 base rules to support sub invoice
@@ -47,6 +52,21 @@ var (
 		Code:        "BR-FXEXT-S-08",
 		Fields:      []string{"BT-116", "BT-131", "BT-92", "BT-99", "BT-X-8"},
 		Description: `For Standard rated (S) VAT, absolute value of (VAT category taxable amount (BT-116) - (Σ line net amounts - Σ document allowances + Σ document charges)) <= 0,01 per amount, counting only lines whose subtype (BT-X-8) is "DETAIL" or unspecified.`,
+	}
+	BRFXEXTAE08 = Rule{
+		Code:        "BR-FXEXT-AE-08",
+		Fields:      []string{"BT-116", "BT-131", "BT-92", "BT-99", "BT-X-8"},
+		Description: `For Reverse charge (AE) VAT, absolute value of (VAT category taxable amount (BT-116) - (Σ line net amounts - Σ document allowances + Σ document charges)) <= 0,01 per amount, counting only lines whose subtype (BT-X-8) is "DETAIL" or unspecified.`,
+	}
+	BRFXEXTE08 = Rule{
+		Code:        "BR-FXEXT-E-08",
+		Fields:      []string{"BT-116", "BT-131", "BT-92", "BT-99", "BT-X-8"},
+		Description: `For Exempt from VAT (E), absolute value of (VAT category taxable amount (BT-116) - (Σ line net amounts - Σ document allowances + Σ document charges)) <= 0,01 per amount, counting only lines whose subtype (BT-X-8) is "DETAIL" or unspecified.`,
+	}
+	BRFXEXTZ08 = Rule{
+		Code:        "BR-FXEXT-Z-08",
+		Fields:      []string{"BT-116", "BT-131", "BT-92", "BT-99", "BT-X-8"},
+		Description: `For Zero rated (Z) VAT, absolute value of (VAT category taxable amount (BT-116) - (Σ line net amounts - Σ document allowances + Σ document charges)) <= 0,01 per amount, counting only lines whose subtype (BT-X-8) is "DETAIL" or unspecified.`,
 	}
 	BRFXEXT22 = Rule{
 		Code:        "BR-FXEXT-22",

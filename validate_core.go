@@ -408,6 +408,13 @@ func (inv *Invoice) validateCore() {
 		br22, br23, br26 = rules.BRFXEXT22, rules.BRFXEXT23, rules.BRFXEXT26
 	}
 	for i := range inv.InvoiceLines {
+		// BT-X-8 (EXTENDED): the invoice line subtype, when present, must be a
+		// known value. isDetailLine treats any unknown value as an aggregation
+		// line, which would silently drop the line from the totals and the VAT
+		// breakdown, so a typo or future subtype is flagged here instead.
+		if rc := inv.InvoiceLines[i].LineStatusReasonCode; rc != "" && rc != "DETAIL" && rc != "GROUP" && rc != "INFORMATION" {
+			inv.addViolation(rules.BRUSER06, fmt.Sprintf("Invoice line %s has unknown subtype %q (BT-X-8); expected DETAIL, GROUP or INFORMATION", inv.InvoiceLines[i].LineID, rc))
+		}
 		isContainer := !inv.InvoiceLines[i].isDetailLine()
 		// BR-21 Rechnungsposition
 		// Jede Rechnungsposition "INVOICE LINE" (BG-25) muss eine eindeutige Bezeichnung "Invoice line identifier" (BT-126) haben.

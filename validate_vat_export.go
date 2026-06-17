@@ -133,22 +133,10 @@ func (inv *Invoice) validateVATExport() {
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "G" {
-				calculatedBasis := decimal.Zero
-				for j := range inv.InvoiceLines {
-					if inv.InvoiceLines[j].TaxCategoryCode == "G" {
-						calculatedBasis = calculatedBasis.Add(inv.InvoiceLines[j].Total)
-					}
-				}
-				for j := range inv.SpecifiedTradeAllowanceCharge {
-					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "G" {
-						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
-							calculatedBasis = calculatedBasis.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						} else {
-							calculatedBasis = calculatedBasis.Sub(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						}
-					}
-				}
-				calculatedBasis = roundHalfUp(calculatedBasis, 2)
+				// Sub invoice line aggregation lines (GROUP / INFORMATION) are
+				// excluded so they are not double counted (EXTENDED). Export (G)
+				// has no BR-FXEXT replacement, so the comparison stays strict.
+				calculatedBasis, _ := inv.sumDetailLineBasis("G", decimal.Zero, false)
 				if !inv.TradeTaxes[i].BasisAmount.Equal(calculatedBasis) {
 					inv.addViolation(rules.BRG8, fmt.Sprintf("Export outside EU taxable amount must equal sum of line amounts (expected %s, got %s)", calculatedBasis.String(), inv.TradeTaxes[i].BasisAmount.String()))
 				}

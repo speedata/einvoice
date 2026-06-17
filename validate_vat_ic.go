@@ -104,24 +104,9 @@ func (inv *Invoice) validateVATIntracommunity() {
 	// Verify taxable amount calculation for category K
 	for i := range inv.TradeTaxes {
 		if inv.TradeTaxes[i].CategoryCode == "K" {
-			var lineTotal decimal.Decimal
-			for j := range inv.InvoiceLines {
-				if inv.InvoiceLines[j].TaxCategoryCode == "K" {
-					lineTotal = lineTotal.Add(inv.InvoiceLines[j].Total)
-				}
-			}
-			var allowanceTotal decimal.Decimal
-			var chargeTotal decimal.Decimal
-			for j := range inv.SpecifiedTradeAllowanceCharge {
-				if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "K" {
-					if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
-						chargeTotal = chargeTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-					} else {
-						allowanceTotal = allowanceTotal.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-					}
-				}
-			}
-			expectedBasis := roundHalfUp(lineTotal.Sub(allowanceTotal).Add(chargeTotal), 2)
+			// Detail lines only; aggregation lines (GROUP / INFORMATION) are
+			// excluded so they are not double counted (EXTENDED).
+			expectedBasis, _ := inv.sumDetailLineBasis("K", decimal.Zero, false)
 			if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
 				inv.addViolation(rules.BRIC6, fmt.Sprintf("Intra-community supply taxable amount mismatch: got %s, expected %s", inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 			}
@@ -141,27 +126,11 @@ func (inv *Invoice) validateVATIntracommunity() {
 	// Note: This validation only applies to profiles with line items (>= Basic, level 3).
 	// BasicWL profile (level 2) provides BasisAmount directly without line items.
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
-		taxRateMap := make(map[string]decimal.Decimal)
-		for i := range inv.InvoiceLines {
-			if inv.InvoiceLines[i].TaxCategoryCode == "K" {
-				key := inv.InvoiceLines[i].TaxRateApplicablePercent.String()
-				taxRateMap[key] = taxRateMap[key].Add(inv.InvoiceLines[i].Total)
-			}
-		}
-		for i := range inv.SpecifiedTradeAllowanceCharge {
-			if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode == "K" {
-				key := inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent.String()
-				if inv.SpecifiedTradeAllowanceCharge[i].ChargeIndicator {
-					taxRateMap[key] = taxRateMap[key].Add(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
-				} else {
-					taxRateMap[key] = taxRateMap[key].Sub(inv.SpecifiedTradeAllowanceCharge[i].ActualAmount)
-				}
-			}
-		}
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "K" {
-				key := inv.TradeTaxes[i].Percent.String()
-				expectedBasis := roundHalfUp(taxRateMap[key], 2)
+				// Detail lines only; aggregation lines (GROUP / INFORMATION) are
+				// excluded so they are not double counted (EXTENDED).
+				expectedBasis, _ := inv.sumDetailLineBasis("K", inv.TradeTaxes[i].Percent, true)
 				if !inv.TradeTaxes[i].BasisAmount.Equal(expectedBasis) {
 					inv.addViolation(rules.BRIC8, fmt.Sprintf("Intra-community supply taxable amount for rate %s: got %s, expected %s", inv.TradeTaxes[i].Percent.StringFixed(2), inv.TradeTaxes[i].BasisAmount.StringFixed(2), expectedBasis.StringFixed(2)))
 				}

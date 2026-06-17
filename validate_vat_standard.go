@@ -3,7 +3,6 @@ package einvoice
 import (
 	"fmt"
 
-	"github.com/shopspring/decimal"
 	"github.com/speedata/einvoice/rules"
 )
 
@@ -134,42 +133,13 @@ func (inv *Invoice) validateVATStandard() {
 	if inv.ProfileLevel() >= levelBasic || (inv.ProfileLevel() == 0 && len(inv.InvoiceLines) > 0) {
 		for i := range inv.TradeTaxes {
 			if inv.TradeTaxes[i].CategoryCode == "S" {
-				// Calculate sum: lines - allowances + charges for this rate.
-				// Sub invoice line aggregation lines (GROUP / INFORMATION) are
-				// skipped so only detail lines contribute to the VAT basis (EXTENDED).
-				calculatedBasis := decimal.Zero
-				amountCount := 0
-				for j := range inv.InvoiceLines {
-					if !inv.InvoiceLines[j].isDetailLine() {
-						continue
-					}
-					if inv.InvoiceLines[j].TaxCategoryCode == "S" && inv.InvoiceLines[j].TaxRateApplicablePercent.Equal(inv.TradeTaxes[i].Percent) {
-						calculatedBasis = calculatedBasis.Add(inv.InvoiceLines[j].Total)
-						amountCount++
-					}
-				}
-				for j := range inv.SpecifiedTradeAllowanceCharge {
-					if inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxCategoryCode == "S" && inv.SpecifiedTradeAllowanceCharge[j].CategoryTradeTaxRateApplicablePercent.Equal(inv.TradeTaxes[i].Percent) {
-						if inv.SpecifiedTradeAllowanceCharge[j].ChargeIndicator {
-							calculatedBasis = calculatedBasis.Add(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						} else {
-							calculatedBasis = calculatedBasis.Sub(inv.SpecifiedTradeAllowanceCharge[j].ActualAmount)
-						}
-						amountCount++
-					}
-				}
-				// Round to 2 decimals for comparison using commercial rounding (round half up)
-				calculatedBasis = roundHalfUp(calculatedBasis, 2)
-				// In the EXTENDED profile BR-S-08 is replaced by BR-FXEXT-S-08, which
-				// allows a tolerance of 0.01 per contributing amount (Factur-X 1.09).
-				if inv.IsExtended() {
-					tolerance := decimal.New(1, -2).Mul(decimal.NewFromInt(int64(amountCount)))
-					if inv.TradeTaxes[i].BasisAmount.Sub(calculatedBasis).Abs().GreaterThan(tolerance) {
-						inv.addViolation(rules.BRFXEXTS08, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s within tolerance %s (expected %s, got %s)", inv.TradeTaxes[i].Percent.String(), tolerance.String(), calculatedBasis.String(), inv.TradeTaxes[i].BasisAmount.String()))
-					}
-				} else if !inv.TradeTaxes[i].BasisAmount.Equal(calculatedBasis) {
-					inv.addViolation(rules.BRS8, fmt.Sprintf("Standard rated taxable amount must equal sum of line amounts for rate %s (expected %s, got %s)", inv.TradeTaxes[i].Percent.String(), calculatedBasis.String(), inv.TradeTaxes[i].BasisAmount.String()))
-				}
+				// Sum the detail lines and document allowances/charges for this
+				// rate. Sub invoice line aggregation lines (GROUP / INFORMATION)
+				// are excluded so they are not double counted (EXTENDED). In the
+				// EXTENDED profile BR-S-08 is replaced by BR-FXEXT-S-08, which
+				// tolerates a deviation of 0.01 per contributing amount.
+				calculatedBasis, amountCount := inv.sumDetailLineBasis("S", inv.TradeTaxes[i].Percent, true)
+				inv.checkVATCategoryBasis("Standard rated", inv.TradeTaxes[i].Percent.String(), inv.TradeTaxes[i].BasisAmount, calculatedBasis, amountCount, rules.BRS8, rules.BRFXEXTS08)
 			}
 		}
 	}
