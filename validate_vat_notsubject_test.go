@@ -246,6 +246,44 @@ func TestBRO5_LineNoVATRate(t *testing.T) {
 	}
 }
 
+// TestBRO5_LineNoVATRate_parsed tests BR-O-05: Invoice lines with category O must NOT contain VAT rate, even if empty or 0
+func TestBRO5_LineNoVATRate_parsed(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{
+				TaxCategoryCode:             "O",
+				TaxRateApplicablePercent:    decimal.Zero,
+				Total:                       decimal.NewFromInt(100),
+				hasTaxRateApplicablePercent: true,
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "O",
+				BasisAmount:      decimal.NewFromInt(100),
+				CalculatedAmount: decimal.Zero,
+				ExemptionReason:  "Not subject to VAT",
+			},
+		},
+	}
+
+	_ = inv.Validate()
+
+	found := false
+	for _, v := range inv.violations {
+		if v.Rule.Code == "BR-O-05" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Error("Expected BR-O-05 violation for line with VAT rate in Not subject to VAT")
+	}
+}
+
 // TestBRO6_AllowanceNoVATRate tests BR-O-06: Allowances with category O must NOT contain VAT rate
 func TestBRO6_AllowanceNoVATRate(t *testing.T) {
 	t.Parallel()
