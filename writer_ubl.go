@@ -733,8 +733,10 @@ func writeUBLLineItem(parent *etree.Element, line *InvoiceLine) {
 	// Tax information (before additional properties per UBL ordering)
 	taxCat := item.CreateElement("cac:ClassifiedTaxCategory")
 	taxCat.CreateElement("cbc:ID").SetText(line.TaxCategoryCode)
-	taxCat.CreateElement("cbc:Percent").SetText(formatPercent(line.TaxRateApplicablePercent))
 	taxCat.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText(line.TaxTypeCode)
+	if line.TaxCategoryCode != "O" {
+		taxCat.CreateElement("cbc:Percent").SetText(formatPercent(line.TaxRateApplicablePercent))
+	}
 
 	// BG-32: Item attributes
 	for j := range line.Characteristics {
