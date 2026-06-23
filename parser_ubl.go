@@ -771,6 +771,7 @@ func parseUBLLines(root *cxpath.Context, inv *Invoice, prefix string) error {
 		if err != nil {
 			return err
 		}
+		invoiceLine.hasTaxRateApplicablePercent = taxInfo.Eval("count(cbc:Percent)").Int() > 0
 
 		inv.InvoiceLines = append(inv.InvoiceLines, invoiceLine)
 	}

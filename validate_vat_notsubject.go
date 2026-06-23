@@ -101,7 +101,10 @@ func (inv *Invoice) validateVATNotSubject() {
 
 	// BR-O-05: Invoice lines with category O must NOT contain VAT rate
 	for i := range inv.InvoiceLines {
-		if inv.InvoiceLines[i].TaxCategoryCode == "O" && !inv.InvoiceLines[i].TaxRateApplicablePercent.IsZero() {
+		if inv.InvoiceLines[i].TaxCategoryCode != "O" {
+			continue
+		}
+		if !inv.InvoiceLines[i].TaxRateApplicablePercent.IsZero() || inv.InvoiceLines[i].hasTaxRateApplicablePercent {
 			inv.addViolation(rules.BRO5, "Invoice line with 'Not subject to VAT' shall not contain VAT rate (BT-152)")
 		}
 	}

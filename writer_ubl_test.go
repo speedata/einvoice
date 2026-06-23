@@ -234,6 +234,9 @@ func TestWriteUBL_RoundTrip(t *testing.T) {
 				TaxTypeCode:              "VAT",
 				TaxRateApplicablePercent: decimal.NewFromInt(19),
 			},
+			{
+				TaxCategoryCode: "O",
+			},
 		},
 		TradeTaxes: []TradeTax{
 			{
@@ -287,6 +290,9 @@ func TestWriteUBL_RoundTrip(t *testing.T) {
 	if len(parsed.InvoiceLines) > 0 {
 		if parsed.InvoiceLines[0].ItemName != original.InvoiceLines[0].ItemName {
 			t.Errorf("Line ItemName mismatch: got %s, want %s", parsed.InvoiceLines[0].ItemName, original.InvoiceLines[0].ItemName)
+		}
+		if parsed.InvoiceLines[1].hasTaxRateApplicablePercent {
+			t.Errorf("Line hasTaxRateApplicablePercent is true, should've been false")
 		}
 	}
 }

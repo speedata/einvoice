@@ -165,7 +165,9 @@ func writeCIIramIncludedSupplyChainTradeLineItem(invoiceLine *InvoiceLine, inv *
 
 	att.CreateElement("ram:TypeCode").SetText(invoiceLine.TaxTypeCode)
 	att.CreateElement("ram:CategoryCode").SetText(invoiceLine.TaxCategoryCode)
-	att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(invoiceLine.TaxRateApplicablePercent))
+	if invoiceLine.TaxCategoryCode != "O" {
+		att.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(invoiceLine.TaxRateApplicablePercent))
+	}
 
 	// BG-26: Invoice line period (BT-134, BT-135)
 	if !invoiceLine.BillingSpecifiedPeriodStart.IsZero() || !invoiceLine.BillingSpecifiedPeriodEnd.IsZero() {

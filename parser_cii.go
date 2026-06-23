@@ -223,6 +223,7 @@ func parseCIISupplyChainTradeTransaction(supplyChainTradeTransaction *cxpath.Con
 		if err != nil {
 			return err
 		}
+		invoiceLine.hasTaxRateApplicablePercent = taxInfo.Eval("count(ram:RateApplicablePercent)").Int() > 0
 		// BR-CO-20: Track BG-26 (INVOICE LINE PERIOD) presence to validate later
 		invoiceLine.linePeriodPresent = lineItem.Eval("count(ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod)").Int() > 0
 		invoiceLine.BillingSpecifiedPeriodStart, err = parseCIITime(lineItem, "ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString")

@@ -227,9 +227,10 @@ type InvoiceLine struct {
 
 	// Private fields for tracking XML element presence (BR-24, BR-26, BR-CO-20)
 	// These are set during parsing to distinguish between missing elements and zero values
-	hasLineTotalInXML bool
-	hasNetPriceInXML  bool
-	linePeriodPresent bool // true if BG-26 (INVOICE LINE PERIOD) was present in source XML
+	hasLineTotalInXML           bool
+	hasNetPriceInXML            bool
+	hasTaxRateApplicablePercent bool
+	linePeriodPresent           bool // true if BG-26 (INVOICE LINE PERIOD) was present in source XML
 }
 
 // PaymentMeans represents a payment means.

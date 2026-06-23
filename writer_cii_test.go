@@ -116,6 +116,113 @@ func TestWrite_PayeeTradeParty(t *testing.T) {
 	}
 }
 
+func TestWrite_RoundTrip(t *testing.T) {
+	original := &Invoice{
+		SchemaType: CII,
+		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+		InvoiceNumber:       "INV-RoundTrip",
+		InvoiceTypeCode:     380,
+		InvoiceDate:         time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		InvoiceCurrencyCode: "EUR",
+		BuyerReference:      "REF-123",
+		Seller: Party{
+			Name: "Test Seller",
+			PostalAddress: &PostalAddress{
+				CountryID:    "DE",
+				PostcodeCode: "10115",
+				City:         "Berlin",
+			},
+			VATaxRegistration: "DE123456789",
+		},
+		Buyer: Party{
+			Name: "Test Buyer",
+			PostalAddress: &PostalAddress{
+				CountryID:    "FR",
+				PostcodeCode: "75001",
+				City:         "Paris",
+			},
+			VATaxRegistration: "FR987654321",
+		},
+		LineTotal:        decimal.NewFromInt(200),
+		TaxBasisTotal:    decimal.NewFromInt(200),
+		TaxTotal:         decimal.NewFromInt(38),
+		GrandTotal:       decimal.NewFromInt(238),
+		DuePayableAmount: decimal.NewFromInt(238),
+		InvoiceLines: []InvoiceLine{
+			{
+				LineID:                   "1",
+				ItemName:                 "Test Product",
+				BilledQuantity:           decimal.NewFromInt(2),
+				BilledQuantityUnit:       "C62",
+				NetPrice:                 decimal.NewFromInt(100),
+				Total:                    decimal.NewFromInt(200),
+				TaxCategoryCode:          "S",
+				TaxTypeCode:              "VAT",
+				TaxRateApplicablePercent: decimal.NewFromInt(19),
+			},
+			{
+				TaxCategoryCode: "O",
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CalculatedAmount: decimal.NewFromInt(38),
+				BasisAmount:      decimal.NewFromInt(200),
+				TypeCode:         "VAT",
+				CategoryCode:     "S",
+				Percent:          decimal.NewFromInt(19),
+			},
+		},
+	}
+
+	// Write to buffer
+	var buf bytes.Buffer
+	err := original.Write(&buf)
+	if err != nil {
+		t.Fatalf("Failed to write invoice: %v", err)
+	}
+
+	// Parse back
+	parsed, err := ParseReader(&buf)
+	if err != nil {
+		t.Fatalf("Failed to parse written invoice: %v", err)
+	}
+
+	// Verify key fields
+	if parsed.SchemaType != CII {
+		t.Errorf("Expected SchemaType CII, got %v", parsed.SchemaType)
+	}
+
+	if parsed.InvoiceNumber != original.InvoiceNumber {
+		t.Errorf("InvoiceNumber mismatch: got %s, want %s", parsed.InvoiceNumber, original.InvoiceNumber)
+	}
+
+	if parsed.InvoiceTypeCode != original.InvoiceTypeCode {
+		t.Errorf("InvoiceTypeCode mismatch: got %d, want %d", parsed.InvoiceTypeCode, original.InvoiceTypeCode)
+	}
+
+	if parsed.InvoiceCurrencyCode != original.InvoiceCurrencyCode {
+		t.Errorf("InvoiceCurrencyCode mismatch: got %s, want %s", parsed.InvoiceCurrencyCode, original.InvoiceCurrencyCode)
+	}
+
+	if !parsed.GrandTotal.Equal(original.GrandTotal) {
+		t.Errorf("GrandTotal mismatch: got %s, want %s", parsed.GrandTotal, original.GrandTotal)
+	}
+
+	if len(parsed.InvoiceLines) != len(original.InvoiceLines) {
+		t.Errorf("InvoiceLines count mismatch: got %d, want %d", len(parsed.InvoiceLines), len(original.InvoiceLines))
+	}
+
+	if len(parsed.InvoiceLines) > 0 {
+		if parsed.InvoiceLines[0].ItemName != original.InvoiceLines[0].ItemName {
+			t.Errorf("Line ItemName mismatch: got %s, want %s", parsed.InvoiceLines[0].ItemName, original.InvoiceLines[0].ItemName)
+		}
+		if parsed.InvoiceLines[1].hasTaxRateApplicablePercent {
+			t.Errorf("Line hasTaxRateApplicablePercent is true, should've been false")
+		}
+	}
+}
+
 // TestWrite_MultiCurrencyTaxTotal tests that BT-111 (TaxTotalAmount in accounting currency)
 // is written when TaxCurrencyCode differs from InvoiceCurrencyCode
 func TestWrite_MultiCurrencyTaxTotal(t *testing.T) {
