@@ -9,7 +9,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/speedata/cxpath v0.0.9
-	github.com/speedata/pdfdisassembler v0.0.6
+	github.com/speedata/pdfdisassembler v0.0.7
 	golang.org/x/term v0.44.0
 )
 
