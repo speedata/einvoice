@@ -5,7 +5,7 @@ go 1.25.0
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 require (
-	github.com/beevik/etree v1.7.0
+	github.com/beevik/etree v1.7.1
 	github.com/google/go-cmp v0.7.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/speedata/cxpath v0.0.10
