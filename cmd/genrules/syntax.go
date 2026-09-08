@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
@@ -27,46 +26,6 @@ type SyntaxAssert struct {
 	Description string
 }
 
-// goxpathTestOverrides replaces assert tests that trip known goxpath bugs
-// with semantically equivalent expressions. Remove the entries once the
-// referenced upstream issues are fixed and the dependency is updated.
-var goxpathTestOverrides = map[string]string{
-	// speedata/goxpath#3: the preceding:: axis only considers siblings of the
-	// context node. The original tests count the nodes that have no equal
-	// preceding node - i.e. the number of distinct values.
-	"UBL-SR-44": "count(distinct-values(//cbc:PaymentID)) <= 1",
-	"UBL-SR-47": "count(distinct-values(//cbc:PaymentMeansCode)) <= 1",
-}
-
-// selfAxisRe matches a self:: axis step with a prefixed name test.
-var selfAxisRe = regexp.MustCompile(`self::[a-z]+:([A-Za-z]+)`)
-
-// prefixWildcardRe matches a name test with prefix and wildcard local name.
-var prefixWildcardRe = regexp.MustCompile(`([a-z]+):\*`)
-
-// workaroundGoxpath rewrites XPath constructs that goxpath evaluates
-// incorrectly into equivalent supported ones.
-//
-// speedata/goxpath#2: the self:: axis ignores the node test. Every self::
-// occurrence in the syntax-binding rules is a boolean element-name check on
-// unambiguous vocabularies, so a local-name() comparison is equivalent.
-//
-// speedata/goxpath#4: the prefixed wildcard (e.g. ram:*) matches nothing;
-// a namespace-uri() predicate is equivalent. The prefix/URI pairs come from
-// the schematron's own ns declarations.
-func workaroundGoxpath(expr string, namespaces map[string]string) string {
-	expr = selfAxisRe.ReplaceAllString(expr, "(local-name() = '$1')")
-	expr = prefixWildcardRe.ReplaceAllStringFunc(expr, func(match string) string {
-		prefix := strings.TrimSuffix(match, ":*")
-		uri, ok := namespaces[prefix]
-		if !ok {
-			return match
-		}
-		return "*[namespace-uri() = '" + uri + "']"
-	})
-	return expr
-}
-
 // runSyntaxMode generates a []rules.SyntaxRule table from the schematron
 // pattern named by --syntax-pattern.
 func runSyntaxMode(data []byte) error {
@@ -86,15 +45,10 @@ func runSyntaxMode(data []byte) error {
 		return fmt.Errorf("pattern %q not found in schematron source", *syntaxFlag)
 	}
 
-	namespaces := make(map[string]string)
-	for _, ns := range schema.Namespaces {
-		namespaces[ns.Prefix] = ns.URI
-	}
-
 	var syntaxRules []SyntaxRule
 	assertCount := 0
 	for _, rule := range pattern.Rules {
-		sr := SyntaxRule{Context: workaroundGoxpath(matchPatternToXPath(rule.Context), namespaces)}
+		sr := SyntaxRule{Context: matchPatternToXPath(rule.Context)}
 		for _, assert := range rule.Asserts {
 			if assert.ID == "" {
 				continue
@@ -102,13 +56,9 @@ func runSyntaxMode(data []byte) error {
 			// The syntax asserts read "[CII-DT-031] - text"; cleanDescription
 			// strips the bracketed ID but keeps the separating dash.
 			desc := strings.TrimSpace(strings.TrimPrefix(cleanDescription(assert.Description), "- "))
-			test := workaroundGoxpath(strings.Join(strings.Fields(assert.Test), " "), namespaces)
-			if override, ok := goxpathTestOverrides[assert.ID]; ok {
-				test = override
-			}
 			sr.Asserts = append(sr.Asserts, SyntaxAssert{
 				Code:        assert.ID,
-				Test:        test,
+				Test:        strings.Join(strings.Fields(assert.Test), " "),
 				Severity:    flagToSeverity(assert.Flag),
 				Description: desc,
 			})

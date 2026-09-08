@@ -62,9 +62,7 @@ genrules \
 Use the *preprocessed* schematron files here: their contexts are concrete
 (no abstract patterns) and contain no `<let>` variables. Rule contexts are
 XSLT match patterns and are rewritten to XPath at generate time (relative
-contexts get a `//` prefix). A few expressions are rewritten to work around
-known goxpath bugs (`workaroundGoxpath` in syntax.go); drop those rewrites
-once the referenced upstream issues are fixed.
+contexts get a `//` prefix); the assert tests are emitted verbatim.
 
 ### Using go generate
 

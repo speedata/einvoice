@@ -61,7 +61,8 @@ func TestSyntaxCIIDT31(t *testing.T) {
 
 // TestSyntaxCIIDT101 checks that a schemeName attribute on a party ID is
 // reported as CII-DT-101. The rule context uses the prefixed wildcard form
-// (//ram:*[...]), so this also guards the goxpath workaround for it.
+// (//ram:*[...]), so this also guards goxpath's support for it
+// (speedata/goxpath#4).
 func TestSyntaxCIIDT101(t *testing.T) {
 	inv := parseFixtureWithReplacement(t,
 		"testdata/cii/en16931/zugferd-en16931-einfach.xml",

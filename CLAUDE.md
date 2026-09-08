@@ -98,7 +98,7 @@ The validation logic is split across multiple focused files for maintainability.
   - The parser stashes the document tree; the first `Validate()` call evaluates the rules lazily and releases the tree
   - Schematron semantics: per rule set, each node is checked only against the first rule whose context matches ("first match wins")
   - Not applied to the Extended profile (only "conformant" to EN 16931, deliberately allows more elements)
-  - Some expressions are rewritten at generate time to work around goxpath bugs (speedata/goxpath#2, #3, #4); see `workaroundGoxpath` in `cmd/genrules/syntax.go`
+  - Requires goxpath >= v1.0.16 (earlier versions mishandled self::, preceding:: and prefixed wildcards; speedata/goxpath#2, #3, #4)
 
 Each validation file contains a single method (e.g., `validateVATStandard()`) with comprehensive documentation explaining:
 - The tax category purpose and requirements

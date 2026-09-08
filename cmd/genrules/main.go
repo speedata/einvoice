@@ -35,15 +35,8 @@ var (
 
 // SchematronSchema represents a schematron schema root element
 type SchematronSchema struct {
-	XMLName    xml.Name            `xml:"schema"`
-	Namespaces []SchematronNs      `xml:"ns"`
-	Patterns   []SchematronPattern `xml:"pattern"`
-}
-
-// SchematronNs represents a schematron namespace declaration
-type SchematronNs struct {
-	Prefix string `xml:"prefix,attr"`
-	URI    string `xml:"uri,attr"`
+	XMLName  xml.Name            `xml:"schema"`
+	Patterns []SchematronPattern `xml:"pattern"`
 }
 
 // SchematronPattern represents a schematron pattern element
