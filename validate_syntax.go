@@ -2,9 +2,11 @@ package einvoice
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/speedata/cxpath"
 	"github.com/speedata/einvoice/rules"
+	"github.com/speedata/goxml"
 	"github.com/speedata/goxpath"
 )
 
@@ -56,9 +58,15 @@ func validateSyntaxRules(root *cxpath.Context, syntaxRules []rules.SyntaxRule, i
 				if err != nil || passed {
 					continue
 				}
+				location := nodeLocation(item)
+				text := assert.Description
+				if location != "" {
+					text = text + " (" + location + ")"
+				}
 				finding := SemanticError{
-					Rule: rules.Rule{Code: assert.Code, Description: assert.Description},
-					Text: assert.Description,
+					Rule:     rules.Rule{Code: assert.Code, Description: assert.Description},
+					Text:     text,
+					Location: location,
 				}
 				if assert.Severity == rules.SeverityWarning {
 					inv.syntaxWarnings = append(inv.syntaxWarnings, finding)
@@ -68,6 +76,60 @@ func validateSyntaxRules(root *cxpath.Context, syntaxRules []rules.SyntaxRule, i
 			}
 		}
 	}
+}
+
+// nodeLocation returns a human-readable location of an element node: an
+// XPath-like path using the document's own namespace prefixes, with 1-based
+// positions where siblings share a name, plus the source line number, e.g.
+//
+//	/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem[2]/.../ram:LineTotalAmount, line 149
+//
+// It returns "" for non-element items.
+func nodeLocation(item goxpath.Item) string {
+	elt, ok := item.(*goxml.Element)
+	if !ok {
+		return ""
+	}
+
+	var segments []string
+	for cur := elt; cur != nil; {
+		name := cur.Name
+		if cur.Prefix != "" {
+			name = cur.Prefix + ":" + name
+		}
+		parent, hasParent := cur.Parent.(*goxml.Element)
+		if hasParent {
+			// Position among same-named siblings; shown only when ambiguous.
+			pos, count := 0, 0
+			for _, sibling := range parent.Children() {
+				if s, ok := sibling.(*goxml.Element); ok && s.Name == cur.Name && s.Prefix == cur.Prefix {
+					count++
+					if s == cur {
+						pos = count
+					}
+				}
+			}
+			if count > 1 {
+				name = fmt.Sprintf("%s[%d]", name, pos)
+			}
+		}
+		segments = append(segments, name)
+		if !hasParent {
+			break
+		}
+		cur = parent
+	}
+
+	// The segments were collected leaf-first; reverse them into a path.
+	var sb strings.Builder
+	for i := len(segments) - 1; i >= 0; i-- {
+		sb.WriteByte('/')
+		sb.WriteString(segments[i])
+	}
+	if elt.Line > 0 {
+		fmt.Fprintf(&sb, ", line %d", elt.Line)
+	}
+	return sb.String()
 }
 
 // safeEvaluateSyntax evaluates an XPath expression and converts goxpath

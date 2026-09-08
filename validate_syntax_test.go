@@ -57,6 +57,19 @@ func TestSyntaxCIIDT31(t *testing.T) {
 	if !valErr.HasRuleCode("CII-DT-031") {
 		t.Errorf("violations = %v, want CII-DT-031", valErr.Violations())
 	}
+
+	// The finding must point at the offending node.
+	for _, v := range valErr.Violations() {
+		if v.Rule.Code != "CII-DT-031" {
+			continue
+		}
+		if !strings.Contains(v.Location, "/ram:LineTotalAmount") || !strings.Contains(v.Location, ", line ") {
+			t.Errorf("Location = %q, want XPath-like path to ram:LineTotalAmount with line number", v.Location)
+		}
+		if !strings.Contains(v.Text, v.Location) {
+			t.Errorf("Text = %q, want it to include the location %q", v.Text, v.Location)
+		}
+	}
 }
 
 // TestSyntaxCIIDT101 checks that a schemeName attribute on a party ID is

@@ -11,6 +11,12 @@ import (
 type SemanticError struct {
 	Rule rules.Rule // The business rule that was violated
 	Text string     // Human-readable description with actual values
+
+	// Location is an XPath-like path to the XML node that triggered the
+	// violation, including the source line number when available. It is set
+	// for syntax-binding rule findings (CII-SR/CII-DT, UBL-*), which refer to
+	// concrete XML nodes; semantic rule findings leave it empty.
+	Location string
 }
 
 // ValidationError is returned when invoice validation fails.
