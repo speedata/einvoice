@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/speedata/cxpath"
+	"github.com/speedata/einvoice/rules"
 )
 
 type (
@@ -391,6 +393,16 @@ type Invoice struct {
 
 	violations []SemanticError // Private field - use Validate() and check error instead
 	warnings   []SemanticError // Private field - use Warnings() accessor
+
+	// Syntax-binding rule evaluation (CII-SR/CII-DT, UBL-SR/UBL-CR/UBL-DT).
+	// These rules operate on the XML tree, so the parser stashes the document
+	// root and the applicable rule set here. The first Validate() call
+	// evaluates the rules, stores the findings and releases the tree, so
+	// parsing without validating stays cheap.
+	syntaxRoot       *cxpath.Context
+	syntaxRules      []rules.SyntaxRule
+	syntaxViolations []SemanticError
+	syntaxWarnings   []SemanticError
 }
 
 // Profile helper methods for Invoice

@@ -42,6 +42,30 @@ genrules \
   --output rules/en16931.go
 ```
 
+### Syntax rule mode
+
+With `--syntax-pattern`, genrules extracts one schematron pattern as an
+*executable* rule table (`[]rules.SyntaxRule`) instead of the metadata catalog.
+The context and test XPath expressions are kept so the rules can be evaluated
+at runtime (see `validate_syntax.go`):
+
+```bash
+genrules \
+  --source https://raw.githubusercontent.com/ConnectingEurope/eInvoicing-EN16931/validation-1.3.16/cii/schematron/preprocessed/EN16931-CII-validation-preprocessed.sch \
+  --version v1.3.16 \
+  --package rules \
+  --syntax-pattern EN16931-CII-Syntax \
+  --varname CIISyntaxRules \
+  --output rules/cii_syntax.go
+```
+
+Use the *preprocessed* schematron files here: their contexts are concrete
+(no abstract patterns) and contain no `<let>` variables. Rule contexts are
+XSLT match patterns and are rewritten to XPath at generate time (relative
+contexts get a `//` prefix). A few expressions are rewritten to work around
+known goxpath bugs (`workaroundGoxpath` in syntax.go); drop those rewrites
+once the referenced upstream issues are fixed.
+
 ### Using go generate
 
 The recommended workflow uses go generate for reproducible builds:

@@ -242,6 +242,18 @@ func (inv *Invoice) Validate() error {
 	shouldValidate := inv.SchemaType == SchemaTypeUnknown || inv.isEN16931Compliant()
 
 	if shouldValidate {
+		// Syntax-binding rules (CII-SR/CII-DT, UBL-SR/UBL-CR/UBL-DT) operate
+		// on the XML tree the parser stashed. They are evaluated once on the
+		// first Validate() call; afterwards the tree is released and the
+		// stored findings are merged on every call.
+		if inv.syntaxRoot != nil {
+			validateSyntaxRules(inv.syntaxRoot, inv.syntaxRules, inv)
+			inv.syntaxRoot = nil
+			inv.syntaxRules = nil
+		}
+		inv.violations = append(inv.violations, inv.syntaxViolations...)
+		inv.warnings = append(inv.warnings, inv.syntaxWarnings...)
+
 		inv.validateCore()
 		inv.validateCalculations()
 		inv.validateDecimals()

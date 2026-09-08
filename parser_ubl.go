@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/speedata/cxpath"
+	"github.com/speedata/einvoice/rules"
 )
 
 // UBL 2.1 namespace URNs for Invoice and CreditNote documents
@@ -41,6 +42,9 @@ func parseUBL(ctx *cxpath.Context) (*Invoice, error) {
 	ctx.SetNamespace("cn", nsUBLCreditNote)
 	ctx.SetNamespace("cac", nsUBLCAC)
 	ctx.SetNamespace("cbc", nsUBLCBC)
+	// The syntax-binding rules (rules.UBLSyntaxRules) use "ubl" for the
+	// Invoice namespace
+	ctx.SetNamespace("ubl", nsUBLInvoice)
 
 	// Get root element after namespace setup
 	root := ctx.Root()
@@ -86,6 +90,12 @@ func parseUBL(ctx *cxpath.Context) (*Invoice, error) {
 	if err := parseUBLLines(root, inv, prefix); err != nil {
 		return nil, fmt.Errorf("parse UBL lines: %w", err)
 	}
+
+	// Stash the tree for the UBL syntax-binding rules (UBL-SR-*, UBL-CR-*,
+	// UBL-DT-*); the first Validate() call evaluates them and releases the
+	// tree.
+	inv.syntaxRoot = root
+	inv.syntaxRules = rules.UBLSyntaxRules
 
 	return inv, nil
 }

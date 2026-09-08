@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/speedata/cxpath"
+	"github.com/speedata/einvoice/rules"
 )
 
 // CII (ZUGFeRD/Factur-X) namespace URN for root element
@@ -111,6 +112,15 @@ func parseCII(ctx *cxpath.Context) (*Invoice, error) {
 
 	if err = parseCIISupplyChainTradeTransaction(root.Eval("rsm:SupplyChainTradeTransaction"), inv); err != nil {
 		return nil, err
+	}
+
+	// Stash the tree for the CII syntax-binding rules (CII-SR-*, CII-DT-*);
+	// the first Validate() call evaluates them and releases the tree.
+	// The Extended profile is only "conformant" to EN 16931 and deliberately
+	// allows elements the syntax binding forbids, so it is not checked.
+	if !inv.IsExtended() {
+		inv.syntaxRoot = root
+		inv.syntaxRules = rules.CIISyntaxRules
 	}
 
 	return inv, nil
