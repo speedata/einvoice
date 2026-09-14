@@ -8,9 +8,9 @@ require (
 	github.com/beevik/etree v1.7.1
 	github.com/google/go-cmp v0.7.0
 	github.com/shopspring/decimal v1.4.0
-	github.com/speedata/cxpath v0.0.11
-	github.com/speedata/goxml v1.0.9
-	github.com/speedata/goxpath v1.0.16
+	github.com/speedata/cxpath v0.0.12
+	github.com/speedata/goxml v1.0.11
+	github.com/speedata/goxpath v1.0.18
 	github.com/speedata/pdfdisassembler v0.0.8
 	golang.org/x/term v0.45.0
 )
