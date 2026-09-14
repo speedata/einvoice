@@ -24,6 +24,7 @@ type Violation struct {
 	Rule        string   `json:"rule"`
 	Description string   `json:"description,omitempty"`
 	Text        string   `json:"text"`
+	Location    string   `json:"location,omitempty"`
 	Fields      []string `json:"fields,omitempty"`
 }
 
@@ -117,6 +118,7 @@ func validateInvoice(filename string) Result {
 				Fields:      se.Rule.Fields,
 				Description: se.Rule.Description,
 				Text:        se.Text,
+				Location:    se.Location,
 			}
 		}
 	} else {

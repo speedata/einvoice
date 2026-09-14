@@ -92,6 +92,13 @@ The validation logic is split across multiple focused files for maintainability.
 - `validate_vat_ipsi.go`: IPSI (Ceuta/Melilla) validations (BR-IP-1 to BR-IP-10)
 - `validate_vat_notsubject.go`: Not subject to VAT validations (BR-O-1 to BR-O-14)
 - `validate_peppol.go`: PEPPOL BIS Billing 3.0 validations (PEPPOL-EN16931-R*)
+- `validate_syntax.go`: EN 16931 syntax-binding rules (CII-SR-*/CII-DT-* for CII, UBL-SR-*/UBL-CR-*/UBL-DT-* for UBL)
+  - These rules forbid XML elements/attributes without an EN 16931 mapping; they run on the XML tree, not the semantic model
+  - Rule tables are generated from the CEN schematron into `rules/cii_syntax.go` and `rules/ubl_syntax.go` (see `rules/generate.go`)
+  - The parser stashes the document tree; the first `Validate()` call evaluates the rules lazily and releases the tree
+  - Schematron semantics: per rule set, each node is checked only against the first rule whose context matches ("first match wins")
+  - Not applied to the Extended profile (only "conformant" to EN 16931, deliberately allows more elements)
+  - Requires goxpath >= v1.0.16 (earlier versions mishandled self::, preceding:: and prefixed wildcards; speedata/goxpath#2, #3, #4)
 
 Each validation file contains a single method (e.g., `validateVATStandard()`) with comprehensive documentation explaining:
 - The tax category purpose and requirements
@@ -130,10 +137,11 @@ The `Validate()` method uses intelligent auto-detection:
 - Details: [cmd/genrules/README.md](cmd/genrules/README.md)
 
 Package structure:
-- `types.go`: Rule struct (manual)
+- `types.go`: Rule, SyntaxRule, SyntaxAssert structs (manual)
 - `custom.go`: Custom rules and aliases (manual)
 - `en16931.go`: Generated rule constants (auto-generated)
-- `generate.go`: go:generate directive (manual)
+- `cii_syntax.go`, `ubl_syntax.go`: Generated executable syntax-binding rule tables with context/test XPath expressions (auto-generated via `--syntax-pattern` mode of genrules)
+- `generate.go`: go:generate directives (manual)
 
 Rule naming: `BR-01` → `rules.BR1`, `BR-S-08` → `rules.BRS8`, `BR-CO-14` → `rules.BRCO14`
 

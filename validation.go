@@ -11,6 +11,12 @@ import (
 type SemanticError struct {
 	Rule rules.Rule // The business rule that was violated
 	Text string     // Human-readable description with actual values
+
+	// Location is an XPath-like path to the XML node that triggered the
+	// violation, including the source line number when available. It is set
+	// for syntax-binding rule findings (CII-SR/CII-DT, UBL-*), which refer to
+	// concrete XML nodes; semantic rule findings leave it empty.
+	Location string
 }
 
 // ValidationError is returned when invoice validation fails.
@@ -242,6 +248,18 @@ func (inv *Invoice) Validate() error {
 	shouldValidate := inv.SchemaType == SchemaTypeUnknown || inv.isEN16931Compliant()
 
 	if shouldValidate {
+		// Syntax-binding rules (CII-SR/CII-DT, UBL-SR/UBL-CR/UBL-DT) operate
+		// on the XML tree the parser stashed. They are evaluated once on the
+		// first Validate() call; afterwards the tree is released and the
+		// stored findings are merged on every call.
+		if inv.syntaxRoot != nil {
+			validateSyntaxRules(inv.syntaxRoot, inv.syntaxRules, inv)
+			inv.syntaxRoot = nil
+			inv.syntaxRules = nil
+		}
+		inv.violations = append(inv.violations, inv.syntaxViolations...)
+		inv.warnings = append(inv.warnings, inv.syntaxWarnings...)
+
 		inv.validateCore()
 		inv.validateCalculations()
 		inv.validateDecimals()

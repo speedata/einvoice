@@ -28,6 +28,8 @@ var (
 	outputFlag  = flag.String("output", "rules/en16931.go", "Output file path")
 	packageFlag = flag.String("package", "rules", "Target package name")
 	versionFlag = flag.String("version", "", "Source file version (e.g., v1.3.14.1)")
+	syntaxFlag  = flag.String("syntax-pattern", "", "Extract the named pattern as executable syntax rules (e.g., EN16931-CII-Syntax)")
+	varnameFlag = flag.String("varname", "SyntaxRules", "Variable name for the generated syntax rule table (with --syntax-pattern)")
 	helpFlag    = flag.Bool("help", false, "Show help message")
 )
 
@@ -94,6 +96,15 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading source: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Syntax mode: extract one pattern as executable syntax rules
+	if *syntaxFlag != "" {
+		if err := runSyntaxMode(schematronData); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	// Parse schematron XML
