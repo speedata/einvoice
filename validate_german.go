@@ -39,8 +39,8 @@ import (
 //   - BR-DE-31: Debited account identifier (BT-91) for direct debit
 //
 // BR-DE Rules Implemented (Warnings - "soll"/"should"):
-//   - BR-DE-19: IBAN validation for SEPA credit transfer (code 58)
-//   - BR-DE-20: IBAN validation for SEPA direct debit (code 59)
+//   - BR-DE-19: IBAN validation (ISO 13616, see iban.go) for SEPA credit transfer (code 58)
+//   - BR-DE-20: IBAN validation (ISO 13616, see iban.go) for SEPA direct debit (code 59)
 //   - BR-DE-26: Corrected invoice should reference preceding invoice
 //   - BR-DE-27: Seller contact telephone should contain at least 3 digits
 //   - BR-DE-28: Email address format validation
@@ -318,53 +318,4 @@ func isValidEmail(email string) bool {
 // isUppercaseLetter checks if a byte represents an uppercase ASCII letter (A-Z).
 func isUppercaseLetter(b byte) bool {
 	return b >= 'A' && b <= 'Z'
-}
-
-// isValidIBAN performs basic IBAN validation.
-// A valid IBAN:
-// - Has 15-34 alphanumeric characters
-// - Starts with a 2-letter country code
-// - Followed by 2 check digits
-// - Followed by the Basic Bank Account Number (BBAN)
-//
-// This is a simplified validation that checks format. Full validation
-// would include modulo-97 checksum verification per ISO 13616.
-func isValidIBAN(iban string) bool {
-	// Remove spaces and convert to uppercase
-	iban = strings.ReplaceAll(iban, " ", "")
-	iban = strings.ToUpper(iban)
-
-	// Length check: IBAN must be 15-34 characters (per SWIFT registry)
-	if len(iban) < 15 || len(iban) > 34 {
-		return false
-	}
-
-	// First two characters must be letters (country code)
-	if !isUppercaseLetter(iban[0]) || !isUppercaseLetter(iban[1]) {
-		return false
-	}
-
-	// Next two characters must be digits (check digits)
-	if !isDigit(iban[2]) || !isDigit(iban[3]) {
-		return false
-	}
-
-	// Remaining characters must be alphanumeric
-	for i := 4; i < len(iban); i++ {
-		if !isAlphanumeric(iban[i]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// isDigit checks if a byte represents a digit (0-9).
-func isDigit(b byte) bool {
-	return b >= '0' && b <= '9'
-}
-
-// isAlphanumeric checks if a byte represents an alphanumeric character (0-9, A-Z).
-func isAlphanumeric(b byte) bool {
-	return isDigit(b) || isUppercaseLetter(b)
 }
