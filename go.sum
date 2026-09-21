@@ -549,8 +549,8 @@ github.com/speedata/cxpath v0.0.13 h1:71uhkLmLjjUzHbnw5aSGhI9rykzbXqkKvSyRObbn5a
 github.com/speedata/cxpath v0.0.13/go.mod h1:JsEH6y55bPGW3ajbUJUSb5dXQdfHyxxlNIN+yuNM/0o=
 github.com/speedata/goxml v1.0.11 h1:k/qjnKEnR2SAg45fjaxT4+zW9heVXxieANUeny9Bw8M=
 github.com/speedata/goxml v1.0.11/go.mod h1:G++cv0h2rC8ltAhvQmANDgwMbKRd3MetXlF8PLob6dw=
-github.com/speedata/goxpath v1.0.19 h1:cP8fPPUKH9XHSKx+pTrXLt1/JUZw8b7M/ROpi/Y8V0I=
-github.com/speedata/goxpath v1.0.19/go.mod h1:pHarVNKeRc0jWFBPHo3JuxP3qxpwMKlHqScsJO0mLAo=
+github.com/speedata/goxpath v1.0.20 h1:dM+D1Ux+u1V3VZdkCs0t/WuZnGpxUi25iNHXVv/4ftA=
+github.com/speedata/goxpath v1.0.20/go.mod h1:pHarVNKeRc0jWFBPHo3JuxP3qxpwMKlHqScsJO0mLAo=
 github.com/speedata/pdfdisassembler v0.0.8 h1:df16S3mrduutsLhzbC3WpTMgPLUkNDyYO0ijzNd1qGw=
 github.com/speedata/pdfdisassembler v0.0.8/go.mod h1:ZTgz1LhZgxb/huCQlUKNTt0goWI9zMrpxqPWXylZgkk=
 github.com/spf13/afero v1.14.0 h1:9tH6MapGnn/j0eb0yIXiLjERO8RB6xIVZRDCX7PtqWA=
