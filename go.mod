@@ -10,7 +10,7 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	github.com/speedata/cxpath v0.0.13
 	github.com/speedata/goxml v1.0.11
-	github.com/speedata/goxpath v1.0.19
+	github.com/speedata/goxpath v1.0.20
 	github.com/speedata/pdfdisassembler v0.0.8
 	golang.org/x/term v0.46.0
 )
