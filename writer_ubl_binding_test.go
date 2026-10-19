@@ -107,8 +107,9 @@ func newUBLBindingTestInvoice(typeCode CodeDocument) *Invoice {
 	d := decimal.RequireFromString
 	inv := &Invoice{
 		SchemaType: UBL,
-		GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+		GuidelineSpecifiedDocumentContextParameter: SpecXRechnung30,
 		BPSpecifiedDocumentContextParameter:        "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+		CreditorReferenceID:                        "DE98ZZZ09999999999",
 		InvoiceNumber:                              "INV-185",
 		InvoiceTypeCode:                            typeCode,
 		InvoiceDate:                                time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
@@ -245,6 +246,13 @@ func TestWriteUBLBinding(t *testing.T) {
 			if got := elementText(t, doc, "cac:PayeeParty/cac:PartyName/cbc:Name"); got != "Payee Factoring GmbH" {
 				t.Errorf("payee PartyName = %q", got)
 			}
+			// BT-90: creditor identifier as SEPA party identifier of the payee
+			if got := elementText(t, doc, "cac:PayeeParty/cac:PartyIdentification/cbc:ID[@schemeID='SEPA']"); got != "DE98ZZZ09999999999" {
+				t.Errorf("payee SEPA identifier = %q", got)
+			}
+			if doc.Root().FindElement("cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification") != nil {
+				t.Error("seller must not have a party identifier if there is a payee")
+			}
 			if doc.Root().FindElement("cac:PayeeParty/cac:PartyLegalEntity") != nil {
 				t.Error("payee must not have a PartyLegalEntity")
 			}
@@ -304,6 +312,12 @@ func TestWriteUBLBinding(t *testing.T) {
 			}
 			if parsed.PayeeTradeParty == nil || parsed.PayeeTradeParty.Name != "Payee Factoring GmbH" {
 				t.Errorf("payee round trip: %+v", parsed.PayeeTradeParty)
+			}
+			if parsed.CreditorReferenceID != "DE98ZZZ09999999999" {
+				t.Errorf("creditor identifier round trip: %q", parsed.CreditorReferenceID)
+			}
+			if len(parsed.PayeeTradeParty.GlobalID) != 0 {
+				t.Errorf("payee global IDs round trip: %+v", parsed.PayeeTradeParty.GlobalID)
 			}
 			if parsed.ShipTo == nil {
 				t.Error("ShipTo round trip: nil")
@@ -372,6 +386,28 @@ func TestParseUBLLegacyPartyNames(t *testing.T) {
 	}
 	if parsed.Buyer.SpecifiedLegalOrganization != nil {
 		t.Errorf("buyer legal organization = %+v, want nil", parsed.Buyer.SpecifiedLegalOrganization)
+	}
+}
+
+// TestWriteUBLCreditorIDWithoutPayee checks that the creditor identifier
+// (BT-90) is a party identifier of the seller if there is no payee.
+func TestWriteUBLCreditorIDWithoutPayee(t *testing.T) {
+	inv := newUBLBindingTestInvoice(380)
+	inv.PayeeTradeParty = nil
+	inv.Seller.GlobalID = []GlobalID{{ID: "4000001123452", Scheme: "0088"}}
+	doc, parsed := writeAndParseUBL(t, inv)
+
+	if got := elementText(t, doc, "cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID[@schemeID='SEPA']"); got != "DE98ZZZ09999999999" {
+		t.Errorf("seller SEPA identifier = %q", got)
+	}
+	if parsed.CreditorReferenceID != "DE98ZZZ09999999999" {
+		t.Errorf("creditor identifier round trip: %q", parsed.CreditorReferenceID)
+	}
+	if !slices.Equal(parsed.Seller.GlobalID, inv.Seller.GlobalID) {
+		t.Errorf("seller global IDs round trip: %+v", parsed.Seller.GlobalID)
+	}
+	if err := parsed.Validate(); err != nil {
+		t.Errorf("Validate after round trip: %v", err)
 	}
 }
 

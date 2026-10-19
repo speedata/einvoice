@@ -222,24 +222,32 @@ func writeUBLHeader(inv *Invoice, root *etree.Element, prefix string) {
 
 // writeUBLParties writes all party elements (BG-4, BG-7, BG-10, BG-11, BG-13)
 func writeUBLParties(inv *Invoice, root *etree.Element, prefix string) {
+	// BT-90: Bank assigned creditor identifier. UBL has no element of its
+	// own, it is a party identifier of the payee or, without a payee, of the
+	// seller.
+	sellerCreditorID, payeeCreditorID := inv.CreditorReferenceID, ""
+	if inv.PayeeTradeParty != nil {
+		sellerCreditorID, payeeCreditorID = "", inv.CreditorReferenceID
+	}
+
 	// BG-4: Seller (AccountingSupplierParty)
 	supplierParty := root.CreateElement("cac:AccountingSupplierParty")
-	writeUBLParty(supplierParty.CreateElement("cac:Party"), &inv.Seller, true)
+	writeUBLParty(supplierParty.CreateElement("cac:Party"), &inv.Seller, true, sellerCreditorID)
 
 	// BG-7: Buyer (AccountingCustomerParty)
 	customerParty := root.CreateElement("cac:AccountingCustomerParty")
-	writeUBLParty(customerParty.CreateElement("cac:Party"), &inv.Buyer, true)
+	writeUBLParty(customerParty.CreateElement("cac:Party"), &inv.Buyer, true, "")
 
 	// BG-10: Payee (optional)
 	if inv.PayeeTradeParty != nil {
 		payeeParty := root.CreateElement("cac:PayeeParty")
-		writeUBLParty(payeeParty, inv.PayeeTradeParty, false)
+		writeUBLParty(payeeParty, inv.PayeeTradeParty, false, payeeCreditorID)
 	}
 
 	// BG-11: Seller tax representative (optional)
 	if inv.SellerTaxRepresentativeTradeParty != nil {
 		taxRepParty := root.CreateElement("cac:TaxRepresentativeParty")
-		writeUBLParty(taxRepParty, inv.SellerTaxRepresentativeTradeParty, false)
+		writeUBLParty(taxRepParty, inv.SellerTaxRepresentativeTradeParty, false, "")
 	}
 
 	// BG-13: Delivery information
@@ -324,8 +332,9 @@ func writeUBLAddress(parent *etree.Element, name string, address *PostalAddress)
 // isLegalParty is true for the seller and the buyer: their name (BT-27,
 // BT-44) is the legal registration name in PartyLegalEntity, and PartyName
 // holds the trading name (BT-28, BT-45). For all other parties the name is
-// written to PartyName.
-func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool) {
+// written to PartyName. A non-empty creditorID (BT-90) is written as an
+// additional party identifier with scheme SEPA.
+func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool, creditorID string) {
 	// Electronic address (BT-34, BT-49)
 	// Write element if either value or scheme is present
 	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
@@ -347,6 +356,12 @@ func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool) {
 		idElt := partyID.CreateElement("cbc:ID")
 		idElt.CreateAttr("schemeID", gid.Scheme)
 		idElt.SetText(gid.ID)
+	}
+
+	if creditorID != "" {
+		idElt := parent.CreateElement("cac:PartyIdentification").CreateElement("cbc:ID")
+		idElt.CreateAttr("schemeID", "SEPA")
+		idElt.SetText(creditorID)
 	}
 
 	// Party name (BT-28, BT-45 for seller/buyer; BT-59, BT-62, BT-70 otherwise)

@@ -3,6 +3,7 @@ package einvoice
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/speedata/cxpath"
@@ -264,6 +265,10 @@ func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 		inv.PayeeTradeParty = &payee
 	}
 
+	// BT-90: Bank assigned creditor identifier, a party identifier with
+	// scheme SEPA of the seller or the payee
+	inv.CreditorReferenceID = root.Eval("(cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID[upper-case(@schemeID) = 'SEPA'] | cac:PayeeParty/cac:PartyIdentification/cbc:ID[upper-case(@schemeID) = 'SEPA'])[1]").String()
+
 	// BG-11: Seller tax representative (optional)
 	if root.Eval("count(cac:TaxRepresentativeParty)").Int() > 0 {
 		taxRep := parseUBLParty(root.Eval("cac:TaxRepresentativeParty"), false)
@@ -345,6 +350,10 @@ func parseUBLParty(partyCtx *cxpath.Context, isLegalParty bool) Party {
 			idValue := id.Eval("cbc:ID").String()
 			idScheme := id.Eval("cbc:ID/@schemeID").String()
 
+			// BT-90 (bank assigned creditor identifier) is parsed in parseUBLParties
+			if strings.EqualFold(idScheme, "SEPA") {
+				continue
+			}
 			if idScheme != "" {
 				party.GlobalID = append(party.GlobalID, GlobalID{
 					ID:     idValue,
