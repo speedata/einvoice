@@ -388,15 +388,16 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		}
 
 		allowanceCharge := AllowanceCharge{
-			ChargeIndicator:                       allowanceCharge.Eval("string(ram:ChargeIndicator/udt:Indicator) = 'true'").Bool(),
-			BasisAmount:                           basisAmount,
-			ActualAmount:                          actualAmount,
-			CalculationPercent:                    calculationPercent,
-			ReasonCode:                            allowanceCharge.Eval("ram:ReasonCode").String(),
-			Reason:                                allowanceCharge.Eval("ram:Reason").String(),
-			CategoryTradeTaxType:                  allowanceCharge.Eval("ram:CategoryTradeTax/ram:TypeCode").String(),
-			CategoryTradeTaxCategoryCode:          allowanceCharge.Eval("ram:CategoryTradeTax/ram:CategoryCode").String(),
-			CategoryTradeTaxRateApplicablePercent: categoryTaxRate,
+			ChargeIndicator:                          allowanceCharge.Eval("string(ram:ChargeIndicator/udt:Indicator) = 'true'").Bool(),
+			BasisAmount:                              basisAmount,
+			ActualAmount:                             actualAmount,
+			CalculationPercent:                       calculationPercent,
+			ReasonCode:                               allowanceCharge.Eval("ram:ReasonCode").String(),
+			Reason:                                   allowanceCharge.Eval("ram:Reason").String(),
+			CategoryTradeTaxType:                     allowanceCharge.Eval("ram:CategoryTradeTax/ram:TypeCode").String(),
+			CategoryTradeTaxCategoryCode:             allowanceCharge.Eval("ram:CategoryTradeTax/ram:CategoryCode").String(),
+			CategoryTradeTaxRateApplicablePercent:    categoryTaxRate,
+			hasCategoryTradeTaxRateApplicablePercent: allowanceCharge.Eval("count(ram:CategoryTradeTax/ram:RateApplicablePercent)").Int() > 0,
 		}
 		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, allowanceCharge)
 	}
@@ -414,12 +415,13 @@ func parseCIIApplicableHeaderTradeSettlement(applicableHeaderTradeSettlement *cx
 		}
 
 		charge := AllowanceCharge{
-			ChargeIndicator:                       true, // Logistics charges are always charges, not allowances
-			ActualAmount:                          appliedAmount,
-			Reason:                                logisticsCharge.Eval("ram:Description").String(),
-			CategoryTradeTaxType:                  logisticsCharge.Eval("ram:AppliedTradeTax/ram:TypeCode").String(),
-			CategoryTradeTaxCategoryCode:          logisticsCharge.Eval("ram:AppliedTradeTax/ram:CategoryCode").String(),
-			CategoryTradeTaxRateApplicablePercent: categoryTaxRate,
+			ChargeIndicator:                          true, // Logistics charges are always charges, not allowances
+			ActualAmount:                             appliedAmount,
+			Reason:                                   logisticsCharge.Eval("ram:Description").String(),
+			CategoryTradeTaxType:                     logisticsCharge.Eval("ram:AppliedTradeTax/ram:TypeCode").String(),
+			CategoryTradeTaxCategoryCode:             logisticsCharge.Eval("ram:AppliedTradeTax/ram:CategoryCode").String(),
+			CategoryTradeTaxRateApplicablePercent:    categoryTaxRate,
+			hasCategoryTradeTaxRateApplicablePercent: logisticsCharge.Eval("count(ram:AppliedTradeTax/ram:RateApplicablePercent)").Int() > 0,
 		}
 		inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, charge)
 	}

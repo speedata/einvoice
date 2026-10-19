@@ -268,6 +268,11 @@ type AllowanceCharge struct {
 	CategoryTradeTaxType                  string          // BT-95, BT-102
 	CategoryTradeTaxCategoryCode          string          // BT-95, BT-102
 	CategoryTradeTaxRateApplicablePercent decimal.Decimal // BT-96, BT-103
+
+	// Private field for tracking XML element presence (BR-O-6, BR-O-7).
+	// Set during parsing to distinguish between a missing VAT rate and a
+	// VAT rate of 0.
+	hasCategoryTradeTaxRateApplicablePercent bool
 }
 
 // TradeTax is the VAT breakdown for each percentage.

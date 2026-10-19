@@ -410,15 +410,16 @@ func parseUBLAllowanceCharge(root *cxpath.Context, inv *Invoice, prefix string) 
 			}
 
 			allowanceCharge := AllowanceCharge{
-				ChargeIndicator:                       chargeIndicator,
-				BasisAmount:                           basisAmount,
-				ActualAmount:                          actualAmount,
-				CalculationPercent:                    calculationPercent,
-				ReasonCode:                            ac.Eval("cbc:AllowanceChargeReasonCode").String(),
-				Reason:                                ac.Eval("cbc:AllowanceChargeReason").String(),
-				CategoryTradeTaxType:                  ac.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String(),
-				CategoryTradeTaxCategoryCode:          ac.Eval("cac:TaxCategory/cbc:ID").String(),
-				CategoryTradeTaxRateApplicablePercent: categoryTaxRate,
+				ChargeIndicator:                          chargeIndicator,
+				BasisAmount:                              basisAmount,
+				ActualAmount:                             actualAmount,
+				CalculationPercent:                       calculationPercent,
+				ReasonCode:                               ac.Eval("cbc:AllowanceChargeReasonCode").String(),
+				Reason:                                   ac.Eval("cbc:AllowanceChargeReason").String(),
+				CategoryTradeTaxType:                     ac.Eval("cac:TaxCategory/cac:TaxScheme/cbc:ID").String(),
+				CategoryTradeTaxCategoryCode:             ac.Eval("cac:TaxCategory/cbc:ID").String(),
+				CategoryTradeTaxRateApplicablePercent:    categoryTaxRate,
+				hasCategoryTradeTaxRateApplicablePercent: ac.Eval("count(cac:TaxCategory/cbc:Percent)").Int() > 0,
 			}
 
 			inv.SpecifiedTradeAllowanceCharge = append(inv.SpecifiedTradeAllowanceCharge, allowanceCharge)
