@@ -1,8 +1,11 @@
 package einvoice
 
 import (
+	"bytes"
 	"testing"
+	"time"
 
+	"github.com/beevik/etree"
 	"github.com/shopspring/decimal"
 )
 
@@ -705,6 +708,145 @@ func TestBRO_ValidNotSubjectToVAT(t *testing.T) {
 		for _, rule := range brORules {
 			if v.Rule.Code == rule {
 				t.Errorf("Should not have %s violation for valid Not subject to VAT invoice: %v", rule, v)
+			}
+		}
+	}
+}
+
+// TestBRO6_BRO7_ZeroVATRate_parsed tests BR-O-06 and BR-O-07: allowances and
+// charges with category O must NOT contain a VAT rate, even if it is 0
+func TestBRO6_BRO7_ZeroVATRate_parsed(t *testing.T) {
+	t.Parallel()
+
+	inv := Invoice{
+		InvoiceLines: []InvoiceLine{
+			{TaxCategoryCode: "O", Total: decimal.NewFromInt(100)},
+		},
+		SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+			{
+				ChargeIndicator:                          false,
+				CategoryTradeTaxCategoryCode:             "O",
+				ActualAmount:                             decimal.NewFromInt(10),
+				hasCategoryTradeTaxRateApplicablePercent: true,
+			},
+			{
+				ChargeIndicator:                          true,
+				CategoryTradeTaxCategoryCode:             "O",
+				ActualAmount:                             decimal.NewFromInt(5),
+				hasCategoryTradeTaxRateApplicablePercent: true,
+			},
+		},
+		TradeTaxes: []TradeTax{
+			{
+				CategoryCode:     "O",
+				BasisAmount:      decimal.NewFromInt(95),
+				CalculatedAmount: decimal.Zero,
+				ExemptionReason:  "Not subject to VAT",
+			},
+		},
+	}
+
+	_ = inv.Validate()
+
+	for _, code := range []string{"BR-O-06", "BR-O-07"} {
+		found := false
+		for _, v := range inv.violations {
+			if v.Rule.Code == code {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected %s violation for allowance/charge with VAT rate 0 in Not subject to VAT", code)
+		}
+	}
+}
+
+// TestBRO6_BRO7_ParsedDocuments tests that the CII and the UBL parser record
+// whether a document level allowance/charge with category O has a VAT rate.
+func TestBRO6_BRO7_ParsedDocuments(t *testing.T) {
+	t.Parallel()
+
+	newInvoice := func(schema CodeSchemaType) *Invoice {
+		inv := &Invoice{
+			SchemaType: schema,
+			GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+			InvoiceNumber:       "O-1",
+			InvoiceTypeCode:     380,
+			InvoiceDate:         time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+			InvoiceCurrencyCode: "EUR",
+			Seller:              Party{Name: "Seller", PostalAddress: &PostalAddress{CountryID: "DE"}},
+			Buyer:               Party{Name: "Buyer", PostalAddress: &PostalAddress{CountryID: "DE"}},
+			InvoiceLines: []InvoiceLine{{
+				LineID: "1", ItemName: "Insurance", BilledQuantity: decimal.NewFromInt(1), BilledQuantityUnit: "C62",
+				NetPrice: decimal.NewFromInt(100), Total: decimal.NewFromInt(100), TaxCategoryCode: "O", TaxTypeCode: "VAT",
+			}},
+			SpecifiedTradeAllowanceCharge: []AllowanceCharge{
+				{ChargeIndicator: false, ActualAmount: decimal.NewFromInt(10), Reason: "Discount", CategoryTradeTaxType: "VAT", CategoryTradeTaxCategoryCode: "O"},
+				{ChargeIndicator: true, ActualAmount: decimal.NewFromInt(5), Reason: "Fee", CategoryTradeTaxType: "VAT", CategoryTradeTaxCategoryCode: "O"},
+			},
+		}
+		inv.UpdateApplicableTradeTax(map[string]string{"O": "Not subject to VAT"})
+		inv.UpdateTotals()
+		return inv
+	}
+
+	for _, tc := range []struct {
+		name     string
+		schema   CodeSchemaType
+		taxPath  string // document level allowance/charge tax category
+		rateTag  string
+		afterTag string // the VAT rate follows this element
+	}{
+		{"CII", CII, "//ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax", "ram:RateApplicablePercent", "ram:CategoryCode"},
+		{"UBL", UBL, "/Invoice/cac:AllowanceCharge/cac:TaxCategory", "cbc:Percent", "cbc:ID"},
+	} {
+		for _, withRate := range []bool{true, false} {
+			var buf bytes.Buffer
+			if err := newInvoice(tc.schema).Write(&buf); err != nil {
+				t.Fatalf("%s: Write: %v", tc.name, err)
+			}
+			doc := etree.NewDocument()
+			if err := doc.ReadFromBytes(buf.Bytes()); err != nil {
+				t.Fatal(err)
+			}
+			taxCategories := doc.FindElements(tc.taxPath)
+			if len(taxCategories) != 2 {
+				t.Fatalf("%s: found %d tax categories, want 2", tc.name, len(taxCategories))
+			}
+			// Set the VAT rate to 0 or remove it, independent of what the writer produced
+			for _, taxCat := range taxCategories {
+				if rate := taxCat.SelectElement(tc.rateTag); rate != nil {
+					taxCat.RemoveChild(rate)
+				}
+				if withRate {
+					rate := etree.NewElement(tc.rateTag)
+					rate.SetText("0")
+					taxCat.InsertChildAt(taxCat.SelectElement(tc.afterTag).Index()+1, rate)
+				}
+			}
+			data, err := doc.WriteToBytes()
+			if err != nil {
+				t.Fatal(err)
+			}
+			inv, err := ParseReader(bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("%s: ParseReader: %v", tc.name, err)
+			}
+
+			_ = inv.Validate()
+
+			for _, code := range []string{"BR-O-06", "BR-O-07"} {
+				found := false
+				for _, v := range inv.violations {
+					if v.Rule.Code == code {
+						found = true
+						break
+					}
+				}
+				if found != withRate {
+					t.Errorf("%s with VAT rate %v: %s violation reported = %v", tc.name, withRate, code, found)
+				}
 			}
 		}
 	}
