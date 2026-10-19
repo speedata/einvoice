@@ -249,11 +249,74 @@ func writeUBLParties(inv *Invoice, root *etree.Element, prefix string) {
 		// BT-72: Actual delivery date
 		addTimeUBL(delivery, "cbc:ActualDeliveryDate", inv.OccurrenceDateTime)
 
-		// Delivery location/party
 		if inv.ShipTo != nil {
-			deliveryParty := delivery.CreateElement("cac:DeliveryParty")
-			writeUBLParty(deliveryParty, inv.ShipTo, false)
+			writeUBLDeliveryLocation(delivery, inv.ShipTo)
+
+			// BT-70: Deliver to party name
+			if inv.ShipTo.Name != "" {
+				deliveryParty := delivery.CreateElement("cac:DeliveryParty")
+				deliveryParty.CreateElement("cac:PartyName").CreateElement("cbc:Name").SetText(inv.ShipTo.Name)
+			}
 		}
+	}
+}
+
+// writeUBLDeliveryLocation writes the deliver to location identifier (BT-71)
+// and the deliver to address (BG-15). UBL allows a single location
+// identifier, so a global identifier is preferred over a local one.
+func writeUBLDeliveryLocation(delivery *etree.Element, shipTo *Party) {
+	var id, scheme string
+	if len(shipTo.GlobalID) > 0 {
+		id, scheme = shipTo.GlobalID[0].ID, shipTo.GlobalID[0].Scheme
+	} else if len(shipTo.ID) > 0 {
+		id = shipTo.ID[0]
+	}
+	if id == "" && shipTo.PostalAddress == nil {
+		return
+	}
+
+	location := delivery.CreateElement("cac:DeliveryLocation")
+	if id != "" {
+		idElt := location.CreateElement("cbc:ID")
+		if scheme != "" {
+			idElt.CreateAttr("schemeID", scheme)
+		}
+		idElt.SetText(id)
+	}
+	writeUBLAddress(location, "cac:Address", shipTo.PostalAddress)
+}
+
+// writeUBLAddress writes a postal address (BG-5, BG-8, BG-12, BG-15) as a
+// child element of parent with the given name. Nothing is written for a nil
+// address.
+func writeUBLAddress(parent *etree.Element, name string, address *PostalAddress) {
+	if address == nil {
+		return
+	}
+	addr := parent.CreateElement(name)
+
+	if address.Line1 != "" {
+		addr.CreateElement("cbc:StreetName").SetText(address.Line1)
+	}
+	if address.Line2 != "" {
+		addr.CreateElement("cbc:AdditionalStreetName").SetText(address.Line2)
+	}
+	if address.City != "" {
+		addr.CreateElement("cbc:CityName").SetText(address.City)
+	}
+	if address.PostcodeCode != "" {
+		addr.CreateElement("cbc:PostalZone").SetText(address.PostcodeCode)
+	}
+	if address.CountrySubDivisionName != "" {
+		addr.CreateElement("cbc:CountrySubentity").SetText(address.CountrySubDivisionName)
+	}
+	if address.Line3 != "" {
+		addrLine := addr.CreateElement("cac:AddressLine")
+		addrLine.CreateElement("cbc:Line").SetText(address.Line3)
+	}
+	if address.CountryID != "" {
+		country := addr.CreateElement("cac:Country")
+		country.CreateElement("cbc:IdentificationCode").SetText(address.CountryID)
 	}
 }
 
@@ -299,33 +362,7 @@ func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool) {
 	}
 
 	// Postal address
-	if party.PostalAddress != nil {
-		addr := parent.CreateElement("cac:PostalAddress")
-
-		if party.PostalAddress.Line1 != "" {
-			addr.CreateElement("cbc:StreetName").SetText(party.PostalAddress.Line1)
-		}
-		if party.PostalAddress.Line2 != "" {
-			addr.CreateElement("cbc:AdditionalStreetName").SetText(party.PostalAddress.Line2)
-		}
-		if party.PostalAddress.City != "" {
-			addr.CreateElement("cbc:CityName").SetText(party.PostalAddress.City)
-		}
-		if party.PostalAddress.PostcodeCode != "" {
-			addr.CreateElement("cbc:PostalZone").SetText(party.PostalAddress.PostcodeCode)
-		}
-		if party.PostalAddress.CountrySubDivisionName != "" {
-			addr.CreateElement("cbc:CountrySubentity").SetText(party.PostalAddress.CountrySubDivisionName)
-		}
-		if party.PostalAddress.Line3 != "" {
-			addrLine := addr.CreateElement("cac:AddressLine")
-			addrLine.CreateElement("cbc:Line").SetText(party.PostalAddress.Line3)
-		}
-		if party.PostalAddress.CountryID != "" {
-			country := addr.CreateElement("cac:Country")
-			country.CreateElement("cbc:IdentificationCode").SetText(party.PostalAddress.CountryID)
-		}
-	}
+	writeUBLAddress(parent, "cac:PostalAddress", party.PostalAddress)
 
 	// Tax registration (before legal organization per standard UBL order)
 	if party.VATaxRegistration != "" {
