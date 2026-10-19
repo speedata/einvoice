@@ -229,6 +229,10 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 				Name:             doc.Eval("cbc:DocumentDescription").String(),
 				URIID:            doc.Eval("cac:Attachment/cac:ExternalReference/cbc:URI").String(),
 			}
+			// BT-18-1: Scheme of the invoiced object identifier
+			if addDoc.TypeCode == "130" {
+				addDoc.ReferenceTypeCode = doc.Eval("cbc:ID/@schemeID").String()
+			}
 
 			// Handle embedded binary object
 			binaryData := doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject").String()
@@ -246,6 +250,15 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 
 			inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, addDoc)
 		}
+	}
+
+	// BT-17: Tender or lot reference, stored like in CII as a referenced
+	// document with type code 50
+	if tenderRef := root.Eval("cac:OriginatorDocumentReference/cbc:ID").String(); tenderRef != "" {
+		inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument, Document{
+			IssuerAssignedID: tenderRef,
+			TypeCode:         "50",
+		})
 	}
 
 	return nil

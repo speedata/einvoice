@@ -18,7 +18,8 @@ var (
 		"cbc:InvoiceTypeCode", "cbc:Note", "cbc:DocumentCurrencyCode", "cbc:TaxCurrencyCode",
 		"cbc:AccountingCost", "cbc:BuyerReference", "cac:InvoicePeriod", "cac:OrderReference",
 		"cac:BillingReference", "cac:DespatchDocumentReference", "cac:ReceiptDocumentReference",
-		"cac:ContractDocumentReference", "cac:AdditionalDocumentReference", "cac:ProjectReference",
+		"cac:OriginatorDocumentReference", "cac:ContractDocumentReference",
+		"cac:AdditionalDocumentReference", "cac:ProjectReference",
 		"cac:AccountingSupplierParty", "cac:AccountingCustomerParty", "cac:PayeeParty",
 		"cac:TaxRepresentativeParty", "cac:Delivery", "cac:PaymentMeans", "cac:PaymentTerms",
 		"cac:AllowanceCharge", "cac:TaxTotal", "cac:LegalMonetaryTotal", "cac:InvoiceLine",
@@ -29,7 +30,7 @@ var (
 		"cbc:AccountingCost", "cbc:BuyerReference", "cac:InvoicePeriod", "cac:OrderReference",
 		"cac:BillingReference", "cac:DespatchDocumentReference", "cac:ReceiptDocumentReference",
 		"cac:ContractDocumentReference", "cac:AdditionalDocumentReference",
-		"cac:AccountingSupplierParty", "cac:AccountingCustomerParty", "cac:PayeeParty",
+		"cac:OriginatorDocumentReference", "cac:AccountingSupplierParty", "cac:AccountingCustomerParty", "cac:PayeeParty",
 		"cac:TaxRepresentativeParty", "cac:Delivery", "cac:PaymentMeans", "cac:PaymentTerms",
 		"cac:AllowanceCharge", "cac:TaxTotal", "cac:LegalMonetaryTotal", "cac:CreditNoteLine",
 	}
@@ -38,6 +39,10 @@ var (
 			"cbc:EndpointID", "cac:PartyIdentification", "cac:PartyName", "cac:PostalAddress",
 			"cac:PartyTaxScheme", "cac:PartyLegalEntity", "cac:Contact",
 		},
+		// Elements the EN 16931 UBL binding allows for payee and tax representative
+		"cac:PayeeParty":             {"cac:PartyIdentification", "cac:PartyName", "cac:PartyLegalEntity"},
+		"cac:TaxRepresentativeParty": {"cac:PartyName", "cac:PostalAddress", "cac:PartyTaxScheme"},
+		"cac:Price":                  {"cbc:PriceAmount", "cbc:BaseQuantity", "cac:AllowanceCharge"},
 		"cac:PostalAddress": {
 			"cbc:StreetName", "cbc:AdditionalStreetName", "cbc:CityName", "cbc:PostalZone",
 			"cbc:CountrySubentity", "cac:AddressLine", "cac:Country",
@@ -408,6 +413,123 @@ func TestWriteUBLCreditorIDWithoutPayee(t *testing.T) {
 	}
 	if err := parsed.Validate(); err != nil {
 		t.Errorf("Validate after round trip: %v", err)
+	}
+}
+
+// TestWriteUBLCardinality checks that data the UBL binding allows only once
+// or not at all (as in the CII Extended profile) is reduced accordingly
+// (issue #189).
+func TestWriteUBLCardinality(t *testing.T) {
+	d := decimal.RequireFromString
+	for _, tc := range []struct {
+		name     string
+		typeCode CodeDocument
+	}{
+		{"Invoice", 380},
+		{"CreditNote", 381},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			inv := newUBLBindingTestInvoice(tc.typeCode)
+			inv.Seller.DefinedTradeContact = append(inv.Seller.DefinedTradeContact, DefinedTradeContact{PersonName: "Second"})
+			inv.Buyer.ID = []string{"B-LOCAL-1", "B-LOCAL-2"}
+			inv.Buyer.GlobalID = []GlobalID{{ID: "4000001234567", Scheme: "0088"}}
+			inv.PayeeTradeParty = &Party{
+				Name:                       "Payee Factoring GmbH",
+				ID:                         []string{"P-1", "P-2"},
+				PostalAddress:              &PostalAddress{City: "Köln", CountryID: "DE"},
+				VATaxRegistration:          "DE999999999",
+				URIUniversalCommunication:  "payee@example.com",
+				SpecifiedLegalOrganization: &SpecifiedLegalOrganization{ID: "HRB 999"},
+				DefinedTradeContact:        []DefinedTradeContact{{PersonName: "Payee Contact"}},
+			}
+			inv.SellerTaxRepresentativeTradeParty = &Party{
+				Name:                       "Tax Rep SARL",
+				ID:                         []string{"TR-1"},
+				PostalAddress:              &PostalAddress{City: "Paris", CountryID: "FR"},
+				VATaxRegistration:          "FR12345678901",
+				SpecifiedLegalOrganization: &SpecifiedLegalOrganization{ID: "RCS 1"},
+				DefinedTradeContact:        []DefinedTradeContact{{PersonName: "Tax Rep Contact"}},
+			}
+			inv.SpecifiedTradePaymentTerms = append(inv.SpecifiedTradePaymentTerms, SpecifiedTradePaymentTerms{Description: "2 % Skonto bei Zahlung innerhalb von 7 Tagen"})
+			inv.AdditionalReferencedDocument = append(inv.AdditionalReferencedDocument,
+				Document{IssuerAssignedID: "DOC-916", TypeCode: "916", Name: "Delivery note"},
+				Document{IssuerAssignedID: "OBJ-1", TypeCode: "130", ReferenceTypeCode: "AAB"},
+				Document{IssuerAssignedID: "OBJ-2", TypeCode: "130", ReferenceTypeCode: "AAB"},
+				Document{IssuerAssignedID: "TENDER-1", TypeCode: "50"},
+			)
+			// Gross price 14.00, allowance 2.00, charge 0.49: net price 12.49
+			inv.InvoiceLines[0].GrossPrice = d("14")
+			inv.InvoiceLines[0].AppliedTradeAllowanceCharge = []AllowanceCharge{
+				{ActualAmount: d("2"), Reason: "Rabatt", CalculationPercent: d("10")},
+				{ChargeIndicator: true, ActualAmount: d("0.49"), Reason: "Zuschlag"},
+			}
+			doc, parsed := writeAndParseUBL(t, inv)
+			checkUBLOrder(t, doc)
+			root := doc.Root()
+
+			count := func(path string, want int) {
+				t.Helper()
+				if got := len(root.FindElements(path)); got != want {
+					t.Errorf("%s: found %d, want %d", path, got, want)
+				}
+			}
+			count("cac:AccountingSupplierParty/cac:Party/cac:Contact", 1)               // BG-6
+			count("cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification", 1)   // UBL-SR-16
+			count("cac:PayeeParty/cac:PartyIdentification/cbc:ID[@schemeID='SEPA']", 1) // BT-90
+			count("cac:PayeeParty/cac:PartyIdentification", 2)                          // BT-60 + BT-90
+			count("cac:PayeeParty/cac:PartyLegalEntity/cbc:RegistrationName", 0)        // UBL-CR-275
+			count("cac:PaymentTerms/cbc:Note", 1)                                       // UBL-SR-05
+			count("cac:AdditionalDocumentReference[cbc:DocumentTypeCode='130']", 1)     // UBL-SR-04
+			count("cac:AdditionalDocumentReference[cbc:DocumentTypeCode='916']", 0)     // UBL-SR-43
+			count("cac:OriginatorDocumentReference", 1)                                 // BT-17
+			count("//cac:Price/cac:AllowanceCharge", 1)                                 // UBL-SR-37
+			if got := elementText(t, doc, "cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID[@schemeID='0088']"); got != "4000001234567" {
+				t.Errorf("buyer identifier = %q, want the global identifier", got)
+			}
+			if got := elementText(t, doc, "cac:AdditionalDocumentReference/cbc:ID[@schemeID='AAB']"); got != "OBJ-1" {
+				t.Errorf("invoiced object identifier = %q", got)
+			}
+			if got := elementText(t, doc, "cac:PaymentTerms/cbc:Note"); got != "Zahlbar innerhalb von 14 Tagen\n2 % Skonto bei Zahlung innerhalb von 7 Tagen" {
+				t.Errorf("payment terms = %q", got)
+			}
+			priceAC := root.FindElement("//cac:Price/cac:AllowanceCharge")
+			if got := priceAC.FindElement("cbc:Amount").Text(); got != "1.51" {
+				t.Errorf("price discount = %s, want 1.51", got)
+			}
+			if got := priceAC.FindElement("cbc:BaseAmount").Text(); got != "14" {
+				t.Errorf("price base amount = %s, want 14", got)
+			}
+			if priceAC.FindElement("cbc:AllowanceChargeReason") != nil || priceAC.FindElement("cbc:MultiplierFactorNumeric") != nil {
+				t.Error("combined price allowance must not have a reason or multiplier")
+			}
+
+			// Round trip of the reduced data
+			var tender, object *Document
+			for i := range parsed.AdditionalReferencedDocument {
+				switch parsed.AdditionalReferencedDocument[i].TypeCode {
+				case "50":
+					tender = &parsed.AdditionalReferencedDocument[i]
+				case "130":
+					object = &parsed.AdditionalReferencedDocument[i]
+				}
+			}
+			if tender == nil || tender.IssuerAssignedID != "TENDER-1" {
+				t.Errorf("tender reference round trip: %+v", tender)
+			}
+			if object == nil || object.IssuerAssignedID != "OBJ-1" || object.ReferenceTypeCode != "AAB" {
+				t.Errorf("invoiced object round trip: %+v", object)
+			}
+			if !parsed.InvoiceLines[0].GrossPrice.Equal(d("14")) {
+				t.Errorf("gross price round trip: %s", parsed.InvoiceLines[0].GrossPrice)
+			}
+
+			if err := parsed.Validate(); err != nil {
+				t.Errorf("Validate after round trip: %v", err)
+			}
+			for _, w := range parsed.Warnings() {
+				t.Errorf("warning after round trip: %s %s", w.Rule.Code, w.Text)
+			}
+		})
 	}
 }
 
