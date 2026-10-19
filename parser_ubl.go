@@ -214,6 +214,14 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 	if docCount > 0 {
 		inv.AdditionalReferencedDocument = make([]Document, 0, docCount)
 		for doc := range root.Each("cac:AdditionalDocumentReference") {
+			// BT-11: In a CreditNote the project reference is an
+			// AdditionalDocumentReference with DocumentTypeCode 50.
+			if prefix == "cn:" && doc.Eval("cbc:DocumentTypeCode").String() == "50" {
+				if inv.SpecifiedProcuringProjectID == "" {
+					inv.SpecifiedProcuringProjectID = doc.Eval("cbc:ID").String()
+				}
+				continue
+			}
 			addDoc := Document{
 				IssuerAssignedID: doc.Eval("cbc:ID").String(),
 				TypeCode:         doc.Eval("cbc:DocumentTypeCode").String(),
@@ -245,20 +253,20 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 // parseUBLParties parses all party elements (BG-4, BG-7, BG-10, BG-11, BG-13).
 func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 	// BG-4: Seller (AccountingSupplierParty)
-	inv.Seller = parseUBLParty(root.Eval("cac:AccountingSupplierParty/cac:Party"))
+	inv.Seller = parseUBLParty(root.Eval("cac:AccountingSupplierParty/cac:Party"), true)
 
 	// BG-7: Buyer (AccountingCustomerParty)
-	inv.Buyer = parseUBLParty(root.Eval("cac:AccountingCustomerParty/cac:Party"))
+	inv.Buyer = parseUBLParty(root.Eval("cac:AccountingCustomerParty/cac:Party"), true)
 
 	// BG-10: Payee (optional)
 	if root.Eval("count(cac:PayeeParty)").Int() > 0 {
-		payee := parseUBLParty(root.Eval("cac:PayeeParty"))
+		payee := parseUBLParty(root.Eval("cac:PayeeParty"), false)
 		inv.PayeeTradeParty = &payee
 	}
 
 	// BG-11: Seller tax representative (optional)
 	if root.Eval("count(cac:TaxRepresentativeParty)").Int() > 0 {
-		taxRep := parseUBLParty(root.Eval("cac:TaxRepresentativeParty"))
+		taxRep := parseUBLParty(root.Eval("cac:TaxRepresentativeParty"), false)
 		inv.SellerTaxRepresentativeTradeParty = &taxRep
 	}
 
@@ -266,7 +274,7 @@ func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 	if deliveryCtx := root.Eval("cac:Delivery"); deliveryCtx.Eval("count()").Int() > 0 {
 		// Delivery party
 		if deliveryPartyCtx := deliveryCtx.Eval("cac:DeliveryParty"); deliveryPartyCtx.Eval("count()").Int() > 0 {
-			shipTo := parseUBLParty(deliveryPartyCtx)
+			shipTo := parseUBLParty(deliveryPartyCtx, false)
 			inv.ShipTo = &shipTo
 		} else if locationCtx := deliveryCtx.Eval("cac:DeliveryLocation"); locationCtx.Eval("count()").Int() > 0 {
 			// If no DeliveryParty, create one from DeliveryLocation address
@@ -291,8 +299,10 @@ func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 }
 
 // parseUBLParty parses a single party (reusable for Seller, Buyer, Payee, etc.).
-// Takes a context already positioned at the party element.
-func parseUBLParty(partyCtx *cxpath.Context) Party {
+// Takes a context already positioned at the party element. isLegalParty is
+// true for the seller and the buyer, whose name (BT-27, BT-44) is the legal
+// registration name and whose PartyName is the trading name (BT-28, BT-45).
+func parseUBLParty(partyCtx *cxpath.Context, isLegalParty bool) Party {
 	party := Party{}
 
 	// Electronic address (BT-34, BT-49, BT-98)
@@ -319,11 +329,23 @@ func parseUBLParty(partyCtx *cxpath.Context) Party {
 		}
 	}
 
-	// Party name (BT-27, BT-44, BT-59, BT-70)
-	party.Name = partyCtx.Eval("cac:PartyName/cbc:Name").String()
-	if party.Name == "" {
-		// Fallback to PartyLegalEntity/RegistrationName
-		party.Name = partyCtx.Eval("cac:PartyLegalEntity/cbc:RegistrationName").String()
+	// Party name (BT-27, BT-44, BT-59, BT-62, BT-70) and trading name (BT-28, BT-45)
+	partyName := partyCtx.Eval("cac:PartyName/cbc:Name").String()
+	registrationName := partyCtx.Eval("cac:PartyLegalEntity/cbc:RegistrationName").String()
+	tradingName := ""
+	if isLegalParty {
+		party.Name = registrationName
+		tradingName = partyName
+		if party.Name == "" {
+			// Fallback for documents without a registration name
+			party.Name = partyName
+			tradingName = ""
+		}
+	} else {
+		party.Name = partyName
+		if party.Name == "" {
+			party.Name = registrationName
+		}
 	}
 
 	// Postal address (BG-5, BG-8, BG-12, BG-15)
@@ -340,14 +362,14 @@ func parseUBLParty(partyCtx *cxpath.Context) Party {
 		party.PostalAddress = postalAddr
 	}
 
-	// Legal organization (BT-30, BT-47, BT-61)
-	if partyCtx.Eval("count(cac:PartyLegalEntity)").Int() > 0 {
-		legalOrg := &SpecifiedLegalOrganization{
-			ID:                  partyCtx.Eval("cac:PartyLegalEntity/cbc:CompanyID").String(),
+	// Legal organization (BT-30, BT-47, BT-61) and trading name (BT-28, BT-45)
+	legalID := partyCtx.Eval("cac:PartyLegalEntity/cbc:CompanyID").String()
+	if legalID != "" || tradingName != "" {
+		party.SpecifiedLegalOrganization = &SpecifiedLegalOrganization{
+			ID:                  legalID,
 			Scheme:              partyCtx.Eval("cac:PartyLegalEntity/cbc:CompanyID/@schemeID").String(),
-			TradingBusinessName: partyCtx.Eval("cac:PartyLegalEntity/cbc:RegistrationName").String(),
+			TradingBusinessName: tradingName,
 		}
-		party.SpecifiedLegalOrganization = legalOrg
 	}
 
 	// Tax registration (BT-31, BT-32, BT-48, BT-63)
@@ -571,7 +593,11 @@ func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) err
 		for pm := range root.Each("cac:PaymentMeans") {
 			paymentMeans := PaymentMeans{
 				TypeCode:    pm.Eval("cbc:PaymentMeansCode").Int(),
-				Information: pm.Eval("cbc:InstructionNote").String(),
+				Information: pm.Eval("cbc:PaymentMeansCode/@name").String(),
+			}
+			// BT-82: Older documents written by this library used InstructionNote
+			if paymentMeans.Information == "" {
+				paymentMeans.Information = pm.Eval("cbc:InstructionNote").String()
 			}
 
 			// BT-83: Remittance information
@@ -612,12 +638,21 @@ func parseUBLPaymentMeans(root *cxpath.Context, inv *Invoice, prefix string) err
 
 // parseUBLPaymentTerms parses payment terms (BT-20, BT-9, BT-89).
 func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) error {
-	// BT-9: Payment due date at invoice level
-	// In UBL, DueDate is at the root Invoice/CreditNote level, not inside PaymentTerms
+	// BT-9: Payment due date at document level. An Invoice has cbc:DueDate,
+	// a CreditNote has cac:PaymentMeans/cbc:PaymentDueDate.
 	rootDueDate, err := parseTimeUBL(root, "cbc:DueDate")
 	if err != nil {
 		return err
 	}
+	if rootDueDate.IsZero() {
+		rootDueDate, err = parseTimeUBL(root, "(cac:PaymentMeans/cbc:PaymentDueDate)[1]")
+		if err != nil {
+			return err
+		}
+	}
+
+	// BT-89: Mandate reference identifier
+	mandateID := root.Eval("(cac:PaymentMeans/cac:PaymentMandate/cbc:ID[normalize-space(.) != ''])[1]").String()
 
 	ptCount := root.Eval("count(cac:PaymentTerms)").Int()
 	if ptCount > 0 {
@@ -637,16 +672,20 @@ func parseUBLPaymentTerms(root *cxpath.Context, inv *Invoice, prefix string) err
 				paymentTerm.DueDate = rootDueDate
 			}
 
-			// BT-89: Direct debit mandate identifier
+			// BT-89: Direct debit mandate identifier (older documents
+			// written by this library used PaymentTerms/PaymentMeansID)
 			paymentTerm.DirectDebitMandateID = pt.Eval("cbc:PaymentMeansID").String()
+			if len(inv.SpecifiedTradePaymentTerms) == 0 && mandateID != "" {
+				paymentTerm.DirectDebitMandateID = mandateID
+			}
 
 			inv.SpecifiedTradePaymentTerms = append(inv.SpecifiedTradePaymentTerms, paymentTerm)
 		}
-	} else if !rootDueDate.IsZero() {
-		// If there are no PaymentTerms elements but there's a root-level DueDate,
-		// create a single PaymentTerms entry with just the DueDate
+	} else if !rootDueDate.IsZero() || mandateID != "" {
+		// If there are no PaymentTerms elements but there's a document-level
+		// due date or mandate, create a single PaymentTerms entry for them
 		inv.SpecifiedTradePaymentTerms = []SpecifiedTradePaymentTerms{
-			{DueDate: rootDueDate},
+			{DueDate: rootDueDate, DirectDebitMandateID: mandateID},
 		}
 	}
 

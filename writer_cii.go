@@ -626,7 +626,10 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 		ctt := stacElt.CreateElement("ram:CategoryTradeTax")
 		ctt.CreateElement("ram:TypeCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxType)
 		ctt.CreateElement("ram:CategoryCode").SetText(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode)
-		ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent))
+		// BR-O-6, BR-O-7: no VAT rate for "Not subject to VAT"
+		if inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxCategoryCode != "O" {
+			ctt.CreateElement("ram:RateApplicablePercent").SetText(formatPercent(inv.SpecifiedTradeAllowanceCharge[i].CategoryTradeTaxRateApplicablePercent))
+		}
 	}
 
 	// BT-20
