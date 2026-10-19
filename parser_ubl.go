@@ -233,6 +233,11 @@ func parseUBLHeader(root *cxpath.Context, inv *Invoice, prefix string) error {
 			if addDoc.TypeCode == "130" {
 				addDoc.ReferenceTypeCode = doc.Eval("cbc:ID/@schemeID").String()
 			}
+			// UBL has no type code for supporting documents (BG-24); use the
+			// one of the CII binding
+			if addDoc.TypeCode == "" {
+				addDoc.TypeCode = "916"
+			}
 
 			// Handle embedded binary object
 			binaryData := doc.Eval("cac:Attachment/cbc:EmbeddedDocumentBinaryObject").String()

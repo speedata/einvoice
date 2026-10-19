@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/beevik/etree"
 	"github.com/shopspring/decimal"
 )
 
@@ -1088,5 +1089,93 @@ func BenchmarkWriteCII(b *testing.B) {
 			b.Fatal(err)
 		}
 		b.SetBytes(int64(buf.Len()))
+	}
+}
+
+// TestCII_SupportingDocumentLocation tests that the external document
+// location (BT-124) is parsed from and written to CII (issue #195).
+func TestCII_SupportingDocumentLocation(t *testing.T) {
+	inv, err := ParseXMLFile("testdata/cii/en16931/CII_example2.xml")
+	if err != nil {
+		t.Fatalf("ParseXMLFile: %v", err)
+	}
+	var doc *Document
+	for i := range inv.AdditionalReferencedDocument {
+		if inv.AdditionalReferencedDocument[i].TypeCode == "916" {
+			doc = &inv.AdditionalReferencedDocument[i]
+		}
+	}
+	if doc == nil || doc.URIID != "http://www.suppliersite.eu/sheet001.html" {
+		t.Fatalf("supporting document = %+v, want URIID http://www.suppliersite.eu/sheet001.html", doc)
+	}
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	xmlDoc := etree.NewDocument()
+	if err := xmlDoc.ReadFromBytes(buf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	ard := xmlDoc.FindElement("//ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument[ram:TypeCode='916']")
+	if ard == nil {
+		t.Fatal("supporting document not written")
+	}
+	var children []string
+	for _, c := range ard.ChildElements() {
+		children = append(children, c.FullTag())
+	}
+	if got := strings.Join(children, " "); !strings.HasPrefix(got, "ram:IssuerAssignedID ram:URIID ram:TypeCode") {
+		t.Errorf("children = %s, want IssuerAssignedID, URIID, TypeCode first", got)
+	}
+}
+
+// TestUBLToCII_SupportingDocuments tests that supporting documents (BG-24)
+// of a UBL invoice get type code 916 and keep their external location when
+// written as CII (issue #195).
+func TestUBLToCII_SupportingDocuments(t *testing.T) {
+	inv, err := ParseXMLFile("testdata/ubl/invoice/ubl-tc434-example2.xml")
+	if err != nil {
+		t.Fatalf("ParseXMLFile: %v", err)
+	}
+	inv.SchemaType = CII
+
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	parsed, err := ParseReader(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("ParseReader: %v", err)
+	}
+	if len(parsed.AdditionalReferencedDocument) != 2 {
+		t.Fatalf("got %d supporting documents, want 2", len(parsed.AdditionalReferencedDocument))
+	}
+	for _, doc := range parsed.AdditionalReferencedDocument {
+		if doc.TypeCode != "916" {
+			t.Errorf("document %s: TypeCode = %q, want 916", doc.IssuerAssignedID, doc.TypeCode)
+		}
+	}
+	if got := parsed.AdditionalReferencedDocument[0].URIID; got != "http://www.suppliersite.eu/sheet001.html" {
+		t.Errorf("document Doc1: URIID = %q", got)
+	}
+	if got := len(parsed.AdditionalReferencedDocument[1].AttachmentBinaryObject); got == 0 {
+		t.Error("document Doc2: attachment lost")
+	}
+}
+
+// TestWrite_EmptyDocumentTypeCode tests that no empty ram:TypeCode is
+// written for a referenced document without type code.
+func TestWrite_EmptyDocumentTypeCode(t *testing.T) {
+	inv, err := ParseXMLFile("testdata/cii/en16931/CII_example5.xml")
+	if err != nil {
+		t.Fatalf("ParseXMLFile: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := inv.Write(&buf); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if strings.Contains(buf.String(), "<ram:TypeCode></ram:TypeCode>") || strings.Contains(buf.String(), "<ram:TypeCode/>") {
+		t.Error("empty ram:TypeCode written")
 	}
 }

@@ -285,6 +285,8 @@ func parseCIIApplicableHeaderTradeAgreement(applicableHeaderTradeAgreement *cxpa
 	for additionalDocument := range applicableHeaderTradeAgreement.Each("ram:AdditionalReferencedDocument") {
 		doc := Document{}
 		doc.IssuerAssignedID = additionalDocument.Eval("ram:IssuerAssignedID").String()
+		// BT-124: External document location
+		doc.URIID = additionalDocument.Eval("ram:URIID").String()
 		encoded := additionalDocument.Eval("ram:AttachmentBinaryObject").String()
 
 		if encoded != "" {
