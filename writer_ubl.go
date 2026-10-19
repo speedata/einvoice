@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/beevik/etree"
@@ -157,6 +158,14 @@ func writeUBLHeader(inv *Invoice, root *etree.Element, prefix string) {
 		receiptRef.CreateElement("cbc:ID").SetText(inv.ReceivingAdviceReferencedDocument)
 	}
 
+	// BT-17: Tender or lot reference (a CII document with type code 50).
+	// The position of OriginatorDocumentReference differs between Invoice
+	// and CreditNote.
+	tenderRef := findReferencedDocument(inv, "50")
+	if tenderRef != nil && prefix != "cn:" {
+		root.CreateElement("cac:OriginatorDocumentReference").CreateElement("cbc:ID").SetText(tenderRef.IssuerAssignedID)
+	}
+
 	// BT-12: Contract reference
 	if inv.ContractReferencedDocument != "" {
 		contractRef := root.CreateElement("cac:ContractDocumentReference")
@@ -171,44 +180,61 @@ func writeUBLHeader(inv *Invoice, root *etree.Element, prefix string) {
 		projectRef.CreateElement("cbc:DocumentTypeCode").SetText("50")
 	}
 
-	// BG-24: Additional supporting documents
-	for i := range inv.AdditionalReferencedDocument {
+	// BT-18: Invoiced object identifier (type code 130, at most once, no
+	// description or attachment)
+	if objectRef := findReferencedDocument(inv, "130"); objectRef != nil {
 		addDocRef := root.CreateElement("cac:AdditionalDocumentReference")
-		addDocRef.CreateElement("cbc:ID").SetText(inv.AdditionalReferencedDocument[i].IssuerAssignedID)
-
-		if inv.AdditionalReferencedDocument[i].TypeCode != "" {
-			addDocRef.CreateElement("cbc:DocumentTypeCode").SetText(inv.AdditionalReferencedDocument[i].TypeCode)
+		idElt := addDocRef.CreateElement("cbc:ID")
+		if objectRef.ReferenceTypeCode != "" {
+			idElt.CreateAttr("schemeID", objectRef.ReferenceTypeCode)
 		}
+		idElt.SetText(objectRef.IssuerAssignedID)
+		addDocRef.CreateElement("cbc:DocumentTypeCode").SetText("130")
+	}
 
-		if inv.AdditionalReferencedDocument[i].Name != "" {
-			addDocRef.CreateElement("cbc:DocumentDescription").SetText(inv.AdditionalReferencedDocument[i].Name)
+	// BG-24: Additional supporting documents (without type code in UBL)
+	for i := range inv.AdditionalReferencedDocument {
+		doc := &inv.AdditionalReferencedDocument[i]
+		if doc.TypeCode == "50" || doc.TypeCode == "130" {
+			continue
+		}
+		addDocRef := root.CreateElement("cac:AdditionalDocumentReference")
+		addDocRef.CreateElement("cbc:ID").SetText(doc.IssuerAssignedID)
+
+		// BT-123: Supporting document description
+		if doc.Name != "" {
+			addDocRef.CreateElement("cbc:DocumentDescription").SetText(doc.Name)
 		}
 
 		// UBL allows a single Attachment holding the embedded object
 		// followed by the external reference.
 		var attachment *etree.Element
-		if len(inv.AdditionalReferencedDocument[i].AttachmentBinaryObject) > 0 || inv.AdditionalReferencedDocument[i].URIID != "" {
+		if len(doc.AttachmentBinaryObject) > 0 || doc.URIID != "" {
 			attachment = addDocRef.CreateElement("cac:Attachment")
 		}
 
 		// BT-125: Handle embedded binary objects (only write if data exists - PEPPOL-EN16931-R008)
-		if len(inv.AdditionalReferencedDocument[i].AttachmentBinaryObject) > 0 {
+		if len(doc.AttachmentBinaryObject) > 0 {
 			embeddedDoc := attachment.CreateElement("cbc:EmbeddedDocumentBinaryObject")
 
-			if inv.AdditionalReferencedDocument[i].AttachmentMimeCode != "" {
-				embeddedDoc.CreateAttr("mimeCode", inv.AdditionalReferencedDocument[i].AttachmentMimeCode)
+			if doc.AttachmentMimeCode != "" {
+				embeddedDoc.CreateAttr("mimeCode", doc.AttachmentMimeCode)
 			}
-			if inv.AdditionalReferencedDocument[i].AttachmentFilename != "" {
-				embeddedDoc.CreateAttr("filename", inv.AdditionalReferencedDocument[i].AttachmentFilename)
+			if doc.AttachmentFilename != "" {
+				embeddedDoc.CreateAttr("filename", doc.AttachmentFilename)
 			}
-			embeddedDoc.SetText(base64.StdEncoding.EncodeToString(inv.AdditionalReferencedDocument[i].AttachmentBinaryObject))
+			embeddedDoc.SetText(base64.StdEncoding.EncodeToString(doc.AttachmentBinaryObject))
 		}
 
 		// BT-124: External document location
-		if inv.AdditionalReferencedDocument[i].URIID != "" {
+		if doc.URIID != "" {
 			externalRef := attachment.CreateElement("cac:ExternalReference")
-			externalRef.CreateElement("cbc:URI").SetText(inv.AdditionalReferencedDocument[i].URIID)
+			externalRef.CreateElement("cbc:URI").SetText(doc.URIID)
 		}
+	}
+
+	if tenderRef != nil && prefix == "cn:" {
+		root.CreateElement("cac:OriginatorDocumentReference").CreateElement("cbc:ID").SetText(tenderRef.IssuerAssignedID)
 	}
 
 	// BT-11: Project reference (Invoice only, after the document references)
@@ -218,6 +244,17 @@ func writeUBLHeader(inv *Invoice, root *etree.Element, prefix string) {
 	}
 
 	// BT-72: Actual delivery date (in Delivery element, handled in writeUBLParties)
+}
+
+// findReferencedDocument returns the first additional referenced document
+// with the given type code or nil.
+func findReferencedDocument(inv *Invoice, typeCode string) *Document {
+	for i := range inv.AdditionalReferencedDocument {
+		if inv.AdditionalReferencedDocument[i].TypeCode == typeCode {
+			return &inv.AdditionalReferencedDocument[i]
+		}
+	}
+	return nil
 }
 
 // writeUBLParties writes all party elements (BG-4, BG-7, BG-10, BG-11, BG-13)
@@ -232,22 +269,22 @@ func writeUBLParties(inv *Invoice, root *etree.Element, prefix string) {
 
 	// BG-4: Seller (AccountingSupplierParty)
 	supplierParty := root.CreateElement("cac:AccountingSupplierParty")
-	writeUBLParty(supplierParty.CreateElement("cac:Party"), &inv.Seller, true, sellerCreditorID)
+	writeUBLParty(supplierParty.CreateElement("cac:Party"), &inv.Seller, ublSeller, sellerCreditorID)
 
 	// BG-7: Buyer (AccountingCustomerParty)
 	customerParty := root.CreateElement("cac:AccountingCustomerParty")
-	writeUBLParty(customerParty.CreateElement("cac:Party"), &inv.Buyer, true, "")
+	writeUBLParty(customerParty.CreateElement("cac:Party"), &inv.Buyer, ublBuyer, "")
 
 	// BG-10: Payee (optional)
 	if inv.PayeeTradeParty != nil {
 		payeeParty := root.CreateElement("cac:PayeeParty")
-		writeUBLParty(payeeParty, inv.PayeeTradeParty, false, payeeCreditorID)
+		writeUBLParty(payeeParty, inv.PayeeTradeParty, ublPayee, payeeCreditorID)
 	}
 
 	// BG-11: Seller tax representative (optional)
 	if inv.SellerTaxRepresentativeTradeParty != nil {
 		taxRepParty := root.CreateElement("cac:TaxRepresentativeParty")
-		writeUBLParty(taxRepParty, inv.SellerTaxRepresentativeTradeParty, false, "")
+		writeUBLParty(taxRepParty, inv.SellerTaxRepresentativeTradeParty, ublTaxRepresentative, "")
 	}
 
 	// BG-13: Delivery information
@@ -328,16 +365,34 @@ func writeUBLAddress(parent *etree.Element, name string, address *PostalAddress)
 	}
 }
 
-// writeUBLParty writes a single party (reusable for Seller, Buyer, Payee, etc.)
-// isLegalParty is true for the seller and the buyer: their name (BT-27,
-// BT-44) is the legal registration name in PartyLegalEntity, and PartyName
-// holds the trading name (BT-28, BT-45). For all other parties the name is
-// written to PartyName. A non-empty creditorID (BT-90) is written as an
-// additional party identifier with scheme SEPA.
-func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool, creditorID string) {
+// ublPartyRole selects which elements writeUBLParty writes. The EN 16931 UBL
+// binding allows different subsets of the UBL Party elements per role.
+type ublPartyRole int
+
+const (
+	ublSeller            ublPartyRole = iota // BG-4
+	ublBuyer                                 // BG-7
+	ublPayee                                 // BG-10
+	ublTaxRepresentative                     // BG-11
+)
+
+// writeUBLParty writes a single party with the elements the role allows:
+//   - Seller and buyer: their name (BT-27, BT-44) is the legal registration
+//     name in PartyLegalEntity, PartyName holds the trading name (BT-28,
+//     BT-45). The buyer has at most one identifier (BT-46).
+//   - Payee: name (BT-59), at most one identifier (BT-60) and the legal
+//     registration identifier (BT-61).
+//   - Tax representative: name (BT-62), address (BG-12) and VAT
+//     identifier (BT-63).
+//
+// A non-empty creditorID (BT-90) is written as an additional party
+// identifier with scheme SEPA.
+func writeUBLParty(parent *etree.Element, party *Party, role ublPartyRole, creditorID string) {
+	isLegalParty := role == ublSeller || role == ublBuyer
+
 	// Electronic address (BT-34, BT-49)
 	// Write element if either value or scheme is present
-	if party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "" {
+	if isLegalParty && (party.URIUniversalCommunication != "" || party.URIUniversalCommunicationScheme != "") {
 		endpoint := parent.CreateElement("cbc:EndpointID")
 		if party.URIUniversalCommunicationScheme != "" {
 			endpoint.CreateAttr("schemeID", party.URIUniversalCommunicationScheme)
@@ -345,26 +400,29 @@ func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool, credi
 		endpoint.SetText(party.URIUniversalCommunication)
 	}
 
-	// Party identification
-	for _, id := range party.ID {
-		partyID := parent.CreateElement("cac:PartyIdentification")
-		partyID.CreateElement("cbc:ID").SetText(id)
-	}
-
-	for _, gid := range party.GlobalID {
-		partyID := parent.CreateElement("cac:PartyIdentification")
-		idElt := partyID.CreateElement("cbc:ID")
-		idElt.CreateAttr("schemeID", gid.Scheme)
-		idElt.SetText(gid.ID)
+	// Party identification (BT-29, BT-46, BT-60)
+	switch role {
+	case ublSeller:
+		for _, id := range party.ID {
+			parent.CreateElement("cac:PartyIdentification").CreateElement("cbc:ID").SetText(id)
+		}
+		for _, gid := range party.GlobalID {
+			writeUBLPartyIdentification(parent, gid.ID, gid.Scheme)
+		}
+	case ublBuyer, ublPayee:
+		// Only one identifier is allowed, a global one is preferred
+		if len(party.GlobalID) > 0 {
+			writeUBLPartyIdentification(parent, party.GlobalID[0].ID, party.GlobalID[0].Scheme)
+		} else if len(party.ID) > 0 {
+			parent.CreateElement("cac:PartyIdentification").CreateElement("cbc:ID").SetText(party.ID[0])
+		}
 	}
 
 	if creditorID != "" {
-		idElt := parent.CreateElement("cac:PartyIdentification").CreateElement("cbc:ID")
-		idElt.CreateAttr("schemeID", "SEPA")
-		idElt.SetText(creditorID)
+		writeUBLPartyIdentification(parent, creditorID, "SEPA")
 	}
 
-	// Party name (BT-28, BT-45 for seller/buyer; BT-59, BT-62, BT-70 otherwise)
+	// Party name (BT-28, BT-45 for seller/buyer; BT-59, BT-62 otherwise)
 	partyName := party.Name
 	if isLegalParty {
 		partyName = ""
@@ -376,24 +434,26 @@ func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool, credi
 		parent.CreateElement("cac:PartyName").CreateElement("cbc:Name").SetText(partyName)
 	}
 
-	// Postal address
-	writeUBLAddress(parent, "cac:PostalAddress", party.PostalAddress)
+	// Postal address (BG-5, BG-8, BG-12)
+	if role != ublPayee {
+		writeUBLAddress(parent, "cac:PostalAddress", party.PostalAddress)
+	}
 
-	// Tax registration (before legal organization per standard UBL order)
-	if party.VATaxRegistration != "" {
+	// Tax registration (BT-31, BT-32, BT-48, BT-63)
+	if role != ublPayee && party.VATaxRegistration != "" {
 		taxScheme := parent.CreateElement("cac:PartyTaxScheme")
 		taxScheme.CreateElement("cbc:CompanyID").SetText(party.VATaxRegistration)
 		taxScheme.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText("VAT")
 	}
 
-	if party.FCTaxRegistration != "" {
+	if role == ublSeller && party.FCTaxRegistration != "" {
 		taxScheme := parent.CreateElement("cac:PartyTaxScheme")
 		taxScheme.CreateElement("cbc:CompanyID").SetText(party.FCTaxRegistration)
 		taxScheme.CreateElement("cac:TaxScheme").CreateElement("cbc:ID").SetText("FC")
 	}
 
 	// Legal organization (BT-27, BT-44 and BT-30, BT-47, BT-61)
-	hasLegalID := party.SpecifiedLegalOrganization != nil && party.SpecifiedLegalOrganization.ID != ""
+	hasLegalID := role != ublTaxRepresentative && party.SpecifiedLegalOrganization != nil && party.SpecifiedLegalOrganization.ID != ""
 	if (isLegalParty && party.Name != "") || hasLegalID {
 		legalEntity := parent.CreateElement("cac:PartyLegalEntity")
 		if isLegalParty && party.Name != "" {
@@ -409,26 +469,37 @@ func writeUBLParty(parent *etree.Element, party *Party, isLegalParty bool, credi
 		}
 	}
 
-	// Contact information
-	for i := range party.DefinedTradeContact {
+	// Contact information (BG-6, BG-9). UBL allows a single contact.
+	if isLegalParty && len(party.DefinedTradeContact) > 0 {
+		contact := &party.DefinedTradeContact[0]
 		contactElt := parent.CreateElement("cac:Contact")
 
 		// BT-41, BT-56: Contact point. UBL has no department element, so the
 		// department name is used when no person name is given.
-		contactName := party.DefinedTradeContact[i].PersonName
+		contactName := contact.PersonName
 		if contactName == "" {
-			contactName = party.DefinedTradeContact[i].DepartmentName
+			contactName = contact.DepartmentName
 		}
 		if contactName != "" {
 			contactElt.CreateElement("cbc:Name").SetText(contactName)
 		}
-		if party.DefinedTradeContact[i].PhoneNumber != "" {
-			contactElt.CreateElement("cbc:Telephone").SetText(party.DefinedTradeContact[i].PhoneNumber)
+		if contact.PhoneNumber != "" {
+			contactElt.CreateElement("cbc:Telephone").SetText(contact.PhoneNumber)
 		}
-		if party.DefinedTradeContact[i].EMail != "" {
-			contactElt.CreateElement("cbc:ElectronicMail").SetText(party.DefinedTradeContact[i].EMail)
+		if contact.EMail != "" {
+			contactElt.CreateElement("cbc:ElectronicMail").SetText(contact.EMail)
 		}
 	}
+}
+
+// writeUBLPartyIdentification writes a party identifier with an optional
+// scheme.
+func writeUBLPartyIdentification(parent *etree.Element, id, scheme string) {
+	idElt := parent.CreateElement("cac:PartyIdentification").CreateElement("cbc:ID")
+	if scheme != "" {
+		idElt.CreateAttr("schemeID", scheme)
+	}
+	idElt.SetText(id)
 }
 
 // writeUBLAllowanceCharge writes document-level allowances and charges (BG-20, BG-21)
@@ -687,12 +758,17 @@ func writeUBLPaymentMeans(inv *Invoice, root *etree.Element, prefix string) {
 // writeUBLPaymentTerms writes payment terms (BT-20). The due date (BT-9) and
 // the mandate reference (BT-89) are written elsewhere in UBL.
 func writeUBLPaymentTerms(inv *Invoice, root *etree.Element, prefix string) {
+	// BT-20: Payment terms. UBL allows a single note, so the descriptions of
+	// several payment terms (Extended profile) are joined.
+	var descriptions []string
 	for i := range inv.SpecifiedTradePaymentTerms {
-		// BT-20: Payment terms
 		if inv.SpecifiedTradePaymentTerms[i].Description != "" {
-			ptElt := root.CreateElement("cac:PaymentTerms")
-			ptElt.CreateElement("cbc:Note").SetText(inv.SpecifiedTradePaymentTerms[i].Description)
+			descriptions = append(descriptions, inv.SpecifiedTradePaymentTerms[i].Description)
 		}
+	}
+	if len(descriptions) > 0 {
+		ptElt := root.CreateElement("cac:PaymentTerms")
+		ptElt.CreateElement("cbc:Note").SetText(strings.Join(descriptions, "\n"))
 	}
 }
 
@@ -758,10 +834,10 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 		// BG-27: Line level allowances (BT-136 - must be rounded to 2 decimals)
 		// BG-28: Line level charges (BT-141 - must be rounded to 2 decimals)
 		for j := range inv.InvoiceLines[i].InvoiceLineAllowances {
-			writeUBLLineAllowanceCharge(lineElt, &inv.InvoiceLines[i].InvoiceLineAllowances[j], false, true, inv.InvoiceCurrencyCode)
+			writeUBLLineAllowanceCharge(lineElt, &inv.InvoiceLines[i].InvoiceLineAllowances[j], false, inv.InvoiceCurrencyCode)
 		}
 		for j := range inv.InvoiceLines[i].InvoiceLineCharges {
-			writeUBLLineAllowanceCharge(lineElt, &inv.InvoiceLines[i].InvoiceLineCharges[j], true, true, inv.InvoiceCurrencyCode)
+			writeUBLLineAllowanceCharge(lineElt, &inv.InvoiceLines[i].InvoiceLineCharges[j], true, inv.InvoiceCurrencyCode)
 		}
 
 		// Item information
@@ -772,9 +848,8 @@ func writeUBLLines(inv *Invoice, root *etree.Element, prefix string) {
 	}
 }
 
-// writeUBLLineAllowanceCharge writes a line-level allowance or charge
-// roundAmount: true for BT-136/BT-141 (line allowances/charges), false for BT-147 (item price discounts)
-func writeUBLLineAllowanceCharge(parent *etree.Element, ac *AllowanceCharge, isCharge bool, roundAmount bool, currency string) {
+// writeUBLLineAllowanceCharge writes a line-level allowance or charge (BG-27, BG-28)
+func writeUBLLineAllowanceCharge(parent *etree.Element, ac *AllowanceCharge, isCharge bool, currency string) {
 	acElt := parent.CreateElement("cac:AllowanceCharge")
 	acElt.CreateElement("cbc:ChargeIndicator").SetText(strconv.FormatBool(isCharge))
 
@@ -790,18 +865,12 @@ func writeUBLLineAllowanceCharge(parent *etree.Element, ac *AllowanceCharge, isC
 		acElt.CreateElement("cbc:MultiplierFactorNumeric").SetText(formatPercent(ac.CalculationPercent))
 	}
 
-	// BT-136/BT-141/BT-147: Amount with currency
+	// BT-136/BT-141: Amount with currency, 2 decimals (BR-DEC-24, BR-DEC-27)
 	amt := acElt.CreateElement("cbc:Amount")
 	amt.CreateAttr("currencyID", currency)
-	// BT-136/BT-141 (line allowances/charges) must be 2 decimals (BR-DEC-24, BR-DEC-27)
-	// BT-147 (item price discount) has no decimal restriction per EN 16931
-	if roundAmount {
-		amt.SetText(ac.ActualAmount.StringFixed(2))
-	} else {
-		amt.SetText(ac.ActualAmount.String())
-	}
+	amt.SetText(ac.ActualAmount.StringFixed(2))
 
-	// BT-148 discount base (for price allowances): Base amount with currency
+	// BT-137/BT-142: Base amount with currency
 	if !ac.BasisAmount.IsZero() {
 		baseAmt := acElt.CreateElement("cbc:BaseAmount")
 		baseAmt.CreateAttr("currencyID", currency)
@@ -899,8 +968,57 @@ func writeUBLLinePrice(parent *etree.Element, line *InvoiceLine, currency string
 		baseQty.SetText(line.BasisQuantity.String())
 	}
 
-	// BT-147: Item price allowances/discounts (no decimal restriction per EN 16931)
-	for j := range line.AppliedTradeAllowanceCharge {
-		writeUBLLineAllowanceCharge(price, &line.AppliedTradeAllowanceCharge[j], line.AppliedTradeAllowanceCharge[j].ChargeIndicator, false, currency)
+	// BT-147: Item price discount and BT-148: Item gross price (no decimal
+	// restriction per EN 16931). UBL allows a single price allowance, so
+	// several allowances and charges on the gross price (Extended profile)
+	// are combined into one.
+	acs := line.AppliedTradeAllowanceCharge
+	if len(acs) == 0 && line.GrossPrice.IsZero() {
+		return
+	}
+	var ac AllowanceCharge
+	switch len(acs) {
+	case 0:
+		ac.ActualAmount = line.GrossPrice.Sub(line.NetPrice)
+	case 1:
+		ac = acs[0]
+	default:
+		for j := range acs {
+			if acs[j].ChargeIndicator {
+				ac.ActualAmount = ac.ActualAmount.Sub(acs[j].ActualAmount)
+			} else {
+				ac.ActualAmount = ac.ActualAmount.Add(acs[j].ActualAmount)
+			}
+			if ac.BasisAmount.IsZero() {
+				ac.BasisAmount = acs[j].BasisAmount
+			}
+		}
+		if ac.ActualAmount.IsNegative() {
+			ac.ChargeIndicator = true
+			ac.ActualAmount = ac.ActualAmount.Neg()
+		}
+	}
+	if !line.GrossPrice.IsZero() {
+		ac.BasisAmount = line.GrossPrice
+	}
+
+	acElt := price.CreateElement("cac:AllowanceCharge")
+	acElt.CreateElement("cbc:ChargeIndicator").SetText(strconv.FormatBool(ac.ChargeIndicator))
+	if ac.ReasonCode != "" {
+		acElt.CreateElement("cbc:AllowanceChargeReasonCode").SetText(ac.ReasonCode)
+	}
+	if ac.Reason != "" {
+		acElt.CreateElement("cbc:AllowanceChargeReason").SetText(ac.Reason)
+	}
+	if !ac.CalculationPercent.IsZero() {
+		acElt.CreateElement("cbc:MultiplierFactorNumeric").SetText(formatPercent(ac.CalculationPercent))
+	}
+	amt := acElt.CreateElement("cbc:Amount")
+	amt.CreateAttr("currencyID", currency)
+	amt.SetText(ac.ActualAmount.String())
+	if !ac.BasisAmount.IsZero() {
+		baseAmt := acElt.CreateElement("cbc:BaseAmount")
+		baseAmt.CreateAttr("currencyID", currency)
+		baseAmt.SetText(ac.BasisAmount.String())
 	}
 }
