@@ -43,6 +43,9 @@ var (
 			"cbc:CountrySubentity", "cac:AddressLine", "cac:Country",
 		},
 		"cac:Contact":            {"cbc:Name", "cbc:Telephone", "cbc:ElectronicMail"},
+		"cac:Delivery":           {"cbc:ActualDeliveryDate", "cac:DeliveryLocation", "cac:DeliveryParty"},
+		"cac:DeliveryLocation":   {"cbc:ID", "cac:Address"},
+		"cac:DeliveryParty":      {"cac:PartyName"},
 		"cac:PartyLegalEntity":   {"cbc:RegistrationName", "cbc:CompanyID"},
 		"cac:Attachment":         {"cbc:EmbeddedDocumentBinaryObject", "cac:ExternalReference"},
 		"cac:TaxCategory":        {"cbc:ID", "cbc:Percent", "cbc:TaxExemptionReasonCode", "cbc:TaxExemptionReason", "cac:TaxScheme"},
@@ -92,6 +95,9 @@ func checkUBLOrder(t *testing.T, doc *etree.Document) {
 		for _, elt := range root.FindElements("//" + tag) {
 			checkChildOrder(t, elt, sequence)
 		}
+	}
+	for _, elt := range root.FindElements("//cac:DeliveryLocation/cac:Address") {
+		checkChildOrder(t, elt, ublSequences["cac:PostalAddress"])
 	}
 }
 
@@ -143,6 +149,14 @@ func newUBLBindingTestInvoice(typeCode CodeDocument) *Invoice {
 			URIUniversalCommunicationScheme: "EM",
 		},
 		PayeeTradeParty: &Party{Name: "Payee Factoring GmbH"},
+		ShipTo: &Party{
+			Name:     "Lager Nord",
+			GlobalID: []GlobalID{{ID: "4000001000005", Scheme: "0088"}},
+			PostalAddress: &PostalAddress{
+				Line1: "Hafenstraße 5", City: "Hamburg", PostcodeCode: "20457", CountryID: "DE",
+			},
+		},
+		OccurrenceDateTime: time.Date(2025, 2, 27, 0, 0, 0, 0, time.UTC),
 		PaymentMeans: []PaymentMeans{{
 			TypeCode: 59, Information: "SEPA-Lastschrift", PayerPartyDebtorFinancialAccountIBAN: "DE02500105170137075030",
 		}},
@@ -234,6 +248,20 @@ func TestWriteUBLBinding(t *testing.T) {
 			if doc.Root().FindElement("cac:PayeeParty/cac:PartyLegalEntity") != nil {
 				t.Error("payee must not have a PartyLegalEntity")
 			}
+			// BT-70, BT-71, BG-15: deliver to information
+			if got := elementText(t, doc, "cac:Delivery/cac:DeliveryParty/cac:PartyName/cbc:Name"); got != "Lager Nord" {
+				t.Errorf("deliver to party name = %q", got)
+			}
+			if got := elementText(t, doc, "cac:Delivery/cac:DeliveryLocation/cbc:ID[@schemeID='0088']"); got != "4000001000005" {
+				t.Errorf("deliver to location identifier = %q", got)
+			}
+			if got := elementText(t, doc, "cac:Delivery/cac:DeliveryLocation/cac:Address/cac:Country/cbc:IdentificationCode"); got != "DE" {
+				t.Errorf("deliver to country = %q", got)
+			}
+			if doc.Root().FindElement("cac:Delivery/cac:DeliveryParty/cac:PostalAddress") != nil {
+				t.Error("DeliveryParty must not contain a PostalAddress")
+			}
+
 			// BT-41: department as contact name
 			if got := elementText(t, doc, "cac:AccountingSupplierParty/cac:Party/cac:Contact/cbc:Name"); got != "Accounting" {
 				t.Errorf("seller contact name = %q", got)
@@ -276,6 +304,22 @@ func TestWriteUBLBinding(t *testing.T) {
 			}
 			if parsed.PayeeTradeParty == nil || parsed.PayeeTradeParty.Name != "Payee Factoring GmbH" {
 				t.Errorf("payee round trip: %+v", parsed.PayeeTradeParty)
+			}
+			if parsed.ShipTo == nil {
+				t.Error("ShipTo round trip: nil")
+			} else {
+				if parsed.ShipTo.Name != "Lager Nord" {
+					t.Errorf("ShipTo name round trip: %q", parsed.ShipTo.Name)
+				}
+				if len(parsed.ShipTo.GlobalID) != 1 || parsed.ShipTo.GlobalID[0] != inv.ShipTo.GlobalID[0] {
+					t.Errorf("ShipTo global ID round trip: %+v", parsed.ShipTo.GlobalID)
+				}
+				if parsed.ShipTo.PostalAddress == nil || *parsed.ShipTo.PostalAddress != *inv.ShipTo.PostalAddress {
+					t.Errorf("ShipTo address round trip: %+v", parsed.ShipTo.PostalAddress)
+				}
+			}
+			if !parsed.OccurrenceDateTime.Equal(inv.OccurrenceDateTime) {
+				t.Errorf("actual delivery date round trip: %v", parsed.OccurrenceDateTime)
 			}
 			if parsed.SpecifiedProcuringProjectID != "PRJ-1" {
 				t.Errorf("project reference round trip: %q", parsed.SpecifiedProcuringProjectID)
@@ -328,6 +372,55 @@ func TestParseUBLLegacyPartyNames(t *testing.T) {
 	}
 	if parsed.Buyer.SpecifiedLegalOrganization != nil {
 		t.Errorf("buyer legal organization = %+v, want nil", parsed.Buyer.SpecifiedLegalOrganization)
+	}
+}
+
+// TestParseUBLDelivery checks that the deliver to information (BG-13) is read
+// from DeliveryLocation as well as from a DeliveryParty with a complete
+// party, as written by earlier versions of this library.
+func TestParseUBLDelivery(t *testing.T) {
+	inv, err := ParseXMLFile("testdata/ubl/invoice/ubl-tc434-example8.xml")
+	if err != nil {
+		t.Fatalf("ParseXMLFile: %v", err)
+	}
+	if inv.ShipTo == nil || inv.ShipTo.PostalAddress == nil {
+		t.Fatalf("ShipTo = %+v, want deliver to address", inv.ShipTo)
+	}
+	if got := inv.ShipTo.PostalAddress.CountryID; got != "NL" {
+		t.Errorf("deliver to country = %q, want NL", got)
+	}
+	if got := inv.ShipTo.PostalAddress.City; got != "ONDERNEMERSTAD" {
+		t.Errorf("deliver to city = %q, want ONDERNEMERSTAD", got)
+	}
+
+	legacy := newUBLBindingTestInvoice(380)
+	doc, _ := writeAndParseUBL(t, legacy)
+	delivery := doc.Root().FindElement("cac:Delivery")
+	delivery.RemoveChild(delivery.FindElement("cac:DeliveryLocation"))
+	party := delivery.FindElement("cac:DeliveryParty")
+	partyID := etree.NewElement("cac:PartyIdentification")
+	partyID.CreateElement("cbc:ID").SetText("LOC-1")
+	party.InsertChildAt(0, partyID)
+	addr := party.CreateElement("cac:PostalAddress")
+	addr.CreateElement("cbc:CityName").SetText("Hamburg")
+	addr.CreateElement("cac:Country").CreateElement("cbc:IdentificationCode").SetText("DE")
+
+	data, err := doc.WriteToBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := ParseReader(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("ParseReader: %v", err)
+	}
+	if parsed.ShipTo == nil {
+		t.Fatal("legacy ShipTo: nil")
+	}
+	if parsed.ShipTo.Name != "Lager Nord" || !slices.Equal(parsed.ShipTo.ID, []string{"LOC-1"}) {
+		t.Errorf("legacy ShipTo = %+v", parsed.ShipTo)
+	}
+	if parsed.ShipTo.PostalAddress == nil || parsed.ShipTo.PostalAddress.City != "Hamburg" {
+		t.Errorf("legacy ShipTo address = %+v", parsed.ShipTo.PostalAddress)
 	}
 }
 

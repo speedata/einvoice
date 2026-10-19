@@ -271,31 +271,58 @@ func parseUBLParties(root *cxpath.Context, inv *Invoice, prefix string) error {
 	}
 
 	// BG-13: Delivery information (optional)
-	if deliveryCtx := root.Eval("cac:Delivery"); deliveryCtx.Eval("count()").Int() > 0 {
-		// Delivery party
-		if deliveryPartyCtx := deliveryCtx.Eval("cac:DeliveryParty"); deliveryPartyCtx.Eval("count()").Int() > 0 {
-			shipTo := parseUBLParty(deliveryPartyCtx, false)
-			inv.ShipTo = &shipTo
-		} else if locationCtx := deliveryCtx.Eval("cac:DeliveryLocation"); locationCtx.Eval("count()").Int() > 0 {
-			// If no DeliveryParty, create one from DeliveryLocation address
-			shipTo := Party{}
-			if addrCtx := locationCtx.Eval("cac:Address"); addrCtx.Eval("count()").Int() > 0 {
-				postalAddr := &PostalAddress{
-					Line1:                  addrCtx.Eval("cbc:StreetName").String(),
-					Line2:                  addrCtx.Eval("cbc:AdditionalStreetName").String(),
-					Line3:                  addrCtx.Eval("cac:AddressLine/cbc:Line").String(),
-					City:                   addrCtx.Eval("cbc:CityName").String(),
-					PostcodeCode:           addrCtx.Eval("cbc:PostalZone").String(),
-					CountrySubDivisionName: addrCtx.Eval("cbc:CountrySubentity").String(),
-					CountryID:              addrCtx.Eval("cac:Country/cbc:IdentificationCode").String(),
+	if root.Eval("count(cac:Delivery)").Int() > 0 {
+		deliveryCtx := root.Eval("cac:Delivery[1]")
+		var shipTo Party
+		hasShipTo := false
+
+		// BT-70: Deliver to party name. Documents written by earlier versions
+		// of this library contain the complete party here, including the
+		// identifiers and the address.
+		if deliveryCtx.Eval("count(cac:DeliveryParty)").Int() > 0 {
+			shipTo = parseUBLParty(deliveryCtx.Eval("cac:DeliveryParty"), false)
+			hasShipTo = true
+		}
+
+		if deliveryCtx.Eval("count(cac:DeliveryLocation)").Int() > 0 {
+			locationCtx := deliveryCtx.Eval("cac:DeliveryLocation")
+
+			// BT-71: Deliver to location identifier
+			if id := locationCtx.Eval("cbc:ID").String(); id != "" {
+				if scheme := locationCtx.Eval("cbc:ID/@schemeID").String(); scheme != "" {
+					shipTo.GlobalID = append(shipTo.GlobalID, GlobalID{ID: id, Scheme: scheme})
+				} else {
+					shipTo.ID = append(shipTo.ID, id)
 				}
-				shipTo.PostalAddress = postalAddr
 			}
+
+			// BG-15: Deliver to address
+			if locationCtx.Eval("count(cac:Address)").Int() > 0 {
+				shipTo.PostalAddress = parseUBLAddress(locationCtx.Eval("cac:Address"))
+			}
+			hasShipTo = true
+		}
+
+		if hasShipTo {
 			inv.ShipTo = &shipTo
 		}
 	}
 
 	return nil
+}
+
+// parseUBLAddress parses a postal address (BG-5, BG-8, BG-12, BG-15).
+// Takes a context already positioned at the address element.
+func parseUBLAddress(addrCtx *cxpath.Context) *PostalAddress {
+	return &PostalAddress{
+		Line1:                  addrCtx.Eval("cbc:StreetName").String(),
+		Line2:                  addrCtx.Eval("cbc:AdditionalStreetName").String(),
+		Line3:                  addrCtx.Eval("cac:AddressLine/cbc:Line").String(),
+		City:                   addrCtx.Eval("cbc:CityName").String(),
+		PostcodeCode:           addrCtx.Eval("cbc:PostalZone").String(),
+		CountrySubDivisionName: addrCtx.Eval("cbc:CountrySubentity").String(),
+		CountryID:              addrCtx.Eval("cac:Country/cbc:IdentificationCode").String(),
+	}
 }
 
 // parseUBLParty parses a single party (reusable for Seller, Buyer, Payee, etc.).
@@ -348,18 +375,9 @@ func parseUBLParty(partyCtx *cxpath.Context, isLegalParty bool) Party {
 		}
 	}
 
-	// Postal address (BG-5, BG-8, BG-12, BG-15)
+	// Postal address (BG-5, BG-8, BG-12)
 	if partyCtx.Eval("count(cac:PostalAddress)").Int() > 0 {
-		postalAddr := &PostalAddress{
-			Line1:                  partyCtx.Eval("cac:PostalAddress/cbc:StreetName").String(),
-			Line2:                  partyCtx.Eval("cac:PostalAddress/cbc:AdditionalStreetName").String(),
-			Line3:                  partyCtx.Eval("cac:PostalAddress/cac:AddressLine/cbc:Line").String(),
-			City:                   partyCtx.Eval("cac:PostalAddress/cbc:CityName").String(),
-			PostcodeCode:           partyCtx.Eval("cac:PostalAddress/cbc:PostalZone").String(),
-			CountrySubDivisionName: partyCtx.Eval("cac:PostalAddress/cbc:CountrySubentity").String(),
-			CountryID:              partyCtx.Eval("cac:PostalAddress/cac:Country/cbc:IdentificationCode").String(),
-		}
-		party.PostalAddress = postalAddr
+		party.PostalAddress = parseUBLAddress(partyCtx.Eval("cac:PostalAddress"))
 	}
 
 	// Legal organization (BT-30, BT-47, BT-61) and trading name (BT-28, BT-45)
