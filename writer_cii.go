@@ -393,7 +393,13 @@ func writeCIIramApplicableHeaderTradeAgreement(inv *Invoice, parent *etree.Eleme
 	for i := range inv.AdditionalReferencedDocument {
 		ard := elt.CreateElement("ram:AdditionalReferencedDocument")
 		ard.CreateElement("ram:IssuerAssignedID").SetText(inv.AdditionalReferencedDocument[i].IssuerAssignedID)
-		ard.CreateElement("ram:TypeCode").SetText(inv.AdditionalReferencedDocument[i].TypeCode)
+		// BT-124: External document location
+		if inv.AdditionalReferencedDocument[i].URIID != "" {
+			ard.CreateElement("ram:URIID").SetText(inv.AdditionalReferencedDocument[i].URIID)
+		}
+		if inv.AdditionalReferencedDocument[i].TypeCode != "" {
+			ard.CreateElement("ram:TypeCode").SetText(inv.AdditionalReferencedDocument[i].TypeCode)
+		}
 		if inv.AdditionalReferencedDocument[i].Name != "" {
 			ard.CreateElement("ram:Name").SetText(inv.AdditionalReferencedDocument[i].Name)
 		}
