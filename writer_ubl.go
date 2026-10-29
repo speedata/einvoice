@@ -143,9 +143,7 @@ func writeUBLHeader(inv *Invoice, root *etree.Element, prefix string) {
 		billingRef := root.CreateElement("cac:BillingReference")
 		invDocRef := billingRef.CreateElement("cac:InvoiceDocumentReference")
 		invDocRef.CreateElement("cbc:ID").SetText(inv.InvoiceReferencedDocument[i].ID)
-		if !inv.InvoiceReferencedDocument[i].Date.IsZero() {
-			addTimeUBL(invDocRef, "cbc:IssueDate", inv.InvoiceReferencedDocument[i].Date)
-		}
+		addTimeUBL(invDocRef, "cbc:IssueDate", inv.InvoiceReferencedDocument[i].Date)
 	}
 
 	// BT-16: Despatch advice reference
