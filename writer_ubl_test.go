@@ -404,6 +404,143 @@ func TestWriteUBL_WithAllowancesAndCharges(t *testing.T) {
 	}
 }
 
+// TestWriteUBL_ReferencedDocumentDate tests BT-26 handling in BG-3
+// (BillingReference): a preceding invoice reference without a date must not
+// emit a cbc:IssueDate element, while a set date must be written as
+// YYYY-MM-DD inside the InvoiceDocumentReference.
+func TestWriteUBL_ReferencedDocumentDate(t *testing.T) {
+	newInvoice := func(refDate time.Time) *Invoice {
+		return &Invoice{
+			SchemaType: UBL,
+			GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+			InvoiceNumber:       "INV-BT26",
+			InvoiceTypeCode:     380,
+			InvoiceDate:         time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+			InvoiceCurrencyCode: "EUR",
+			Seller: Party{
+				Name:              "Seller Company",
+				VATaxRegistration: "DE123456",
+				PostalAddress: &PostalAddress{
+					Line1:        "Seller Street 1",
+					City:         "Berlin",
+					PostcodeCode: "10115",
+					CountryID:    "DE",
+				},
+			},
+			Buyer: Party{
+				Name: "Buyer Company",
+				PostalAddress: &PostalAddress{
+					Line1:        "Buyer Street 1",
+					City:         "Paris",
+					PostcodeCode: "75001",
+					CountryID:    "FR",
+				},
+			},
+			InvoiceReferencedDocument: []ReferencedDocument{
+				{
+					ID:   "REF-2023-01",
+					Date: refDate,
+				},
+			},
+			LineTotal:        decimal.NewFromInt(100),
+			TaxBasisTotal:    decimal.NewFromInt(100),
+			TaxTotal:         decimal.NewFromInt(19),
+			GrandTotal:       decimal.NewFromInt(119),
+			DuePayableAmount: decimal.NewFromInt(119),
+			InvoiceLines: []InvoiceLine{
+				{
+					LineID:                   "1",
+					ItemName:                 "Test Item",
+					BilledQuantity:           decimal.NewFromInt(1),
+					BilledQuantityUnit:       "C62",
+					NetPrice:                 decimal.NewFromInt(100),
+					TaxRateApplicablePercent: decimal.NewFromInt(19),
+					Total:                    decimal.NewFromInt(100),
+					TaxTypeCode:              "VAT",
+					TaxCategoryCode:          "S",
+				},
+			},
+			TradeTaxes: []TradeTax{
+				{
+					CalculatedAmount: decimal.NewFromInt(19),
+					BasisAmount:      decimal.NewFromInt(100),
+					TypeCode:         "VAT",
+					CategoryCode:     "S",
+					Percent:          decimal.NewFromInt(19),
+				},
+			},
+		}
+	}
+
+	// extractBillingReference returns the <cac:BillingReference> section of the
+	// written XML. The check must be scoped to this section because the
+	// invoice-level BT-2 <cbc:IssueDate> is always present in the document.
+	extractBillingReference := func(t *testing.T, xmlOutput string) string {
+		start := strings.Index(xmlOutput, "<cac:BillingReference>")
+		if start == -1 {
+			t.Fatal("Expected <cac:BillingReference> element to be present")
+		}
+		end := strings.Index(xmlOutput[start:], "</cac:BillingReference>")
+		if end == -1 {
+			t.Fatal("Expected </cac:BillingReference> closing tag to be present")
+		}
+		return xmlOutput[start : start+end]
+	}
+
+	t.Run("date omitted", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := newInvoice(time.Time{}).Write(&buf); err != nil {
+			t.Fatalf("Write() failed: %v", err)
+		}
+		refSection := extractBillingReference(t, buf.String())
+
+		if !strings.Contains(refSection, "<cac:InvoiceDocumentReference>") {
+			t.Error("Expected <cac:InvoiceDocumentReference> element to be present")
+		}
+		if !strings.Contains(refSection, "<cbc:ID>REF-2023-01</cbc:ID>") {
+			t.Error("Expected BT-25 ID to be written")
+		}
+		if strings.Contains(refSection, "<cbc:IssueDate>") {
+			t.Error("Expected <cbc:IssueDate> to be omitted for a zero date in the BillingReference")
+		}
+		if strings.Contains(refSection, "00010101") {
+			t.Error("Expected no zero-date artifact \"00010101\" in the BillingReference")
+		}
+	})
+
+	t.Run("date set", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := newInvoice(time.Date(2023, 12, 1, 0, 0, 0, 0, time.UTC)).Write(&buf); err != nil {
+			t.Fatalf("Write() failed: %v", err)
+		}
+		refSection := extractBillingReference(t, buf.String())
+
+		if !strings.Contains(refSection, "<cbc:IssueDate>2023-12-01</cbc:IssueDate>") {
+			t.Error("Expected BT-26 date to be written as YYYY-MM-DD inside the BillingReference")
+		}
+	})
+
+	t.Run("round trip", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := newInvoice(time.Time{}).Write(&buf); err != nil {
+			t.Fatalf("Write() failed: %v", err)
+		}
+		parsed, err := ParseReader(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("ParseReader() failed: %v", err)
+		}
+		if len(parsed.InvoiceReferencedDocument) != 1 {
+			t.Fatalf("got %d referenced documents, want 1", len(parsed.InvoiceReferencedDocument))
+		}
+		if got := parsed.InvoiceReferencedDocument[0].ID; got != "REF-2023-01" {
+			t.Errorf("InvoiceReferencedDocument[0].ID = %q, want %q", got, "REF-2023-01")
+		}
+		if !parsed.InvoiceReferencedDocument[0].Date.IsZero() {
+			t.Errorf("InvoiceReferencedDocument[0].Date = %v, want zero", parsed.InvoiceReferencedDocument[0].Date)
+		}
+	})
+}
+
 // BenchmarkWriteUBL benchmarks UBL XML writing performance
 func BenchmarkWriteUBL(b *testing.B) {
 	// Load a sample UBL invoice to write

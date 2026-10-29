@@ -1164,6 +1164,123 @@ func TestUBLToCII_SupportingDocuments(t *testing.T) {
 	}
 }
 
+// TestWriteCII_ReferencedDocumentDate tests BT-26 handling in BG-3
+// (InvoiceReferencedDocument): a preceding invoice reference without a date
+// must not emit a ram:FormattedIssueDateTime element (previously it produced
+// an invalid "00010101" date), while a set date must be written as QDT
+// format 102 (YYYYMMDD).
+func TestWriteCII_ReferencedDocumentDate(t *testing.T) {
+	t.Parallel()
+
+	newInvoice := func(refDate time.Time) *Invoice {
+		inv := &Invoice{
+			SchemaType: CII,
+			GuidelineSpecifiedDocumentContextParameter: SpecEN16931,
+			InvoiceNumber:       "INV-BT26",
+			InvoiceTypeCode:     380,
+			InvoiceDate:         time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+			InvoiceCurrencyCode: "EUR",
+			Seller: Party{
+				Name:              "Seller Company",
+				VATaxRegistration: "DE123456",
+				PostalAddress: &PostalAddress{
+					Line1:        "Seller Street 1",
+					City:         "Berlin",
+					PostcodeCode: "10115",
+					CountryID:    "DE",
+				},
+			},
+			Buyer: Party{
+				Name: "Buyer Company",
+				PostalAddress: &PostalAddress{
+					Line1:        "Buyer Street 1",
+					City:         "Paris",
+					PostcodeCode: "75001",
+					CountryID:    "FR",
+				},
+			},
+			InvoiceReferencedDocument: []ReferencedDocument{
+				{
+					ID:   "REF-2023-01",
+					Date: refDate,
+				},
+			},
+			InvoiceLines: []InvoiceLine{
+				{
+					LineID:                   "1",
+					ItemName:                 "Test Item",
+					BilledQuantity:           decimal.NewFromInt(1),
+					BilledQuantityUnit:       "C62",
+					NetPrice:                 decimal.NewFromInt(100),
+					TaxRateApplicablePercent: decimal.NewFromInt(19),
+					Total:                    decimal.NewFromInt(100),
+					TaxTypeCode:              "VAT",
+					TaxCategoryCode:          "S",
+				},
+			},
+		}
+		inv.UpdateApplicableTradeTax(nil)
+		inv.UpdateTotals()
+		return inv
+	}
+
+	t.Run("date omitted", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := newInvoice(time.Time{}).Write(&buf); err != nil {
+			t.Fatalf("Write() failed: %v", err)
+		}
+		xmlOutput := buf.String()
+
+		if !strings.Contains(xmlOutput, "<ram:InvoiceReferencedDocument>") {
+			t.Error("Expected <ram:InvoiceReferencedDocument> element to be present")
+		}
+		if !strings.Contains(xmlOutput, "<ram:IssuerAssignedID>REF-2023-01</ram:IssuerAssignedID>") {
+			t.Error("Expected BT-25 ID to be written")
+		}
+		if strings.Contains(xmlOutput, "<ram:FormattedIssueDateTime>") {
+			t.Error("Expected <ram:FormattedIssueDateTime> to be omitted for a zero date")
+		}
+		if strings.Contains(xmlOutput, "00010101") {
+			t.Error("Expected no zero-date artifact \"00010101\" in output")
+		}
+	})
+
+	t.Run("date set", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := newInvoice(time.Date(2023, 12, 1, 0, 0, 0, 0, time.UTC)).Write(&buf); err != nil {
+			t.Fatalf("Write() failed: %v", err)
+		}
+		xmlOutput := buf.String()
+
+		if !strings.Contains(xmlOutput, "<ram:FormattedIssueDateTime>") {
+			t.Error("Expected <ram:FormattedIssueDateTime> to be written when a date is set")
+		}
+		if !strings.Contains(xmlOutput, `<qdt:DateTimeString format="102">20231201</qdt:DateTimeString>`) {
+			t.Error("Expected BT-26 date to be written as QDT format 102 (YYYYMMDD)")
+		}
+	})
+
+	t.Run("round trip", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := newInvoice(time.Time{}).Write(&buf); err != nil {
+			t.Fatalf("Write() failed: %v", err)
+		}
+		parsed, err := ParseReader(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("ParseReader() failed: %v", err)
+		}
+		if len(parsed.InvoiceReferencedDocument) != 1 {
+			t.Fatalf("got %d referenced documents, want 1", len(parsed.InvoiceReferencedDocument))
+		}
+		if got := parsed.InvoiceReferencedDocument[0].ID; got != "REF-2023-01" {
+			t.Errorf("InvoiceReferencedDocument[0].ID = %q, want %q", got, "REF-2023-01")
+		}
+		if !parsed.InvoiceReferencedDocument[0].Date.IsZero() {
+			t.Errorf("InvoiceReferencedDocument[0].Date = %v, want zero", parsed.InvoiceReferencedDocument[0].Date)
+		}
+	})
+}
+
 // TestWrite_EmptyDocumentTypeCode tests that no empty ram:TypeCode is
 // written for a referenced document without type code.
 func TestWrite_EmptyDocumentTypeCode(t *testing.T) {
