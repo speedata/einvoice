@@ -660,7 +660,9 @@ func writeCIIramApplicableHeaderTradeSettlement(inv *Invoice, parent *etree.Elem
 	for i := range inv.InvoiceReferencedDocument {
 		refdoc := elt.CreateElement("ram:InvoiceReferencedDocument")
 		refdoc.CreateElement("ram:IssuerAssignedID").SetText(inv.InvoiceReferencedDocument[i].ID)
-		addTimeCIIQDT(refdoc.CreateElement("ram:FormattedIssueDateTime"), inv.InvoiceReferencedDocument[i].Date)
+		if !inv.InvoiceReferencedDocument[i].Date.IsZero() {
+			addTimeCIIQDT(refdoc.CreateElement("ram:FormattedIssueDateTime"), inv.InvoiceReferencedDocument[i].Date)
+		}
 	}
 
 	// BT-19: Buyer accounting reference
