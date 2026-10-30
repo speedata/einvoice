@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ['1.24', '1.25']
+        go-version: ['1.26', '1.27']
 
     steps:
     - name: Checkout code
@@ -36,7 +36,7 @@ jobs:
       run: go test -v -race -coverprofile=coverage.txt -covermode=atomic $(go list ./... | grep -v -E '/cmd/|/rules$')
 
     # - name: Check coverage threshold
-    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.25'
+    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.27'
     #   shell: bash
     #   run: |
     #     COVERAGE=$(go tool cover -func=coverage.txt | grep total | awk '{print $3}' | sed 's/%//')
@@ -49,7 +49,7 @@ jobs:
     #     fi
 
     # - name: Upload coverage
-    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.25'
+    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.27'
     #   uses: codecov/codecov-action@v7
     #   with:
     #     files: ./coverage.txt
@@ -68,7 +68,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v7
       with:
-        go-version: '1.25'
+        go-version: '1.27'
 
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v9
@@ -87,7 +87,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v7
       with:
-        go-version: '1.25'
+        go-version: '1.27'
         cache: true
 
     - name: Download dependencies
@@ -116,7 +116,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v7
       with:
-        go-version: '1.25'
+        go-version: '1.27'
         cache: true
 
     - name: Download dependencies
