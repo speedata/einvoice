@@ -11,7 +11,7 @@ require (
 	github.com/speedata/cxpath v0.0.14
 	github.com/speedata/goxml v1.0.12
 	github.com/speedata/goxpath v1.0.22
-	github.com/speedata/pdfdisassembler v0.0.8
+	github.com/speedata/pdfdisassembler v0.0.9
 	golang.org/x/term v0.47.0
 )
 
@@ -40,7 +40,7 @@ require (
 	github.com/alfatraining/structtag v1.0.0 // indirect
 	github.com/alingse/asasalint v0.0.11 // indirect
 	github.com/alingse/nilnesserr v0.2.0 // indirect
-	github.com/andybalholm/brotli v1.2.2 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/ashanbrown/forbidigo/v2 v2.1.0 // indirect
 	github.com/ashanbrown/makezero/v2 v2.0.1 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

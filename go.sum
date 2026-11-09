@@ -90,8 +90,8 @@ github.com/alingse/asasalint v0.0.11 h1:SFwnQXJ49Kx/1GghOFz1XGqHYKp21Kq1nHad/0WQ
 github.com/alingse/asasalint v0.0.11/go.mod h1:nCaoMhw7a9kSJObvQyVzNTPBDbNpdocqrSP7t/cW5+I=
 github.com/alingse/nilnesserr v0.2.0 h1:raLem5KG7EFVb4UIDAXgrv3N2JIaffeKNtcEXkEWd/w=
 github.com/alingse/nilnesserr v0.2.0/go.mod h1:1xJPrXonEtX7wyTq8Dytns5P2hNzoWymVUIaKm4HNFg=
-github.com/andybalholm/brotli v1.2.2 h1:HzTuoo2ErYQqf5qvcJInB8uvqSVxRttzkFexPWtnceM=
-github.com/andybalholm/brotli v1.2.2/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
+github.com/andybalholm/brotli v1.2.7 h1:UgafRPGMam5ySHfRkhthMqOFA6IFoeF3D7mWIDLjG5A=
+github.com/andybalholm/brotli v1.2.7/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/ashanbrown/forbidigo/v2 v2.1.0 h1:NAxZrWqNUQiDz19FKScQ/xvwzmij6BiOw3S0+QUQ+Hs=
 github.com/ashanbrown/forbidigo/v2 v2.1.0/go.mod h1:0zZfdNAuZIL7rSComLGthgc/9/n2FqspBOH90xlCHdA=
 github.com/ashanbrown/makezero/v2 v2.0.1 h1:r8GtKetWOgoJ4sLyUx97UTwyt2dO7WkGFHizn/Lo8TY=
@@ -551,8 +551,8 @@ github.com/speedata/goxml v1.0.12 h1:rrGUDZmdHlcNQEOtErROAzMgYqt+lvCXUW5RyqJg/10
 github.com/speedata/goxml v1.0.12/go.mod h1:I3A29aeLW3hReaAvvGy79edsdS+ajgNNgDNDBmu7mxg=
 github.com/speedata/goxpath v1.0.22 h1:HhrLPH1ljhsNddt50oI4wN7o8Ia5eRvlWzeFCgRub2o=
 github.com/speedata/goxpath v1.0.22/go.mod h1:Sh1KUapmVW6mcTYuq5yf3oxvflvUr2dK88GQ4z4IcPc=
-github.com/speedata/pdfdisassembler v0.0.8 h1:df16S3mrduutsLhzbC3WpTMgPLUkNDyYO0ijzNd1qGw=
-github.com/speedata/pdfdisassembler v0.0.8/go.mod h1:ZTgz1LhZgxb/huCQlUKNTt0goWI9zMrpxqPWXylZgkk=
+github.com/speedata/pdfdisassembler v0.0.9 h1:xQjLLSVKFHREHoxSLqm86QRrG1qaU4/aLrVU+8ZBNbQ=
+github.com/speedata/pdfdisassembler v0.0.9/go.mod h1:ToCyVrC3dv2OTW4FtvUZUQWhGMDPqzarpGiWPkAW3Ss=
 github.com/spf13/afero v1.14.0 h1:9tH6MapGnn/j0eb0yIXiLjERO8RB6xIVZRDCX7PtqWA=
 github.com/spf13/afero v1.14.0/go.mod h1:acJQ8t0ohCGuMN3O+Pv0V0hgMxNYDlvdk+VTfyZmbYo=
 github.com/spf13/cast v1.5.0 h1:rj3WzYc11XZaIZMPKmwP96zkFEnnAmV8s6XbB2aY32w=
